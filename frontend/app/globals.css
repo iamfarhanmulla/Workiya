@@ -11,6 +11,7 @@
   --primary-soft: #edf1ff;
   --visual-overlay: rgba(25, 39, 125, 0.38);
   --shadow: 0 18px 40px rgba(34, 51, 154, 0.14);
+  --font-display: var(--font-inter), sans-serif;
 }
 
 * {
@@ -25,12 +26,13 @@ body {
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-display);
   color: var(--text);
   overflow-x: hidden;
-  background:
+  background-color: #f8f9ff;
+  /* background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 26%),
-    linear-gradient(135deg, var(--bg-top) 0%, #f7f8ff 52%, var(--bg-bottom) 100%);
+    linear-gradient(135deg, var(--bg-top) 0%, #f7f8ff 52%, var(--bg-bottom) 100%); */
 }
 
 a {
@@ -64,6 +66,7 @@ input {
   border-radius: 34px;
   overflow: hidden;
   box-shadow: 0 26px 80px rgba(57, 75, 138, 0.16);
+  background-color: white;
 }
 
 .login-form-panel {
@@ -72,34 +75,34 @@ input {
   flex-direction: column;
 }
 
- .brand {
+.brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   color: var(--primary-strong);
 }
 
 .brand-name {
-  font-size: 25px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 22.5px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.04em;
+  color: #00197d;
 }
 
- .brand-mark {
-  width: 48px;
-  height: 48px;
+.brand-mark {
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
-  background: var(--primary-strong);
   color: #fff;
   flex: 0 0 auto;
 }
 
 .brand-mark svg {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: block;
 }
 
@@ -107,16 +110,23 @@ input {
   margin-top: 40px;
 }
 
+.intro-copy h1,
+.testimonial-card h2 {
+  font-family: var(--font-display);
+}
+
 .intro-copy h1 {
   margin: 0;
-  font-size: clamp(2rem, 1.4rem + 1.2vw, 3rem);
-  line-height: 1.08;
+  font-size: clamp(2rem, 1.45rem + 1vw, 3.05rem);
+  font-weight: 600;
+  line-height: 1.04;
   letter-spacing: -0.04em;
 }
 
 .intro-copy p {
   margin: 14px 0 0;
   font-size: 17px;
+  font-weight: 500;
   line-height: 1.55;
   color: var(--muted);
 }
@@ -138,6 +148,7 @@ input {
   border-radius: 14px;
   background: #f1f4ff;
   color: #3b4563;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -145,7 +156,8 @@ input {
 
 .social-button:hover,
 .submit-button:hover,
-.icon-button:hover {
+.icon-button:hover,
+.pager-dot:hover {
   transform: translateY(-1px);
 }
 
@@ -166,7 +178,7 @@ input {
   gap: 16px;
   color: #8a91a7;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.18em;
 }
@@ -191,7 +203,7 @@ input {
   gap: 10px;
 }
 
-.field > span,
+.field>span,
 .field-heading {
   font-size: 15px;
   font-weight: 700;
@@ -207,6 +219,7 @@ input {
 
 .field-heading a {
   font-size: 13px;
+  font-weight: 700;
   color: var(--primary-strong);
 }
 
@@ -265,6 +278,8 @@ input {
   gap: 10px;
   margin-top: -2px;
   color: #5f6985;
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .checkbox-row input {
@@ -281,7 +296,7 @@ input {
   background: linear-gradient(180deg, #2b39a2 0%, #263398 100%);
   color: #fff;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -306,16 +321,17 @@ input {
   text-align: center;
   color: #5f6985;
   font-size: 15px;
+  font-weight: 500;
 }
 
 .support-copy a {
   color: var(--primary-strong);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .login-visual-panel {
   position: relative;
-  padding: 28px 28px 22px;
+  padding: 26px 27px 22px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -355,25 +371,45 @@ input {
   opacity: 0.65;
 }
 
-.testimonial-card,
+.testimonial-slider,
 .visual-footer {
   position: relative;
   z-index: 1;
 }
 
+.testimonial-slider {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .testimonial-card {
-  width: min(430px, 100%);
-  padding: 24px 26px 24px;
-  border-radius: 20px;
-  background: var(--surface-soft);
+  width: 100%;
+  max-width: 445px;
+  min-height: 320px;
+  padding: 30px 30px 30px;
+  border-radius: 18px;
+  background: rgba(204, 209, 235, 0.9);
   backdrop-filter: blur(10px);
-  box-shadow: 0 22px 60px rgba(9, 18, 70, 0.22);
+  box-shadow: 0 18px 44px rgba(10, 20, 77, 0.2);
+  animation: testimonial-fade 0.35s ease;
+}
+
+@keyframes testimonial-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .trusted-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .avatar-stack {
@@ -382,13 +418,13 @@ input {
 }
 
 .avatar-stack span {
-  width: 36px;
-  height: 36px;
-  margin-left: -8px;
+  width: 38px;
+  height: 38px;
+  margin-left: -9px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 2px solid rgba(32, 43, 134, 0.7);
+  border: 2px solid #233498;
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -409,37 +445,40 @@ input {
 
 .trusted-row p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
-  font-weight: 700;
+  color: rgba(250, 247, 255, 0.68);
+  font-size: 12px;
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .testimonial-card h2 {
-  margin: 18px 0 0;
-  max-width: 280px;
-  font-size: clamp(2rem, 1.4rem + 1vw, 3.05rem);
-  line-height: 1.06;
-  letter-spacing: -0.04em;
+  margin: 26px 0 0;
+  max-width: 315px;
+  color: #ffffff;
+  font-size: clamp(2.05rem, 1.65rem + 0.9vw, 3.2rem);
+  font-weight: 600;
+  line-height: 0.90;
+  letter-spacing: -0.010em;
 }
 
 .testimonial-card p:last-child {
-  margin: 16px 0 0;
-  max-width: 320px;
-  color: rgba(235, 239, 255, 0.78);
+  margin: 22px 0 0;
+  max-width: 340px;
+  color: #97a3ff;
   font-size: 17px;
+  font-weight: 600;
   line-height: 1.55;
 }
 
 .visual-footer {
-  margin-top: 18px;
+  margin-top: 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -449,14 +488,18 @@ input {
   gap: 8px;
 }
 
-.pager span {
+.pager-dot {
   width: 7px;
   height: 3px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: width 0.2s ease, background-color 0.2s ease, transform 0.18s ease;
 }
 
-.pager .active {
+.pager-dot.active {
   width: 30px;
   background: #fff;
 }
@@ -468,7 +511,7 @@ input {
   gap: 28px;
   color: #7a8198;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 @media (max-width: 980px) {
@@ -479,6 +522,10 @@ input {
 
   .login-visual-panel {
     min-height: 420px;
+  }
+
+  .testimonial-slider {
+    justify-content: flex-start;
   }
 
   .testimonial-card h2 {
@@ -516,6 +563,7 @@ input {
   }
 
   .testimonial-card {
+    min-height: auto;
     padding: 22px 18px 24px;
   }
 
@@ -523,12 +571,8 @@ input {
     font-size: 2.1rem;
   }
 
-  .testimonial-card p:last-child {
-    font-size: 15px;
-  }
-
-  .visual-footer,
-  .page-footer {
+  .page-footer,
+  .visual-footer {
     flex-wrap: wrap;
   }
 
@@ -537,4 +581,3 @@ input {
     font-size: 13px;
   }
 }
-

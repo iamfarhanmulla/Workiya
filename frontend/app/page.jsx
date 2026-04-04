@@ -1,4 +1,6 @@
-﻿const GoogleIcon = () => (
+﻿import TestimonialSlider from "@/components/TestimonialSlider";
+
+const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
       d="M21.8 12.23c0-.76-.07-1.5-.2-2.2H12v4.16h5.49a4.7 4.7 0 0 1-2.04 3.08v2.56h3.3c1.93-1.78 3.05-4.4 3.05-7.6Z"
@@ -19,14 +21,13 @@
   </svg>
 );
 
-const BriefcaseIcon = () => (
-  <svg viewBox="0 0 48 48" aria-hidden="true">
-    <rect x="0" y="0" width="48" height="48" rx="14" fill="currentColor" />
+const WorkiyaBrandIcon = () => (
+  <svg viewBox="0 0 40 40" aria-hidden="true">
+    <rect width="40" height="40" rx="12" fill="#24339A" />
     <path
-      d="M17 17.5V15.75C17 14.23 18.23 13 19.75 13H28.25C29.77 13 31 14.23 31 15.75V17.5H33C34.66 17.5 36 18.84 36 20.5V29.5C36 31.16 34.66 32.5 33 32.5H15C13.34 32.5 12 31.16 12 29.5V20.5C12 18.84 13.34 17.5 15 17.5H17ZM19.5 17.5H28.5V16.5C28.5 16.22 28.28 16 28 16H20C19.72 16 19.5 16.22 19.5 16.5V17.5Z"
+      d="M14.2 16.2c0-1.215.985-2.2 2.2-2.2h1.6v-1.2c0-1.215.985-2.2 2.2-2.2h3.6c1.215 0 2.2.985 2.2 2.2V14h1.6c1.215 0 2.2.985 2.2 2.2v8.2c0 1.215-.985 2.2-2.2 2.2H16.4c-1.215 0-2.2-.985-2.2-2.2v-8.2Zm5.8-2.2h4v-.7a.7.7 0 0 0-.7-.7h-2.6a.7.7 0 0 0-.7.7v.7Zm-3.1 2.1a.7.7 0 0 0-.7.7v7.1a.7.7 0 0 0 .7.7h10.2a.7.7 0 0 0 .7-.7v-7.1a.7.7 0 0 0-.7-.7H16.9Z"
       fill="#FFFFFF"
     />
-    <rect x="22" y="20.25" width="4" height="2.5" rx="1.25" fill="#DDE5FF" />
   </svg>
 );
 
@@ -72,8 +73,6 @@ const MicrosoftIcon = () => (
   </svg>
 );
 
-const avatars = ["AL", "RK", "JD"];
-
 export default function LoginPage() {
   return (
     <main className="login-shell">
@@ -81,7 +80,7 @@ export default function LoginPage() {
         <div className="login-form-panel">
           <div className="brand">
             <div className="brand-mark">
-              <BriefcaseIcon />
+              <WorkiyaBrandIcon />
             </div>
             <span className="brand-name">WorKiya</span>
           </div>
@@ -148,31 +147,7 @@ export default function LoginPage() {
         <div className="login-visual-panel">
           <div className="visual-overlay" />
           <div className="visual-rings" />
-          <div className="testimonial-card">
-            <div className="trusted-row">
-              <div className="avatar-stack" aria-hidden="true">
-                {avatars.map((avatar) => (
-                  <span key={avatar}>{avatar}</span>
-                ))}
-              </div>
-              <p>Trusted by 2,000+ teams</p>
-            </div>
-
-            <h2>Optimizing workforce productivity through structural clarity.</h2>
-            <p>
-              Experience the next generation of workforce intelligence with WorKiya&apos;s
-              architectural approach to data management.
-            </p>
-          </div>
-
-          <div className="visual-footer">
-            <div className="pager" aria-hidden="true">
-              <span className="active" />
-              <span />
-              <span />
-            </div>
-            <span>(c) 2026 WORKIYA INC.</span>
-          </div>
+          <TestimonialSlider />
         </div>
       </section>
 
