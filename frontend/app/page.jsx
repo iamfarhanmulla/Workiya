@@ -22,13 +22,9 @@ const GoogleIcon = () => (
 );
 
 const WorkiyaBrandIcon = () => (
-  <svg viewBox="0 0 40 40" aria-hidden="true">
-    <rect width="40" height="40" rx="12" fill="#24339A" />
-    <path
-      d="M14.2 16.2c0-1.215.985-2.2 2.2-2.2h1.6v-1.2c0-1.215.985-2.2 2.2-2.2h3.6c1.215 0 2.2.985 2.2 2.2V14h1.6c1.215 0 2.2.985 2.2 2.2v8.2c0 1.215-.985 2.2-2.2 2.2H16.4c-1.215 0-2.2-.985-2.2-2.2v-8.2Zm5.8-2.2h4v-.7a.7.7 0 0 0-.7-.7h-2.6a.7.7 0 0 0-.7.7v.7Zm-3.1 2.1a.7.7 0 0 0-.7.7v7.1a.7.7 0 0 0 .7.7h10.2a.7.7 0 0 0 .7-.7v-7.1a.7.7 0 0 0-.7-.7H16.9Z"
-      fill="#FFFFFF"
-    />
-  </svg>
+  <div className="brand-mark-inner">
+    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>work</span>
+  </div>
 );
 
 const EmailIcon = () => (
@@ -67,9 +63,27 @@ const ArrowIcon = () => (
   </svg>
 );
 
-const MicrosoftIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M3 3h8.5v8.5H3V3Zm9.5 0H21v8.5h-8.5V3ZM3 12.5h8.5V21H3v-8.5Zm9.5 0H21V21h-8.5v-8.5Z" fill="currentColor" />
+const SSOIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="14" r="2" fill="currentColor" />
+    <path
+      d="M8.76 10.76a4.75 4.75 0 0 1 6.48 0"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M5.52 7.52a9.25 9.25 0 0 1 12.96 0"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M12 17v2"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
@@ -96,7 +110,7 @@ export default function LoginPage() {
               <span>Google</span>
             </button>
             <button type="button" className="social-button">
-              <MicrosoftIcon />
+              <SSOIcon />
               <span>SSO</span>
             </button>
           </div>
@@ -139,6 +153,7 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <hr className="support-divider" />
           <p className="support-copy">
             Don&apos;t have an account? <a href="/">Contact your Admin</a>
           </p>

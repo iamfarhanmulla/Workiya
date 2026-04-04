@@ -1,9 +1,9 @@
-﻿import { Inter } from "next/font/google";
+﻿import { Manrope } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-inter"
+  variable: "--font-manrope"
 });
 
 export const metadata = {
@@ -14,7 +14,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.variable}>{children}</body>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        />
+      </head>
+      <body className={manrope.variable}>{children}</body>
     </html>
   );
 }

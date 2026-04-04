@@ -11,7 +11,7 @@
   --primary-soft: #edf1ff;
   --visual-overlay: rgba(25, 39, 125, 0.38);
   --shadow: 0 18px 40px rgba(34, 51, 154, 0.14);
-  --font-display: var(--font-inter), sans-serif;
+  --font-display: var(--font-manrope), sans-serif;
 }
 
 * {
@@ -70,7 +70,8 @@ input {
 }
 
 .login-form-panel {
-  padding: 42px 52px 30px;
+  /* padding: 42px 52px 30px; */
+  padding: 4rem;
   display: flex;
   flex-direction: column;
 }
@@ -83,7 +84,7 @@ input {
 }
 
 .brand-name {
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-manrope), sans-serif;
   font-size: 22.5px;
   font-weight: 700;
   line-height: 1;
@@ -96,14 +97,22 @@ input {
   height: 40px;
   display: grid;
   place-items: center;
-  color: #fff;
   flex: 0 0 auto;
 }
 
-.brand-mark svg {
+.brand-mark-inner {
   width: 40px;
   height: 40px;
-  display: block;
+  background-color: #24339A;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-mark-inner .material-symbols-outlined {
+  color: #fff;
+  font-size: 22px;
 }
 
 .intro-copy {
@@ -117,7 +126,7 @@ input {
 
 .intro-copy h1 {
   margin: 0;
-  font-size: clamp(2rem, 1.45rem + 1vw, 3.05rem);
+  /* font-size: clamp(2rem, 1.45rem + 1vw, 3.05rem); */
   font-weight: 600;
   line-height: 1.04;
   letter-spacing: -0.04em;
@@ -125,10 +134,11 @@ input {
 
 .intro-copy p {
   margin: 14px 0 0;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.55;
-  color: var(--muted);
+  /* letter-spacing: -0.01em; */
+  color: rgb(81 95 116);
 }
 
 .auth-options {
@@ -139,7 +149,7 @@ input {
 }
 
 .social-button {
-  height: 52px;
+  height: 45px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -176,11 +186,11 @@ input {
   display: flex;
   align-items: center;
   gap: 16px;
-  color: #8a91a7;
-  font-size: 13px;
-  font-weight: 600;
+  color: #9199ac;
+  font-size: 11px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
 }
 
 .divider::before,
@@ -188,7 +198,7 @@ input {
   content: "";
   flex: 1;
   height: 1px;
-  background: var(--line);
+  background: #e8ecf4;
 }
 
 .login-form {
@@ -224,7 +234,7 @@ input {
 }
 
 .input-shell {
-  min-height: 50px;
+  min-height: 45px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -279,8 +289,8 @@ input {
   gap: 10px;
   margin-top: -2px;
   color: #5f6985;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 450;
 }
 
 .checkbox-row input {
@@ -291,13 +301,13 @@ input {
 
 .submit-button {
   margin-top: 4px;
-  min-height: 52px;
+  min-height: 50px;
   border: 0;
   border-radius: 14px;
   background: linear-gradient(180deg, #2b39a2 0%, #263398 100%);
   color: #fff;
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -316,9 +326,15 @@ input {
   height: 18px;
 }
 
-.support-copy {
+.support-divider {
   margin: auto 0 0;
-  padding-top: 24px;
+  border: none;
+  border-top: 1px solid #e8ecf4;
+}
+
+.support-copy {
+  margin: 0;
+  padding-top: 20px;
   text-align: center;
   color: #5f6985;
   font-size: 15px;

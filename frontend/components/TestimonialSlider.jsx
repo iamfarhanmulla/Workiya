@@ -71,7 +71,7 @@ export default function TestimonialSlider() {
             />
           ))}
         </div>
-        <span>© 2024 WORKIYA INC.</span>
+        <span>© 2026 WORKIYA INC.</span>
       </div>
     </>
   );
