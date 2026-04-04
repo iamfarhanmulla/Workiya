@@ -205,9 +205,9 @@ input {
 
 .field>span,
 .field-heading {
-  font-size: 15px;
-  font-weight: 700;
-  color: #4b546d;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475068;
 }
 
 .field-heading {
@@ -219,7 +219,7 @@ input {
 
 .field-heading a {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--primary-strong);
 }
 
@@ -230,8 +230,9 @@ input {
   gap: 10px;
   padding: 0 16px;
   border: 1px solid transparent;
+  background-color: rgb(239 244 255);
   border-radius: 14px;
-  background: var(--primary-soft);
+  /* background: var(--primary-soft); */
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -256,7 +257,7 @@ input {
 }
 
 .input-shell input::placeholder {
-  color: #9ca6be;
+  color: #a2a5ac;
 }
 
 .icon-button {
