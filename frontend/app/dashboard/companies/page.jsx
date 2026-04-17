@@ -1,382 +1,489 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useToast, ToastContainer } from "@/components/Toast";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 
-/* ── Data ─────────────────────────────────────── */
-const ALL_COMPANIES = [
-  { id:1,  initials:"NX", color:"#6c5ce7", name:"NexGen Solutions",    location:"San Francisco, CA", manager:"Mark Veridan",   managerInit:"MV", employees:1420, plan:"ENTERPRISE",   status:"Active"   },
-  { id:2,  initials:"LP", color:"#00b894", name:"Lumina Partners",      location:"London, UK",        manager:"Sarah Jenkins",  managerInit:"SJ", employees:345,  plan:"PROFESSIONAL", status:"Active"   },
-  { id:3,  initials:"SF", color:"#fdcb6e", name:"Swift Flow Inc",       location:"Berlin, DE",        manager:"Tobias Mueller", managerInit:"TM", employees:12,   plan:"STARTUP",      status:"Inactive" },
-  { id:4,  initials:"AQ", color:"#0984e3", name:"Aqua Dynamics",        location:"Sydney, AU",        manager:"Emily Zhao",     managerInit:"EZ", employees:890,  plan:"ENTERPRISE",   status:"Active"   },
-  { id:5,  initials:"TR", color:"#e17055", name:"Trident Robotics",     location:"Tokyo, JP",         manager:"Kenji Mori",     managerInit:"KM", employees:530,  plan:"ENTERPRISE",   status:"Active"   },
-  { id:6,  initials:"VX", color:"#a29bfe", name:"Vertex Capital",       location:"New York, US",      manager:"Diana Prince",   managerInit:"DP", employees:88,   plan:"PROFESSIONAL", status:"Active"   },
-  { id:7,  initials:"GM", color:"#55efc4", name:"GreenMile Logistics",  location:"Dubai, AE",         manager:"Omar Hussain",   managerInit:"OH", employees:2100, plan:"ENTERPRISE",   status:"Active"   },
-  { id:8,  initials:"BL", color:"#fd79a8", name:"BlueLake Technologies",location:"Toronto, CA",       manager:"Priya Sharma",   managerInit:"PS", employees:670,  plan:"PROFESSIONAL", status:"Inactive" },
-  { id:9,  initials:"OR", color:"#e84393", name:"OrbitSoft",            location:"Amsterdam, NL",     manager:"Lars Eriksson",  managerInit:"LE", employees:45,   plan:"STARTUP",      status:"Active"   },
-  { id:10, initials:"PH", color:"#00cec9", name:"Phantom Analytics",    location:"Chicago, US",       manager:"Nora Kim",       managerInit:"NK", employees:310,  plan:"PROFESSIONAL", status:"Active"   },
-  { id:11, initials:"CS", color:"#d63031", name:"CoreStack Systems",    location:"Mumbai, IN",        manager:"Raj Patel",      managerInit:"RP", employees:1780, plan:"ENTERPRISE",   status:"Active"   },
-  { id:12, initials:"EV", color:"#6d9e25", name:"EverGreen Ventures",   location:"Cape Town, ZA",     manager:"Amara Diallo",   managerInit:"AD", employees:90,   plan:"STARTUP",      status:"Inactive" },
-];
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const PLANS    = ["All Plans",    "ENTERPRISE", "PROFESSIONAL", "STARTUP"];
-const STATUSES = ["All Statuses", "Active", "Inactive"];
-const REGIONS  = ["All Regions",  "US", "EU", "APAC", "MENA"];
+const PLAN_STYLES = {
+  ENTERPRISE: { bg: "#EDE9FE", color: "#8B5CF6" },
+  PROFESSIONAL: { bg: "#EEF2FF", color: "#1E3A8A" },
+  STARTUP: { bg: "#D1FAE5", color: "#10B981" },
+};
+const PLANS = ["STARTUP", "PROFESSIONAL", "ENTERPRISE"];
 
-const PLAN_CLASS = { ENTERPRISE: "plan-enterprise", PROFESSIONAL: "plan-professional", STARTUP: "plan-startup" };
+const AVATAR_COLORS = ["#8B5CF6", "#10B981", "#1E3A8A", "#F59E0B", "#EF4444", "#06B6D4", "#D946EF", "#3B5FCF"];
+const avatarColor = (id) => AVATAR_COLORS[id % AVATAR_COLORS.length];
+const initials = (name) => name ? name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?";
 
-const PAGE_SIZE = 5;
-
-const stats = [
-  { icon:"corporate_fare", label:"Total Companies",  value:"1,284", delta:"+12%", up:true,  accent:"#6c5ce7" },
-  { icon:"manage_accounts", label:"Active Managers", value:"4,902", delta:"+5%",  up:true,  accent:"#0984e3" },
-  { icon:"groups",          label:"Total Employees", value:"84.2k", delta:"-2%",  up:false, accent:"#00b894" },
-  { icon:"payments",        label:"Monthly Revenue", value:"$2.4M", delta:"+24%", up:true,  accent:"#e17055" },
-];
-
-/* ── Animated counter ─────────────────────────── */
-function useCountUp(target, active) {
+function useCountUp(target, active, duration = 1200) {
   const [val, setVal] = useState(0);
+  const raf = useRef(null);
   useEffect(() => {
     if (!active) return;
     let start = null;
-    const num = parseFloat(target.replace(/[^0-9.]/g, ""));
-    const id = requestAnimationFrame(function step(ts) {
+    const step = (ts) => {
       if (!start) start = ts;
-      const p = Math.min((ts - start) / 1200, 1);
-      setVal(num * p);
-      if (p < 1) requestAnimationFrame(step);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [active, target]);
-
-  const raw = parseFloat(target.replace(/[^0-9.]/g, ""));
-  const prefix = target.startsWith("$") ? "$" : "";
-  const suffix = target.endsWith("k") ? "k" : target.endsWith("M") ? "M" : "";
-  const display = val >= raw ? target : `${prefix}${val.toFixed(suffix ? 1 : 0)}${suffix}`;
-  return display;
+      const p = Math.min((ts - start) / duration, 1);
+      setVal(Math.round((1 - Math.pow(1 - p, 3)) * target));
+      if (p < 1) raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [active, target, duration]);
+  return val;
 }
 
-function StatCard({ icon, label, value, delta, up, accent, delay, active }) {
+const StatCard = memo(function StatCard({ icon, bg, color, label, value, sub, index, active }) {
   const count = useCountUp(value, active);
   return (
-    <div className="co-stat-card" style={{ "--accent": accent, "--delay": `${delay}s` }}>
-      <div className="co-stat-top">
-        <div className="co-stat-icon" style={{ background: `${accent}18` }}>
-          <span className="material-symbols-outlined" style={{ color: accent, fontVariationSettings:"'FILL' 1" }}>{icon}</span>
+    <div className="stat-card dash-anim-card" style={{ "--card-delay": `${index * 0.08}s` }}>
+      <div className="stat-card-top">
+        <div className="stat-icon" style={{ background: bg }}>
+          <span className="material-symbols-outlined" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
         </div>
-        <span className={`co-stat-delta ${up ? "co-delta-up" : "co-delta-down"}`}>
-          <span className="material-symbols-outlined" style={{ fontSize:12 }}>{up ? "trending_up" : "trending_down"}</span>
-          {delta}
-        </span>
       </div>
-      <p className="co-stat-label">{label}</p>
-      <p className="co-stat-value">{count}</p>
-      <div className="co-stat-bar" style={{ background: accent }} />
+      <p className="stat-label">{label}</p>
+      <p className="stat-val">{active ? count.toLocaleString() : "0"}</p>
+      <p className="stat-sub">{sub}</p>
     </div>
   );
-}
+});
 
-/* ── Dropdown ─────────────────────────────────── */
-function Dropdown({ options, value, onChange }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="co-dropdown-wrap">
-      <button className="co-dropdown-btn" onClick={() => setOpen(o => !o)}>
-        {value}
-        <span className="material-symbols-outlined" style={{ fontSize:16 }}>expand_more</span>
-      </button>
-      {open && (
-        <ul className="co-dropdown-list">
-          {options.map(o => (
-            <li key={o} className={o === value ? "active" : ""} onClick={() => { onChange(o); setOpen(false); }}>{o}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
+const EMPTY_FORM = {
+  name: "", key: "", contactEmail: "", contactPhone: "",
+  address: "", city: "", country: "", plan: "STARTUP", isActive: 1,
+};
 
-/* ── Add Company Modal ────────────────────────── */
-function AddModal({ onClose, onAdd }) {
-  const [form, setForm] = useState({ name:"", location:"", manager:"", employees:"", plan:"STARTUP" });
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
-
-  function submit(e) {
-    e.preventDefault();
-    const initials = form.name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
-    const colors = ["#6c5ce7","#00b894","#0984e3","#e17055","#fd79a8","#a29bfe"];
-    onAdd({
-      id: Date.now(),
-      initials,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      name: form.name,
-      location: form.location,
-      manager: form.manager,
-      managerInit: form.manager.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(),
-      employees: parseInt(form.employees) || 0,
-      plan: form.plan,
-      status: "Active",
-    });
-    onClose();
-  }
-
-  return (
-    <div className="co-modal-overlay" onClick={onClose}>
-      <div className="co-modal" onClick={e => e.stopPropagation()}>
-        <div className="co-modal-header">
-          <h2>Add New Company</h2>
-          <button className="co-modal-close" onClick={onClose}>
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <form onSubmit={submit} className="co-modal-form">
-          <label>Company Name <input required value={form.name} onChange={set("name")} placeholder="e.g. Acme Corp" /></label>
-          <label>Location <input required value={form.location} onChange={set("location")} placeholder="e.g. New York, US" /></label>
-          <label>Admin Manager <input required value={form.manager} onChange={set("manager")} placeholder="e.g. Jane Doe" /></label>
-          <label>Employees <input type="number" min="1" value={form.employees} onChange={set("employees")} placeholder="e.g. 250" /></label>
-          <label>Plan
-            <select value={form.plan} onChange={set("plan")}>
-              <option>STARTUP</option>
-              <option>PROFESSIONAL</option>
-              <option>ENTERPRISE</option>
-            </select>
-          </label>
-          <div className="co-modal-actions">
-            <button type="button" className="co-btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="co-btn-primary">Add Company</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ── Page ─────────────────────────────────────── */
 export default function CompaniesPage() {
-  const [companies, setCompanies] = useState(ALL_COMPANIES);
-  const [plan,      setPlan]      = useState("All Plans");
-  const [status,    setStatus]    = useState("All Statuses");
-  const [region,    setRegion]    = useState("All Regions");
-  const [search,    setSearch]    = useState("");
-  const [page,      setPage]      = useState(1);
-  const [modal,     setModal]     = useState(false);
-  const [animated,  setAnimated]  = useState(false);
-  const [sortKey,   setSortKey]   = useState("name");
-  const [sortDir,   setSortDir]   = useState(1);
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [active, setActive] = useState(false);
+  const [search, setSearch] = useState("");
+  const [planFilter, setPlanFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [showModal, setShowModal] = useState(false);
+  const [viewModal, setViewModal] = useState(false);
+  const [editComp, setEditComp] = useState(null);
+  const [viewComp, setViewComp] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const { toasts, showToast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
-  useEffect(() => { const t = setTimeout(() => setAnimated(true), 80); return () => clearTimeout(t); }, []);
+  const fetchCompanies = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/api/companies`);
+      const json = await res.json();
+      if (json.success) setCompanies(json.data);
+      else setError("Failed to load companies.");
+    } catch { setError("Cannot connect to server."); }
+    finally { setLoading(false); setTimeout(() => setActive(true), 50); }
+  }, []);
 
-  /* Filter + sort */
-  const filtered = useMemo(() => {
-    let list = companies.filter(c => {
-      if (plan   !== "All Plans"    && c.plan   !== plan)   return false;
-      if (status !== "All Statuses" && c.status !== status) return false;
-      if (search && !c.name.toLowerCase().includes(search.toLowerCase()) &&
-                    !c.manager.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
+  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+
+  // ── Stats ──
+  const total = companies.length;
+  const activeC = companies.filter(c => c.IsActive).length;
+  const inactiveC = companies.filter(c => !c.IsActive).length;
+  const totalEmps = companies.reduce((s, c) => s + (c.EmployeeCount || 0), 0);
+
+  // ── Filter ──
+  const filtered = companies.filter(c => {
+    const nm = `${c.Name || ""} ${c.City || ""} ${c.Country || ""}`.toLowerCase();
+    const ms = nm.includes(search.toLowerCase());
+    const mp = planFilter === "All" || c.Plan === planFilter;
+    const mst = statusFilter === "All" || (statusFilter === "Active" ? c.IsActive : !c.IsActive);
+    return ms && mp && mst;
+  });
+
+  // ── Modals ──
+  function openAdd() {
+    setEditComp(null); setForm(EMPTY_FORM); setFormError(""); setShowModal(true);
+  }
+  function openEdit(c) {
+    setEditComp(c);
+    setForm({
+      name: c.Name || "",
+      key: c.Key || "",
+      contactEmail: c.ContactEmail || "",
+      contactPhone: c.ContactPhone || "",
+      address: c.Address || "",
+      city: c.City || "",
+      country: c.Country || "",
+      plan: c.Plan || "STARTUP",
+      isActive: c.IsActive ? 1 : 0,
     });
-    list = [...list].sort((a, b) => {
-      const av = a[sortKey], bv = b[sortKey];
-      return typeof av === "number" ? (av - bv) * sortDir : String(av).localeCompare(String(bv)) * sortDir;
-    });
-    return list;
-  }, [companies, plan, status, search, sortKey, sortDir]);
+    setFormError(""); setShowModal(true);
+  }
+  function openView(c) { setViewComp(c); setViewModal(true); }
+  function closeModal() { setShowModal(false); setEditComp(null); }
+  function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageData   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  function toggleSort(key) {
-    if (sortKey === key) setSortDir(d => -d);
-    else { setSortKey(key); setSortDir(1); }
+  // ── Save ──
+  async function handleSave() {
+    setFormError("");
+    if (!form.name) return setFormError("Company name is required.");
+    setSaving(true);
+    try {
+      const url = editComp ? `${API}/api/companies/${editComp.Id}` : `${API}/api/companies`;
+      const method = editComp ? "PUT" : "POST";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const json = await res.json();
+      if (!json.success) { setFormError(json.message || "Failed to save."); return; }
+      showToast(editComp ? "Company updated successfully!" : "Company created successfully!");
+      closeModal(); fetchCompanies();
+    } catch { setFormError("Cannot connect to server."); showToast("Cannot connect to server.", "error"); }
+    finally { setSaving(false); }
   }
 
-  function handleAdd(company) {
-    setCompanies(prev => [company, ...prev]);
-    setPage(1);
+  // ── Toggle active ──
+  async function toggleActive(c) {
+    try {
+      await fetch(`${API}/api/companies/${c.Id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: c.IsActive ? 0 : 1 }),
+      });
+      showToast(c.IsActive ? "Company deactivated." : "Company activated.", c.IsActive ? "warning" : "success");
+      fetchCompanies();
+    } catch { showToast("Failed to update status.", "error"); }
   }
 
-  function toggleStatus(id) {
-    setCompanies(prev => prev.map(c => c.id === id ? { ...c, status: c.status === "Active" ? "Inactive" : "Active" } : c));
+  // ── Delete ──
+  async function handleDelete(id) {
+    setDeleteTarget(id);
   }
 
-  function deleteCompany(id) {
-    setCompanies(prev => prev.filter(c => c.id !== id));
-  }
-
-  function SortIcon({ k }) {
-    if (sortKey !== k) return <span className="material-symbols-outlined co-sort-icon">unfold_more</span>;
-    return <span className="material-symbols-outlined co-sort-icon co-sort-active">{sortDir === 1 ? "arrow_upward" : "arrow_downward"}</span>;
-  }
-
-  /* Pagination buttons */
-  function pageNums() {
-    const nums = [];
-    if (totalPages <= 5) for (let i=1;i<=totalPages;i++) nums.push(i);
-    else {
-      nums.push(1);
-      if (page > 3) nums.push("...");
-      for (let i=Math.max(2,page-1);i<=Math.min(totalPages-1,page+1);i++) nums.push(i);
-      if (page < totalPages - 2) nums.push("...");
-      nums.push(totalPages);
-    }
-    return nums;
+  async function confirmDelete() {
+    try {
+      await fetch(`${API}/api/companies/${deleteTarget}`, { method: "DELETE" });
+      showToast("Company deleted successfully!", "success");
+      fetchCompanies();
+    } catch { showToast("Failed to delete company.", "error"); }
+    finally { setDeleteTarget(null); }
   }
 
   return (
-    <div className="co-page">
-      {/* Breadcrumb */}
-      <div className="co-breadcrumb">
-        <span>Admin</span>
-        <span className="material-symbols-outlined" style={{ fontSize:14 }}>chevron_right</span>
-        <span className="co-breadcrumb-active">Company Management</span>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column" }}>
 
-      {/* Page header */}
-      <div className="co-page-header">
-        <div>
-          <h1 className="co-page-title">Company Management</h1>
-          <p className="co-page-sub">Oversee and manage organizational access across the <strong>WorKiya</strong> ecosystem.</p>
-        </div>
-        <button className="co-add-btn" onClick={() => setModal(true)}>
-          <span className="material-symbols-outlined">add</span>
-          Add New Company
-        </button>
-      </div>
-
-      {/* Stat cards */}
-      <div className="co-stat-grid">
-        {stats.map((s, i) => (
-          <StatCard key={s.label} {...s} delay={i * 0.08} active={animated} />
-        ))}
-      </div>
-
-      {/* Filter bar */}
-      <div className={`co-filter-bar ${animated ? "co-anim-in" : ""}`} style={{ "--d": "0.32s" }}>
-        <div className="co-filter-left">
-          <Dropdown options={PLANS}    value={plan}   onChange={v => { setPlan(v);   setPage(1); }} />
-          <Dropdown options={STATUSES} value={status} onChange={v => { setStatus(v); setPage(1); }} />
-          <Dropdown options={REGIONS}  value={region} onChange={v => { setRegion(v); setPage(1); }} />
-        </div>
-        <div className="co-filter-right">
-          <div className="co-search-box">
-            <span className="material-symbols-outlined">search</span>
-            <input placeholder="Search companies..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-            {search && <button onClick={() => setSearch("")}><span className="material-symbols-outlined">close</span></button>}
+      {/* Header */}
+      <div className="page-hd dash-fade-up" style={{ "--du": "0s" }}>
+        <div className="page-hd-left">
+          <div className="breadcrumb">
+            <span className="material-symbols-outlined">home</span>
+            <span className="material-symbols-outlined">chevron_right</span>
+            <span className="breadcrumb-active">Companies</span>
           </div>
-          <button className="co-export-btn">
-            <span className="material-symbols-outlined" style={{ fontSize:16 }}>download</span>
-            Export
+          <h1 className="page-hd-title">Companies</h1>
+          <p className="page-hd-sub">Manage organizations on the WorKiya platform</p>
+        </div>
+        <div className="page-hd-actions">
+          <button className="btn btn-outline btn-sm" onClick={fetchCompanies}>
+            <span className="material-symbols-outlined">refresh</span>Refresh
           </button>
-          <button className="co-filter-btn">
-            <span className="material-symbols-outlined" style={{ fontSize:16 }}>tune</span>
-            More Filters
+          <button className="btn btn-primary btn-sm" onClick={openAdd}>
+            <span className="material-symbols-outlined">add</span>Add Company
           </button>
         </div>
+      </div>
+
+      {/* Stat Cards */}
+      <div className="stat-cards">
+        <StatCard index={0} icon="corporate_fare" bg="#EEF2FF" color="#1E3A8A" label="Total Companies" value={total} sub="All organizations" active={active} />
+        <StatCard index={1} icon="check_circle" bg="#D1FAE5" color="#10B981" label="Active" value={activeC} sub="Currently active" active={active} />
+        <StatCard index={2} icon="cancel" bg="#FEE2E2" color="#EF4444" label="Inactive" value={inactiveC} sub="Deactivated" active={active} />
+        <StatCard index={3} icon="badge" bg="#EDE9FE" color="#8B5CF6" label="Total Employees" value={totalEmps} sub="Across all companies" active={active} />
+      </div>
+
+      {/* Toolbar */}
+      <div className="co-toolbar">
+        <div className="co-search">
+          <span className="material-symbols-outlined">search</span>
+          <input type="text" placeholder="Search companies..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <select className="co-filter-select" value={planFilter} onChange={e => setPlanFilter(e.target.value)}>
+          <option value="All">All Plans</option>
+          {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <select className="co-filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="All">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
       </div>
 
       {/* Table */}
-      <div className={`co-table-card ${animated ? "co-anim-in" : ""}`} style={{ "--d": "0.42s" }}>
-        <div className="co-table-wrap">
-          <table className="co-table">
-            <thead>
-              <tr>
-                <th onClick={() => toggleSort("name")} className="co-th-sort">COMPANY NAME <SortIcon k="name" /></th>
-                <th>ADMIN MANAGER</th>
-                <th onClick={() => toggleSort("employees")} className="co-th-sort">EMPLOYEES <SortIcon k="employees" /></th>
-                <th onClick={() => toggleSort("plan")} className="co-th-sort">PLAN <SortIcon k="plan" /></th>
-                <th onClick={() => toggleSort("status")} className="co-th-sort">STATUS <SortIcon k="status" /></th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageData.length === 0 ? (
-                <tr><td colSpan={6} className="co-empty">No companies found.</td></tr>
-              ) : pageData.map((c, i) => (
-                <tr key={c.id} className="co-row" style={{ animationDelay: `${i * 0.06}s` }}>
-                  <td>
-                    <div className="co-company">
-                      <div className="co-company-avatar" style={{ background: c.color }}>{c.initials}</div>
-                      <div>
-                        <p className="co-company-name">{c.name}</p>
-                        <p className="co-company-loc">
-                          <span className="material-symbols-outlined" style={{ fontSize:12 }}>location_on</span>
-                          {c.location}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="co-manager">
-                      <div className="co-manager-avatar">{c.managerInit}</div>
-                      <span>{c.manager}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="co-emp-cell">
-                      <div className="co-emp-bar-wrap">
-                        <div className="co-emp-bar">
-                          <div className="co-emp-fill" style={{ width:`${Math.min(100, c.employees/25)}%`, background: c.color }} />
-                        </div>
-                      </div>
-                      <span className="co-emp-count">{c.employees.toLocaleString()}</span>
-                    </div>
-                  </td>
-                  <td><span className={`co-plan-badge ${PLAN_CLASS[c.plan]}`}>{c.plan}</span></td>
-                  <td>
-                    <div className="co-status-cell">
-                      <button
-                        className={`co-toggle ${c.status === "Active" ? "co-toggle--on" : ""}`}
-                        onClick={() => toggleStatus(c.id)}
-                        title={`Toggle ${c.status}`}
-                      >
-                        <span className="co-toggle-thumb" />
-                      </button>
-                      <span className={`co-status-text ${c.status === "Active" ? "co-status-active" : "co-status-inactive"}`}>
-                        <span className="co-status-dot" />
-                        {c.status}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="co-actions">
-                      <button className="co-action-btn" title="View">
-                        <span className="material-symbols-outlined">visibility</span>
-                      </button>
-                      <button className="co-action-btn" title="Edit">
-                        <span className="material-symbols-outlined">edit</span>
-                      </button>
-                      <button className="co-action-btn co-action-btn--danger" title="Delete" onClick={() => deleteCompany(c.id)}>
-                        <span className="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
-                  </td>
+      <div style={{ margin: "0 20px 20px" }}>
+        <div className="table-card" style={{ margin: 0 }}>
+          {loading ? (
+            <div className="page-placeholder" style={{ minHeight: 200 }}>
+              <span className="material-symbols-outlined page-placeholder-icon" style={{ animation: "spin 1s linear infinite" }}>progress_activity</span>
+              <p>Loading companies...</p>
+            </div>
+          ) : error ? (
+            <div className="page-placeholder" style={{ minHeight: 200 }}>
+              <span className="material-symbols-outlined page-placeholder-icon" style={{ color: "#EF4444" }}>error</span>
+              <p style={{ color: "#EF4444" }}>{error}</p>
+            </div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Contact</th>
+                  <th>Location</th>
+                  <th>Plan</th>
+                  <th>Managers</th>
+                  <th>Employees</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map((c, i) => {
+                  const ps = PLAN_STYLES[c.Plan] || { bg: "#F1F5F9", color: "#64748B" };
+                  return (
+                    <tr key={c.Id} style={{ animation: `dashRowIn 0.35s ease ${i * 0.04}s both` }}>
+                      <td>
+                        <div className="avatar-cell">
+                          <div className="avatar avatar-circle" style={{ background: avatarColor(c.Id) }}>{initials(c.Name)}</div>
+                          <div>
+                            <div className="cell-name">{c.Name}</div>
+                            <div className="cell-sub">{c.Key}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 13 }}>{c.ContactEmail || <span style={{ color: "#94A3B8" }}>—</span>}</div>
+                        <div style={{ fontSize: 12, color: "#94A3B8" }}>{c.ContactPhone || ""}</div>
+                      </td>
+                      <td style={{ fontSize: 13 }}>
+                        {(c.City || c.Country)
+                          ? `${c.City || ""}${c.City && c.Country ? ", " : ""}${c.Country || ""}`
+                          : <span style={{ color: "#94A3B8" }}>—</span>}
+                      </td>
+                      <td>
+                        <span className="badge" style={{ background: ps.bg, color: ps.color, border: `1px solid ${ps.color}22` }}>
+                          {c.Plan || "—"}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 13, fontWeight: 600, color: "#1E3A8A" }}>{c.EmployeeCount || 0}</td>
+                      <td style={{ fontSize: 13, fontWeight: 600, color: "#8B5CF6" }}>{c.ManagerCount || 0}</td>
+                      <td>
+                        <span className={`badge ${c.IsActive ? "badge-success" : "badge-danger"}`}>
+                          {c.IsActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-btns">
+                          <div className="icon-btn" title="View" onClick={() => openView(c)}>
+                            <span className="material-symbols-outlined">visibility</span>
+                          </div>
+                          <div className="icon-btn" title="Edit" onClick={() => openEdit(c)}>
+                            <span className="material-symbols-outlined">edit</span>
+                          </div>
+                          <div
+                            className={`icon-btn ${c.IsActive ? "icon-btn-warning" : "icon-btn-success"}`}
+                            title={c.IsActive ? "Deactivate" : "Activate"}
+                            onClick={() => toggleActive(c)}
+                          >
+                            <span className="material-symbols-outlined">{c.IsActive ? "block" : "check_circle"}</span>
+                          </div>
+                          <div className="icon-btn icon-btn-danger" title="Delete" onClick={() => handleDelete(c.Id)}>
+                            <span className="material-symbols-outlined">delete</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
 
-        {/* Pagination */}
-        <div className="co-pagination">
-          <p className="co-pagination-info">
-            Showing <strong>{filtered.length === 0 ? 0 : (page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, filtered.length)}</strong> of <strong>{filtered.length.toLocaleString()}</strong> companies
-          </p>
-          <div className="co-pagination-btns">
-            <button className="co-page-btn" disabled={page===1} onClick={() => setPage(p=>p-1)}>
-              <span className="material-symbols-outlined">chevron_left</span>
-            </button>
-            {pageNums().map((n,i) =>
-              n === "..." ? <span key={i} className="co-page-ellipsis">…</span>
-              : <button key={n} className={`co-page-btn ${n===page?"co-page-btn--active":""}`} onClick={() => setPage(n)}>{n}</button>
-            )}
-            <button className="co-page-btn" disabled={page===totalPages} onClick={() => setPage(p=>p+1)}>
-              <span className="material-symbols-outlined">chevron_right</span>
-            </button>
-          </div>
+          {!loading && !error && filtered.length === 0 && (
+            <div className="page-placeholder" style={{ minHeight: 150 }}>
+              <span className="material-symbols-outlined page-placeholder-icon">search_off</span>
+              <p>No companies found.</p>
+            </div>
+          )}
+
+          {!loading && !error && (
+            <div className="co-pagination">
+              <span>Showing {filtered.length} of {companies.length} companies</span>
+              <div className="co-page-btns">
+                <button className="co-page-btn" disabled>‹</button>
+                <button className="co-page-btn active">1</button>
+                <button className="co-page-btn" disabled>›</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {modal && <AddModal onClose={() => setModal(false)} onAdd={handleAdd} />}
+      {/* ── Add / Edit Modal ── */}
+      {showModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="modal" style={{ maxWidth: 580 }}>
+            <div className="modal-header">
+              <div className="modal-header-icon" style={{ background: "#EEF2FF" }}>
+                <span className="material-symbols-outlined" style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}>
+                  {editComp ? "edit" : "corporate_fare"}
+                </span>
+              </div>
+              <div>
+                <div className="modal-title">{editComp ? "Edit Company" : "Add New Company"}</div>
+                <div className="modal-sub">{editComp ? `Editing ${editComp.Name}` : "Register a new organization"}</div>
+              </div>
+              <button className="modal-close" onClick={closeModal}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {formError && (
+                <div style={{ background: "#FEE2E2", color: "#DC2626", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>
+                  {formError}
+                </div>
+              )}
+
+              <div className="form-row form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Company Name <span style={{ color: "#EF4444" }}>*</span></label>
+                  <input className="form-input" placeholder="Acme Corp" value={form.name} onChange={e => setF("name", e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Key / Slug</label>
+                  <input className="form-input" placeholder="acme-corp (auto-generated)" value={form.key} onChange={e => setF("key", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-row form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Contact Email</label>
+                  <input className="form-input" type="email" placeholder="contact@company.com" value={form.contactEmail} onChange={e => setF("contactEmail", e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Contact Phone</label>
+                  <input className="form-input" placeholder="+91 9999999999" value={form.contactPhone} onChange={e => setF("contactPhone", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <input className="form-input" placeholder="123 Main Street" value={form.address} onChange={e => setF("address", e.target.value)} />
+              </div>
+
+              <div className="form-row form-row-2">
+                <div className="form-group">
+                  <label className="form-label">City</label>
+                  <input className="form-input" placeholder="Mumbai" value={form.city} onChange={e => setF("city", e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Country</label>
+                  <input className="form-input" placeholder="India" value={form.country} onChange={e => setF("country", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-row form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Plan</label>
+                  <select className="form-select" value={form.plan} onChange={e => setF("plan", e.target.value)}>
+                    {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" value={form.isActive} onChange={e => setF("isActive", Number(e.target.value))}>
+                    <option value={1}>Active</option>
+                    <option value={0}>Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline btn-sm" onClick={closeModal} disabled={saving}>Cancel</button>
+              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+                <span className="material-symbols-outlined">{saving ? "progress_activity" : "save"}</span>
+                {saving ? "Saving..." : (editComp ? "Update Company" : "Add Company")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── View Modal ── */}
+      {viewModal && viewComp && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setViewModal(false)}>
+          <div className="modal" style={{ maxWidth: 460 }}>
+            <div className="modal-header">
+              <div className="modal-header-icon" style={{ background: "#EEF2FF" }}>
+                <span className="material-symbols-outlined" style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}>corporate_fare</span>
+              </div>
+              <div>
+                <div className="modal-title">Company Details</div>
+                <div className="modal-sub">Full organization information</div>
+              </div>
+              <button className="modal-close" onClick={() => setViewModal(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: avatarColor(viewComp.Id), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 20, fontWeight: 700 }}>
+                  {initials(viewComp.Name)}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "#0F172A" }}>{viewComp.Name}</div>
+                  <div style={{ fontSize: 12, color: "#64748B" }}>{viewComp.Key}</div>
+                  <span className={`badge ${viewComp.IsActive ? "badge-success" : "badge-danger"}`} style={{ marginTop: 4 }}>
+                    {viewComp.IsActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+
+              {[
+                { label: "Plan", value: viewComp.Plan || "—" },
+                { label: "Contact Email", value: viewComp.ContactEmail || "—" },
+                { label: "Contact Phone", value: viewComp.ContactPhone || "—" },
+                { label: "Address", value: viewComp.Address || "—" },
+                { label: "City", value: viewComp.City || "—" },
+                { label: "Country", value: viewComp.Country || "—" },
+                { label: "Employees", value: viewComp.EmployeeCount || 0 },
+                { label: "Managers", value: viewComp.ManagerCount || 0 },
+                { label: "Created", value: viewComp.CreatedAtUtc ? new Date(viewComp.CreatedAtUtc).toLocaleDateString() : "—" },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: "1px solid #F1F5F9", fontSize: 13 }}>
+                  <span style={{ color: "#94A3B8", fontWeight: 600 }}>{label}</span>
+                  <span style={{ color: "#0F172A", fontWeight: 500 }}>{value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline btn-sm" onClick={() => setViewModal(false)}>Close</button>
+              <button className="btn btn-primary btn-sm" onClick={() => { setViewModal(false); openEdit(viewComp); }}>
+                <span className="material-symbols-outlined">edit</span>Edit Company
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete Company?"
+        message="This will permanently remove this company. This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+      <ToastContainer toasts={toasts} />
     </div>
   );
 }

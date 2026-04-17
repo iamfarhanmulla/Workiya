@@ -22,14 +22,16 @@ async function login(req, res) {
       .input("email", sql.NVarChar, email)
       .query(`
         SELECT
-          Id, TenantId, Username, Email, DisplayName,
-          PasswordHash, PasswordSalt, PasswordIterations,
-          FirstName, MiddleName, LastName, Status,
-          PhoneNumber, IsActive, IsDeleted
-        FROM Users
-        WHERE Email = @email
-          AND IsActive = 1
-          AND IsDeleted = 0
+          u.Id, u.CompanyId, u.RoleId, r.Name AS RoleName,
+          u.Username, u.Email, u.DisplayName,
+          u.PasswordHash, u.PasswordSalt, u.PasswordIterations,
+          u.FirstName, u.MiddleName, u.LastName, u.Status,
+          u.PhoneNumber, u.IsActive, u.IsDeleted
+        FROM Users u
+        LEFT JOIN Roles r ON r.Id = u.RoleId
+        WHERE u.Email = @email
+          AND u.IsActive = 1
+          AND u.IsDeleted = 0
       `);
 
     if (result.recordset.length === 0) {
@@ -48,7 +50,9 @@ async function login(req, res) {
       message: "Login successful.",
       user: {
         id: user.Id,
-        tenantId: user.TenantId,
+        companyId: user.CompanyId,
+        roleId: user.RoleId,
+        roleName: user.RoleName,
         username: user.Username,
         email: user.Email,
         displayName: user.DisplayName,

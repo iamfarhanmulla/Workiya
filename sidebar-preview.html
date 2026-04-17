@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sidebar Color & Animation Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Plus Jakarta Sans",sans-serif;background:#0F172A;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 20px 48px;gap:40px;}
+
+h1{color:#fff;font-size:22px;font-weight:800;letter-spacing:-.3px;text-align:center;}
+.subtitle{color:#94A3B8;font-size:13px;text-align:center;margin-top:4px;}
+
+/* ── Theme Switcher ── */
+.switcher{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.sw-btn{display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:99px;border:2px solid transparent;background:#1E293B;color:#94A3B8;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.03em;}
+.sw-btn:hover{color:#fff;border-color:#334155;}
+.sw-btn.active{color:#fff;border-color:var(--accent)!important;background:rgba(255,255,255,.06);}
+.sw-dot{width:12px;height:12px;border-radius:50%;}
+
+/* ── Animation Switcher ── */
+.anim-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.anim-btn{padding:7px 16px;border-radius:99px;border:1.5px solid #334155;background:transparent;color:#64748B;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .18s;letter-spacing:.04em;text-transform:uppercase;}
+.anim-btn:hover{border-color:#64748B;color:#94A3B8;}
+.anim-btn.active{border-color:#6366F1;color:#818CF8;background:rgba(99,102,241,.1);}
+
+/* ── Preview Container ── */
+.preview-wrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+
+/* ── Sidebar Shell ── */
+.sidebar-shell{width:220px;height:580px;border-radius:20px;padding:20px 12px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden;flex-shrink:0;box-shadow:0 24px 60px rgba(0,0,0,.5);}
+
+/* ── Logo ── */
+.sb-logo{display:flex;align-items:center;gap:10px;padding:8px 10px 20px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:8px;}
+.sb-logo-mark{width:34px;height:34px;border-radius:10px;background:var(--accent,#6366F1);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0;}
+.sb-logo-text{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.2px;}
+.sb-logo-sub{font-size:10px;color:rgba(255,255,255,.4);font-weight:600;margin-top:1px;}
+
+/* ── Nav Items ── */
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;position:relative;transition:background .18s;user-select:none;}
+.sb-item span.material-symbols-outlined{font-size:19px;flex-shrink:0;transition:color .18s;}
+.sb-item-label{font-size:13px;font-weight:600;transition:color .18s;}
+.sb-item-badge{margin-left:auto;font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;flex-shrink:0;}
+
+/* ── Section label ── */
+.sb-section{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.25);padding:12px 12px 4px;margin-top:4px;}
+
+/* ── Profile ── */
+.sb-profile{margin-top:auto;padding:12px 10px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;}
+.sb-avatar{width:34px;height:34px;border-radius:50%;background:var(--accent,#6366F1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;}
+.sb-profile-name{font-size:12px;font-weight:700;color:#fff;}
+.sb-profile-role{font-size:10px;color:rgba(255,255,255,.4);font-weight:500;}
+
+/* ── Fake content panel ── */
+.fake-content{width:340px;height:580px;border-radius:20px;background:#1E293B;padding:24px;display:flex;flex-direction:column;gap:14px;overflow:hidden;}
+.fc-hd{height:28px;border-radius:8px;background:#334155;width:55%;}
+.fc-sub{height:14px;border-radius:6px;background:#293548;width:75%;}
+.fc-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.fc-card{height:72px;border-radius:12px;background:#293548;}
+.fc-card:nth-child(1){background:linear-gradient(135deg,#3730a322,#6366f122);}
+.fc-card:nth-child(2){background:linear-gradient(135deg,#06644722,#10b98122);}
+.fc-card:nth-child(3){background:linear-gradient(135deg,#7c2d1222,#f5990022);}
+.fc-card:nth-child(4){background:linear-gradient(135deg,#7f1d1d22,#ef444422);}
+.fc-table{flex:1;background:#293548;border-radius:12px;overflow:hidden;}
+.fc-tr{height:38px;border-bottom:1px solid #334155;display:flex;align-items:center;padding:0 14px;gap:10px;}
+.fc-tr:last-child{border-bottom:none;}
+.fc-circle{width:24px;height:24px;border-radius:50%;background:#334155;flex-shrink:0;}
+.fc-line{height:9px;border-radius:4px;background:#334155;}
+.fc-tr:nth-child(1) .fc-circle{background:#6366F120;}
+.fc-tr:nth-child(2) .fc-circle{background:#10B98120;}
+.fc-tr:nth-child(3) .fc-circle{background:#F5990020;}
+.fc-tr:nth-child(4) .fc-circle{background:#EF444420;}
+
+/* ═══════════════════════════════════════════════
+   THEMES
+═══════════════════════════════════════════════ */
+
+/* 1. Midnight Indigo */
+.theme-midnight{
+  background:linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);
+  --accent:#6366F1; --item-hover:rgba(99,102,241,.12); --item-active-bg:rgba(99,102,241,.18);
+  --item-active-text:#A5B4FC; --item-text:rgba(255,255,255,.55); --badge-bg:#6366F1; --badge-color:#fff;
+  --glow:rgba(99,102,241,.4);
+}
+/* 2. Emerald Dark */
+.theme-emerald{
+  background:linear-gradient(160deg,#0a1628 0%,#062316 60%,#0d3321 100%);
+  --accent:#10B981; --item-hover:rgba(16,185,129,.12); --item-active-bg:rgba(16,185,129,.18);
+  --item-active-text:#6EE7B7; --item-text:rgba(255,255,255,.55); --badge-bg:#10B981; --badge-color:#fff;
+  --glow:rgba(16,185,129,.4);
+}
+/* 3. Royal Purple */
+.theme-purple{
+  background:linear-gradient(160deg,#1e0a3c 0%,#2d1257 60%,#1a0a2e 100%);
+  --accent:#A855F7; --item-hover:rgba(168,85,247,.12); --item-active-bg:rgba(168,85,247,.2);
+  --item-active-text:#D8B4FE; --item-text:rgba(255,255,255,.5); --badge-bg:#A855F7; --badge-color:#fff;
+  --glow:rgba(168,85,247,.45);
+}
+/* 4. Slate Clean */
+.theme-slate{
+  background:linear-gradient(160deg,#0F172A 0%,#1E293B 100%);
+  --accent:#38BDF8; --item-hover:rgba(56,189,248,.1); --item-active-bg:rgba(56,189,248,.15);
+  --item-active-text:#7DD3FC; --item-text:rgba(255,255,255,.5); --badge-bg:#38BDF8; --badge-color:#0F172A;
+  --glow:rgba(56,189,248,.35);
+}
+/* 5. Sunset Coral */
+.theme-sunset{
+  background:linear-gradient(160deg,#1a0a0a 0%,#2d1410 60%,#1a0a0f 100%);
+  --accent:#F97316; --item-hover:rgba(249,115,22,.12); --item-active-bg:rgba(249,115,22,.18);
+  --item-active-text:#FDBA74; --item-text:rgba(255,255,255,.5); --badge-bg:#F97316; --badge-color:#fff;
+  --glow:rgba(249,115,22,.4);
+}
+/* 6. Glassmorphism */
+.theme-glass{
+  background:rgba(255,255,255,.04);
+  backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,.1);
+  --accent:#6366F1; --item-hover:rgba(255,255,255,.06); --item-active-bg:rgba(255,255,255,.1);
+  --item-active-text:#fff; --item-text:rgba(255,255,255,.5); --badge-bg:rgba(99,102,241,.8); --badge-color:#fff;
+  --glow:rgba(255,255,255,.2);
+}
+
+.sidebar-shell .sb-item:hover{background:var(--item-hover);}
+.sidebar-shell .sb-item:hover .material-symbols-outlined,
+.sidebar-shell .sb-item:hover .sb-item-label{color:rgba(255,255,255,.9);}
+.sidebar-shell .sb-item.is-active{background:var(--item-active-bg);}
+.sidebar-shell .sb-item.is-active .material-symbols-outlined,
+.sidebar-shell .sb-item.is-active .sb-item-label{color:var(--item-active-text);}
+.sidebar-shell .sb-item .material-symbols-outlined{color:var(--item-text);}
+.sidebar-shell .sb-item-label{color:var(--item-text);}
+.sidebar-shell .sb-item-badge{background:var(--badge-bg);color:var(--badge-color);}
+
+/* ═══════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════ */
+
+/* ── A: Glow Pill ── */
+.anim-glow .sb-item.is-active::before{
+  content:""; position:absolute; inset:0; border-radius:12px;
+  box-shadow:0 0 20px var(--glow), 0 0 0 1px var(--glow);
+  pointer-events:none;
+}
+.anim-glow .sb-item.is-active .material-symbols-outlined{
+  filter:drop-shadow(0 0 6px var(--glow));
+}
+.anim-glow .sb-item{transition:background .2s, transform .18s;}
+.anim-glow .sb-item:hover{transform:translateX(3px);}
+.anim-glow .sb-item.is-active{transform:translateX(3px);}
+
+/* ── B: Sliding Left Bar ── */
+.anim-bar .sb-item.is-active::before{
+  content:""; position:absolute; left:0; top:20%; bottom:20%;
+  width:3px; border-radius:0 4px 4px 0;
+  background:var(--accent);
+  box-shadow:0 0 12px var(--glow);
+}
+.anim-bar .sb-item{transition:background .2s, padding-left .2s;}
+.anim-bar .sb-item.is-active{padding-left:18px;}
+.anim-bar .sb-item:hover{padding-left:16px;}
+
+/* ── C: Floating Card ── */
+.anim-float .sb-item{transition:all .2s cubic-bezier(.34,1.56,.64,1); transform-origin:left;}
+.anim-float .sb-item:hover{transform:scale(1.03);}
+.anim-float .sb-item.is-active{
+  transform:scale(1.04) translateY(-1px);
+  box-shadow:0 8px 24px rgba(0,0,0,.3), 0 0 0 1px var(--glow);
+}
+
+/* ── D: Neon Underline ── */
+.anim-neon .sb-item::after{
+  content:""; position:absolute; bottom:4px; left:12px; right:12px;
+  height:2px; border-radius:99px; background:var(--accent);
+  transform:scaleX(0); transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 0 8px var(--glow);
+}
+.anim-neon .sb-item:hover::after{transform:scaleX(0.5);}
+.anim-neon .sb-item.is-active::after{transform:scaleX(1);}
+.anim-neon .sb-item{transition:background .2s;}
+
+/* ── LABEL TAGS ── */
+.label-tag{
+  position:absolute;top:-10px;right:10px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.7);font-size:9px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;padding:3px 8px;border-radius:99px;backdrop-filter:blur(8px);
+}
+
+/* ── Section title + tag ── */
+.section-info{text-align:center;margin-bottom:6px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.section-tag{font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;}
+
+</style>
+</head>
+<body>
+
+<div>
+  <h1>Sidebar Color &amp; Animation Preview</h1>
+  <p class="subtitle">Click a theme and animation to preview — then tell me which one you want</p>
+</div>
+
+<!-- Theme switcher -->
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+  <p style="color:#64748B;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Choose Color Theme</p>
+  <div class="switcher">
+    <button class="sw-btn active" style="--accent:#6366F1" onclick="setTheme('midnight',this)">
+      <span class="sw-dot" style="background:linear-gradient(135deg,#6366F1,#1a1a2e)"></span>Midnight Indigo
+    </button>
+    <button class="sw-btn" style="--accent:#10B981" onclick="setTheme('emerald',this)">
+      <span class="sw-dot" style="background:linear-gradient(135deg,#10B981,#062316)"></span>Emerald Dark
+    </button>
+    <button class="sw-btn" style="--accent:#A855F7" onclick="setTheme('purple',this)">
+      <span class="sw-dot" style="background:linear-gradient(135deg,#A855F7,#1e0a3c)"></span>Royal Purple
+    </button>
+    <button class="sw-btn" style="--accent:#38BDF8" onclick="setTheme('slate',this)">
+      <span class="sw-dot" style="background:linear-gradient(135deg,#38BDF8,#0F172A)"></span>Slate Clean
+    </button>
+    <button class="sw-btn" style="--accent:#F97316" onclick="setTheme('sunset',this)">
+      <span class="sw-dot" style="background:linear-gradient(135deg,#F97316,#1a0a0a)"></span>Sunset Coral
+    </button>
+    <button class="sw-btn" style="--accent:#ffffff" onclick="setTheme('glass',this)">
+      <span class="sw-dot" style="background:linear-gradient(135deg,rgba(255,255,255,.3),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.3)"></span>Glassmorphism
+    </button>
+  </div>
+</div>
+
+<!-- Animation switcher -->
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+  <p style="color:#64748B;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Choose Animation Style</p>
+  <div class="anim-row">
+    <button class="anim-btn active" onclick="setAnim('glow',this)">✦ Glow Pill</button>
+    <button class="anim-btn" onclick="setAnim('bar',this)">▌ Sliding Bar</button>
+    <button class="anim-btn" onclick="setAnim('float',this)">◈ Floating Card</button>
+    <button class="anim-btn" onclick="setAnim('neon',this)">_ Neon Underline</button>
+  </div>
+</div>
+
+<!-- Preview -->
+<div class="preview-wrap">
+
+  <!-- Sidebar -->
+  <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+    <div class="section-info">
+      <span class="section-tag">Sidebar Preview</span>
+    </div>
+    <div id="sidebar" class="sidebar-shell theme-midnight anim-glow">
+
+      <!-- Logo -->
+      <div class="sb-logo">
+        <div class="sb-logo-mark">W</div>
+        <div>
+          <div class="sb-logo-text">WorKiya</div>
+          <div class="sb-logo-sub">Admin Panel</div>
+        </div>
+      </div>
+
+      <span class="sb-section">Main Menu</span>
+
+      <div class="sb-item is-active" onclick="setActive(this)">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">dashboard</span>
+        <span class="sb-item-label">Dashboard</span>
+      </div>
+
+      <div class="sb-item" onclick="setActive(this)">
+        <span class="material-symbols-outlined">corporate_fare</span>
+        <span class="sb-item-label">Companies</span>
+      </div>
+
+      <div class="sb-item" onclick="setActive(this)">
+        <span class="material-symbols-outlined">manage_accounts</span>
+        <span class="sb-item-label">Managers</span>
+        <span class="sb-item-badge">12</span>
+      </div>
+
+      <div class="sb-item" onclick="setActive(this)">
+        <span class="material-symbols-outlined">badge</span>
+        <span class="sb-item-label">Employees</span>
+        <span class="sb-item-badge">84</span>
+      </div>
+
+      <div class="sb-item" onclick="setActive(this)">
+        <span class="material-symbols-outlined">medical_services</span>
+        <span class="sb-item-label">Doctors</span>
+      </div>
+
+      <span class="sb-section">Operations</span>
+
+      <div class="sb-item" onclick="setActive(this)">
+        <span class="material-symbols-outlined">task_alt</span>
+        <span class="sb-item-label">Tasks</span>
+        <span class="sb-item-badge">5</span>
+      </div>
+
+      <div class="sb-item" onclick="setActive(this)">
+        <span class="material-symbols-outlined">event_available</span>
+        <span class="sb-item-label">Attendance</span>
+      </div>
+
+      <div class="sb-item" onclick="setActive(this)">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="sb-item-label">Settings</span>
+      </div>
+
+      <!-- Profile -->
+      <div class="sb-profile">
+        <div class="sb-avatar">K</div>
+        <div>
+          <div class="sb-profile-name">King</div>
+          <div class="sb-profile-role">Super Admin</div>
+        </div>
+        <span class="material-symbols-outlined" style="margin-left:auto;font-size:18px;color:rgba(255,255,255,.3);cursor:pointer;">logout</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fake Content -->
+  <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+    <div class="section-info">
+      <span class="section-tag">Content Area</span>
+    </div>
+    <div class="fake-content">
+      <div class="fc-hd"></div>
+      <div class="fc-sub"></div>
+      <div class="fc-cards">
+        <div class="fc-card"></div>
+        <div class="fc-card"></div>
+        <div class="fc-card"></div>
+        <div class="fc-card"></div>
+      </div>
+      <div class="fc-table">
+        <div class="fc-tr"><div class="fc-circle"></div><div class="fc-line" style="width:55%"></div><div class="fc-line" style="width:20%;margin-left:auto"></div></div>
+        <div class="fc-tr"><div class="fc-circle"></div><div class="fc-line" style="width:65%"></div><div class="fc-line" style="width:15%;margin-left:auto"></div></div>
+        <div class="fc-tr"><div class="fc-circle"></div><div class="fc-line" style="width:45%"></div><div class="fc-line" style="width:22%;margin-left:auto"></div></div>
+        <div class="fc-tr"><div class="fc-circle"></div><div class="fc-line" style="width:70%"></div><div class="fc-line" style="width:18%;margin-left:auto"></div></div>
+        <div class="fc-tr"><div class="fc-circle"></div><div class="fc-line" style="width:50%"></div><div class="fc-line" style="width:25%;margin-left:auto"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Instruction -->
+<p style="color:#475569;font-size:12px;font-weight:600;text-align:center;">Click any nav item to see the active state animation &nbsp;·&nbsp; Mix &amp; match themes with animations</p>
+
+<script>
+let currentTheme = 'midnight';
+let currentAnim  = 'glow';
+
+function setTheme(theme, btn) {
+  const sb = document.getElementById('sidebar');
+  sb.className = `sidebar-shell theme-${theme} anim-${currentAnim}`;
+  currentTheme = theme;
+  document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setAnim(anim, btn) {
+  const sb = document.getElementById('sidebar');
+  sb.className = `sidebar-shell theme-${currentTheme} anim-${anim}`;
+  currentAnim = anim;
+  document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setActive(el) {
+  document.querySelectorAll('#sidebar .sb-item').forEach(i => i.classList.remove('is-active'));
+  el.classList.add('is-active');
+  // Bounce animation
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'itemClick .3s cubic-bezier(.34,1.56,.64,1)';
+}
+</script>
+
+<style>
+@keyframes itemClick {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.anim-float .sb-item:hover  { animation: none !important; }
+.anim-float .sb-item.is-active { animation: none !important; }
+</style>
+</body>
+</html>

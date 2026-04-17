@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Workiya — Font Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F1F5F9; padding: 40px; display: flex; flex-direction: column; gap: 28px; }
+
+  h1 { font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; color: #64748B; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1.5px solid #E2E8F0;
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+  .card.winner { border-color: #1E3A8A; box-shadow: 0 0 0 3px #EEF2FF; }
+
+  .tag {
+    display: inline-block;
+    background: #EEF2FF;
+    color: #1E3A8A;
+    font-family: Inter, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+  }
+  .tag.rec { background: #D1FAE5; color: #065F46; }
+
+  .font-name {
+    font-family: Inter, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #0F172A;
+    margin-bottom: 4px;
+  }
+  .font-meta {
+    font-family: Inter, sans-serif;
+    font-size: 12px;
+    color: #94A3B8;
+  }
+
+  .preview { display: flex; flex-direction: column; gap: 14px; }
+
+  .preview-title { font-size: 20px; font-weight: 700; color: #0F172A; }
+  .preview-sub   { font-size: 13px; font-weight: 400; color: #64748B; margin-top: 2px; }
+
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .chip {
+    font-size: 12px; font-weight: 500;
+    padding: 4px 12px; border-radius: 20px;
+  }
+  .chip-blue   { background: #EEF2FF; color: #1E3A8A; }
+  .chip-green  { background: #D1FAE5; color: #065F46; }
+  .chip-yellow { background: #FEF3C7; color: #92400E; }
+
+  .stat { text-align: left; }
+  .stat-val { font-size: 26px; font-weight: 700; color: #0F172A; }
+  .stat-lbl { font-size: 11px; font-weight: 500; color: #94A3B8; }
+
+  .btn-demo {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    background: #1E3A8A; color: #fff; border: none; cursor: pointer;
+  }
+  .btn-demo-out {
+    display: inline-flex; align-items: center;
+    padding: 8px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    background: #fff; color: #1E3A8A; border: 1.5px solid #C7D2FE;
+  }
+
+  .divider { height: 1px; background: #F1F5F9; margin: 4px 0; }
+
+  .label-sm { font-size: 11px; font-weight: 600; color: #94A3B8; letter-spacing: .06em; text-transform: uppercase; }
+
+  /* font families */
+  .f-inter        { font-family: 'Inter', sans-serif; }
+  .f-jakarta      { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .f-dm           { font-family: 'DM Sans', sans-serif; }
+  .f-outfit       { font-family: 'Outfit', sans-serif; }
+  .f-geist        { font-family: 'Geist', sans-serif; }
+</style>
+</head>
+<body>
+
+<h1>Workiya — Font Preview (open in browser → screenshot)</h1>
+
+<!-- 1. Inter -->
+<div class="card winner f-inter">
+  <div>
+    <div class="tag rec">⭐ My Pick</div>
+    <div class="font-name">Inter</div>
+    <div class="font-meta">Google Fonts · Free<br/>Used by: Linear, Vercel, Notion</div>
+  </div>
+  <div class="preview">
+    <div>
+      <div class="preview-title">Platform Overview</div>
+      <div class="preview-sub">Manage companies, employees and field operations from one place.</div>
+    </div>
+    <div class="row">
+      <span class="chip chip-blue">SuperAdmin</span>
+      <span class="chip chip-green">Active</span>
+      <span class="chip chip-yellow">Pending</span>
+    </div>
+    <div class="row">
+      <div class="stat"><div class="stat-val">4,902</div><div class="stat-lbl">Total Managers</div></div>
+      <div class="stat"><div class="stat-val">84k</div><div class="stat-lbl">Employees</div></div>
+      <div class="stat"><div class="stat-val">98%</div><div class="stat-lbl">Uptime</div></div>
+    </div>
+    <div class="row">
+      <button class="btn-demo">Add Manager</button>
+      <button class="btn-demo-out">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Plus Jakarta Sans -->
+<div class="card f-jakarta">
+  <div>
+    <div class="tag">Option 2</div>
+    <div class="font-name">Plus Jakarta Sans</div>
+    <div class="font-meta">Google Fonts · Free<br/>Feel: Friendly & modern</div>
+  </div>
+  <div class="preview">
+    <div>
+      <div class="preview-title">Platform Overview</div>
+      <div class="preview-sub">Manage companies, employees and field operations from one place.</div>
+    </div>
+    <div class="row">
+      <span class="chip chip-blue">SuperAdmin</span>
+      <span class="chip chip-green">Active</span>
+      <span class="chip chip-yellow">Pending</span>
+    </div>
+    <div class="row">
+      <div class="stat"><div class="stat-val">4,902</div><div class="stat-lbl">Total Managers</div></div>
+      <div class="stat"><div class="stat-val">84k</div><div class="stat-lbl">Employees</div></div>
+      <div class="stat"><div class="stat-val">98%</div><div class="stat-lbl">Uptime</div></div>
+    </div>
+    <div class="row">
+      <button class="btn-demo">Add Manager</button>
+      <button class="btn-demo-out">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. DM Sans -->
+<div class="card f-dm">
+  <div>
+    <div class="tag">Option 3</div>
+    <div class="font-name">DM Sans</div>
+    <div class="font-meta">Google Fonts · Free<br/>Feel: Soft & approachable</div>
+  </div>
+  <div class="preview">
+    <div>
+      <div class="preview-title">Platform Overview</div>
+      <div class="preview-sub">Manage companies, employees and field operations from one place.</div>
+    </div>
+    <div class="row">
+      <span class="chip chip-blue">SuperAdmin</span>
+      <span class="chip chip-green">Active</span>
+      <span class="chip chip-yellow">Pending</span>
+    </div>
+    <div class="row">
+      <div class="stat"><div class="stat-val">4,902</div><div class="stat-lbl">Total Managers</div></div>
+      <div class="stat"><div class="stat-val">84k</div><div class="stat-lbl">Employees</div></div>
+      <div class="stat"><div class="stat-val">98%</div><div class="stat-lbl">Uptime</div></div>
+    </div>
+    <div class="row">
+      <button class="btn-demo">Add Manager</button>
+      <button class="btn-demo-out">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Outfit -->
+<div class="card f-outfit">
+  <div>
+    <div class="tag">Option 4</div>
+    <div class="font-name">Outfit</div>
+    <div class="font-meta">Google Fonts · Free<br/>Feel: Geometric & bold</div>
+  </div>
+  <div class="preview">
+    <div>
+      <div class="preview-title">Platform Overview</div>
+      <div class="preview-sub">Manage companies, employees and field operations from one place.</div>
+    </div>
+    <div class="row">
+      <span class="chip chip-blue">SuperAdmin</span>
+      <span class="chip chip-green">Active</span>
+      <span class="chip chip-yellow">Pending</span>
+    </div>
+    <div class="row">
+      <div class="stat"><div class="stat-val">4,902</div><div class="stat-lbl">Total Managers</div></div>
+      <div class="stat"><div class="stat-val">84k</div><div class="stat-lbl">Employees</div></div>
+      <div class="stat"><div class="stat-val">98%</div><div class="stat-lbl">Uptime</div></div>
+    </div>
+    <div class="row">
+      <button class="btn-demo">Add Manager</button>
+      <button class="btn-demo-out">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Geist -->
+<div class="card f-geist">
+  <div>
+    <div class="tag">Option 5</div>
+    <div class="font-name">Geist</div>
+    <div class="font-meta">Google Fonts · Free<br/>Feel: Sharp & technical</div>
+  </div>
+  <div class="preview">
+    <div>
+      <div class="preview-title">Platform Overview</div>
+      <div class="preview-sub">Manage companies, employees and field operations from one place.</div>
+    </div>
+    <div class="row">
+      <span class="chip chip-blue">SuperAdmin</span>
+      <span class="chip chip-green">Active</span>
+      <span class="chip chip-yellow">Pending</span>
+    </div>
+    <div class="row">
+      <div class="stat"><div class="stat-val">4,902</div><div class="stat-lbl">Total Managers</div></div>
+      <div class="stat"><div class="stat-val">84k</div><div class="stat-lbl">Employees</div></div>
+      <div class="stat"><div class="stat-val">98%</div><div class="stat-lbl">Uptime</div></div>
+    </div>
+    <div class="row">
+      <button class="btn-demo">Add Manager</button>
+      <button class="btn-demo-out">Export</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

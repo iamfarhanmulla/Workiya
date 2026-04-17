@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setUser } from "@/store/authSlice";
 
 const EmailIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -41,6 +43,7 @@ const ArrowIcon = () => (
 
 export default function LoginForm() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -66,6 +69,7 @@ export default function LoginForm() {
         return;
       }
 
+      dispatch(setUser(data.user));
       router.push("/dashboard");
     } catch {
       setError("Unable to reach the server. Please try again.");

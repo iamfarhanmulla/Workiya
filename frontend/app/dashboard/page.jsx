@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, AreaChart, Area } from "recharts";
 
-/* ── Animated counter ─────────────────────────── */
+/* ── Animated counter hook ─────────────────────── */
 function useCountUp(target, active, duration = 1400) {
   const [val, setVal] = useState(0);
   const raf = useRef(null);
@@ -23,347 +23,404 @@ function useCountUp(target, active, duration = 1400) {
   return val;
 }
 
-/* ── Stat card ────────────────────────────────── */
-function StatCard({ card, index, active }) {
-  const raw = parseFloat(card.value.replace(/[^0-9.]/g, ""));
-  const suffix = card.value.includes("%") ? "%" : card.value.includes(",") ? "" : "";
-  const count = useCountUp(raw, active);
+/* ── Stat Card ─────────────────────────────────── */
+function StatCard({ icon, iconBg, iconColor, label, value, delta, deltaType, sub, index }) {
+  const [active, setActive] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setActive(true), index * 100); return () => clearTimeout(t); }, [index]);
+  const num = parseFloat(String(value).replace(/[^0-9.]/g, ""));
+  const count = useCountUp(num, active);
 
-  function formatCount(n) {
-    if (card.value.includes(",")) return Math.round(n).toLocaleString();
-    if (card.value.includes("%")) return n.toFixed(1) + "%";
-    return Math.round(n).toString();
+  function fmt(n) {
+    if (String(value).includes("k")) return (n / 1000).toFixed(1) + "k";
+    if (String(value).includes(",")) return Math.round(n).toLocaleString();
+    if (String(value).includes("%")) return n.toFixed(1) + "%";
+    return Math.round(n).toLocaleString();
   }
 
   return (
-    <div
-      className="stat-card dash-anim-card"
-      style={{ "--card-delay": `${index * 0.1}s` }}
-    >
+    <div className="stat-card dash-anim-card" style={{ "--card-delay": `${index * 0.08}s` }}>
       <div className="stat-card-top">
-        <div className="stat-icon">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-            {card.icon}
+        <div className="stat-icon" style={{ background: iconBg }}>
+          <span className="material-symbols-outlined" style={{ color: iconColor, fontVariationSettings: "'FILL' 1" }}>
+            {icon}
           </span>
         </div>
-        <span className={`stat-badge stat-badge--${card.badgeType}`}>{card.badge}</span>
+        <span className={`delta ${deltaType === "up" ? "delta-up" : "delta-dn"}`}>{delta}</span>
       </div>
-      <p className="stat-label">{card.label}</p>
-      <p className="stat-value">{active ? formatCount(count) : "0"}</p>
-      {card.progress !== undefined && (
-        <div className="stat-progress-bar">
-          <div
-            className="stat-progress-fill"
-            style={{ width: active ? `${card.progress}%` : "0%", transition: "width 1.3s cubic-bezier(.4,0,.2,1)" }}
-          />
-        </div>
-      )}
-      {card.sub && (
-        <p className={`stat-sub${card.subDanger ? " stat-sub--danger" : ""}`}>{card.sub}</p>
-      )}
+      <p className="stat-label">{label}</p>
+      <p className="stat-val">{active ? fmt(count) : "0"}</p>
+      {sub && <p className="stat-sub">{sub}</p>}
     </div>
   );
 }
 
-/* ── Mini efficiency chart data ───────────────── */
-const efficiencyData = [
+/* ── Chart Data ────────────────────────────────── */
+const weeklyData = [
+  { d: "Mon", v: 68 }, { d: "Tue", v: 82 }, { d: "Wed", v: 91 },
+  { d: "Thu", v: 75 }, { d: "Fri", v: 88 }, { d: "Sat", v: 60 }, { d: "Sun", v: 55 },
+];
+const effData = [
   { v: 72 }, { v: 78 }, { v: 74 }, { v: 83 }, { v: 80 },
   { v: 87 }, { v: 85 }, { v: 90 }, { v: 88 }, { v: 94 },
 ];
 
-const weeklyBar = [
-  { d: "M", v: 68 }, { d: "T", v: 82 }, { d: "W", v: 91 },
-  { d: "T", v: 75 }, { d: "F", v: 88 }, { d: "S", v: 60 }, { d: "S", v: 55 },
+/* ── Live Alerts ───────────────────────────────── */
+const ALERT_POOL = [
+  { text: "Elena Rossi checked in at Lilavati Hospital", color: "#10B981", icon: "check_circle" },
+  { text: "New company NexGen Solutions registered", color: "#06B6D4", icon: "apartment" },
+  { text: "Task #TK-1042 marked completed by James Dunn", color: "#10B981", icon: "task_alt" },
+  { text: "Manager added 3 new doctors in Mumbai region", color: "#8B5CF6", icon: "medical_services" },
+  { text: "Feedback score 4.9/5 from Dr. Mehta visit", color: "#F59E0B", icon: "star" },
+  { text: "Arjun Kumar started task — Dr. Patel visit", color: "#1E3A8A", icon: "directions_walk" },
 ];
 
-/* ── Live alerts list ─────────────────────────── */
-const INITIAL_ALERTS = [
-  { id: 1, title: "Late Check-in: Sarah J.", desc: "Site: North Plaza • 12 mins late", time: "2m ago",  isNew: false },
-  { id: 2, title: "Boundary Exit: Mike W.",  desc: "Exited Geofence zone B-14",        time: "18m ago", isNew: false },
+/* ── Companies table data ──────────────────────── */
+const COMPANIES = [
+  { id: 1, initials: "NX", color: "#6C5CE7", name: "NexGen Solutions", loc: "San Francisco, CA", manager: "Mark Veridan", employees: 1420, plan: "ENTERPRISE", tasks: 892, taskPct: 78, status: "Active" },
+  { id: 2, initials: "LP", color: "#00B894", name: "Lumina Partners", loc: "London, UK", manager: "Sarah Jenkins", employees: 345, plan: "PRO", tasks: 312, taskPct: 45, status: "Active" },
+  { id: 3, initials: "TH", color: "#E17055", name: "TheraCure Health", loc: "Mumbai, IN", manager: "Priya Sharma", employees: 780, plan: "ENTERPRISE", tasks: 654, taskPct: 66, status: "Active" },
+  { id: 4, initials: "BX", color: "#0984E3", name: "BioXcel Corp", loc: "Berlin, DE", manager: "Klaus Weber", employees: 212, plan: "STARTER", tasks: 98, taskPct: 28, status: "Inactive" },
+  { id: 5, initials: "MR", color: "#FDCB6E", name: "MedReach Global", loc: "Dubai, UAE", manager: "Omar Al-Rashid", employees: 540, plan: "PRO", tasks: 411, taskPct: 57, status: "Active" },
 ];
 
-const LIVE_ALERTS = [
-  { title: "Overtime Alert: James K.",   desc: "Exceeded 10h shift at Depot A",     time: "just now" },
-  { title: "Check-out Missing: Ana R.", desc: "No check-out logged for Site B-3",  time: "just now" },
-  { title: "Task Overdue: #TK-9034",   desc: "Security sweep not completed",        time: "just now" },
-];
+const PLAN_STYLES = {
+  ENTERPRISE: "badge-primary",
+  PRO:        "badge-purple",
+  STARTER:    "badge-success",
+  TRIAL:      "badge-warning",
+};
 
-/* ── Data ─────────────────────────────────────── */
-const statCards = [
-  { icon: "groups",         badge: "+12%",    badgeType: "success", label: "Active Field Workers", value: "1,284", sub: "+82 Currently clocked in" },
-  { icon: "task_alt",       badge: "84% Done",badgeType: "info",    label: "Today's Tasks",        value: "452",   progress: 84 },
-  { icon: "calendar_month", badge: "Optimal", badgeType: "success", label: "Attendance Rate",       value: "98.2%", sub: "Last 24 hours monitoring" },
-  { icon: "directions_car", badge: "●",       badgeType: "danger",  label: "Pending Leaves",        value: "14",    sub: "Requires immediate review", subDanger: true },
-];
-
-const tasks = [
-  { status: "IN PROGRESS", statusClass: "badge-progress",  id: "#TK-9021", title: "Main Hub Server Maintenance", assignee: "Elena Rossi", avatar: "ER" },
-  { status: "PENDING",     statusClass: "badge-pending",   id: "#TK-9020", title: "Security Audit: Floor 4",     assignee: null },
-  { status: "COMPLETED",   statusClass: "badge-completed", id: "#TK-8998", title: "Hardware Delivery: Lab C",    assignee: "Closed 45m ago", closed: true },
-];
-
-/* ── Map dots ─────────────────────────────────── */
-const MAP_DOTS = [
-  { x: 52, y: 44, type: "onsite",  label: "Terminal A" },
-  { x: 28, y: 61, type: "transit", label: "Route B-3"  },
-  { x: 68, y: 58, type: "onsite",  label: "Depot C"    },
-  { x: 40, y: 30, type: "transit", label: "Site NP"    },
-  { x: 75, y: 35, type: "onsite",  label: "Hub East"   },
-];
-
-/* ── Page ─────────────────────────────────────── */
 export default function DashboardPage() {
-  const [animated, setAnimated]     = useState(false);
-  const [alerts,   setAlerts]       = useState(INITIAL_ALERTS);
-  const [nodeCount, setNodeCount]   = useState(142);
-  const [activeDot, setActiveDot]   = useState(0);
-  const [liveIdx,  setLiveIdx]      = useState(0);
-  const [efficiency]                = useState(94);
-  const effCount                    = useCountUp(efficiency, animated, 1600);
+  const [alerts, setAlerts] = useState(ALERT_POOL.slice(0, 4));
+  const [nodeCount, setNodeCount] = useState(84218);
+  const [effProgress, setEffProgress] = useState(0);
+  const alertIdx = useRef(4);
 
-  /* Trigger animations */
-  useEffect(() => { const t = setTimeout(() => setAnimated(true), 100); return () => clearTimeout(t); }, []);
-
-  /* Live node counter flicker */
+  /* Rotate live alerts */
   useEffect(() => {
-    const id = setInterval(() => {
-      setNodeCount(n => n + (Math.random() > 0.5 ? 1 : -1));
-    }, 3000);
-    return () => clearInterval(id);
+    const t = setInterval(() => {
+      const next = ALERT_POOL[alertIdx.current % ALERT_POOL.length];
+      alertIdx.current++;
+      setAlerts(prev => [{ ...next, _id: Date.now() }, ...prev.slice(0, 4)]);
+    }, 7000);
+    return () => clearInterval(t);
   }, []);
 
-  /* Map dot pulse cycle */
+  /* Flicker node count */
   useEffect(() => {
-    const id = setInterval(() => setActiveDot(d => (d + 1) % MAP_DOTS.length), 1800);
-    return () => clearInterval(id);
+    const t = setInterval(() => {
+      setNodeCount(n => n + Math.floor(Math.random() * 3) - 1);
+    }, 3200);
+    return () => clearInterval(t);
   }, []);
 
-  /* Push new live alert every 8 s */
+  /* Animate efficiency progress bar */
   useEffect(() => {
-    const id = setInterval(() => {
-      setAlerts(prev => {
-        const next = { ...LIVE_ALERTS[liveIdx % LIVE_ALERTS.length], id: Date.now(), isNew: true };
-        return [next, ...prev].slice(0, 5);
-      });
-      setLiveIdx(i => i + 1);
-    }, 8000);
-    return () => clearInterval(id);
-  }, [liveIdx]);
+    const t = setTimeout(() => setEffProgress(94), 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  /* Live map dots */
+  const mapDots = [
+    { top: "30%", left: "28%", type: "onsite",  task: "Dr. Mehta" },
+    { top: "55%", left: "48%", type: "transit", task: "En route" },
+    { top: "40%", left: "68%", type: "onsite",  task: "Dr. Singh" },
+    { top: "70%", left: "35%", type: "transit", task: "En route" },
+    { top: "25%", left: "58%", type: "onsite",  task: "Dr. Patel" },
+  ];
 
   return (
-    <div className="op-overview">
+    <div style={{ padding: "0 0 24px" }}>
 
-      {/* Title row */}
-      <div className={`op-title-row dash-fade-up`} style={{ "--du": "0s" }}>
-        <div>
-          <h1 className="op-title">Operational Overview</h1>
-          <p className="op-subtitle">
-            Real-time workforce intelligence for <strong>WorKiya Enterprise</strong>
-          </p>
+      {/* Page Header */}
+      <div className="page-hd dash-fade-up" style={{ "--du": "0s" }}>
+        <div className="page-hd-left">
+          <div className="breadcrumb">
+            <span className="material-symbols-outlined">home</span>
+            <span className="material-symbols-outlined">chevron_right</span>
+            <span className="breadcrumb-active">Dashboard</span>
+          </div>
+          <h1 className="page-hd-title">Platform Overview</h1>
+          <p className="page-hd-sub">Real-time intelligence across all companies and field agents</p>
         </div>
-        <div className="op-status-badge">
-          <span className="op-status-dot op-status-pulse" />
-          System Online: {nodeCount} Active Nodes
+        <div className="page-hd-actions">
+          <div className="op-status-badge">
+            <span className="op-status-dot" />
+            All Systems Operational
+          </div>
+          <button className="btn btn-outline btn-sm">
+            <span className="material-symbols-outlined">download</span>
+            Export
+          </button>
+          <button className="btn btn-primary btn-sm">
+            <span className="material-symbols-outlined">add</span>
+            Add Company
+          </button>
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="stat-grid">
-        {statCards.map((card, i) => (
-          <StatCard key={i} card={card} index={i} active={animated} />
-        ))}
+      {/* Stat Cards */}
+      <div className="stat-cards">
+        <StatCard index={0} icon="apartment"     iconBg="#EEF2FF" iconColor="#1E3A8A"
+          label="Total Companies" value="1284" delta="+12%" deltaType="up" sub="48 added this month" />
+        <StatCard index={1} icon="manage_accounts" iconBg="#EDE9FE" iconColor="#8B5CF6"
+          label="Active Managers" value="4902" delta="+5%" deltaType="up" sub="Across all companies" />
+        <StatCard index={2} icon="person_pin"    iconBg="#ECFEFF" iconColor="#06B6D4"
+          label="Field Employees" value="84218" delta="+8%" deltaType="up" sub={`${nodeCount.toLocaleString()} active now`} />
+        <StatCard index={3} icon="task_alt"      iconBg="#FEF3C7" iconColor="#F59E0B"
+          label="Tasks Completed" value="128000" delta="+24%" deltaType="up" sub="This month" />
       </div>
 
       {/* Body */}
-      <div className="op-body">
+      <div className="op-body" style={{ padding: "0 20px", gap: 16 }}>
 
         {/* Left column */}
         <div className="op-left">
 
-          {/* Animated map */}
-          <div className={`map-card dash-fade-up`} style={{ "--du": "0.3s" }}>
-            <div className="map-toolbar">
-              <div className="map-toolbar-left">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
-                <div>
-                  <span className="map-label">MAP VIEW</span>
-                  <span className="map-title">Downtown Operations</span>
-                </div>
+          {/* Live Map */}
+          <div className="dash-chart-card dash-fade-up" style={{ "--du": "0.15s", padding: 0, overflow: "hidden" }}>
+            <div className="dash-chart-header" style={{ padding: "14px 18px 12px" }}>
+              <div>
+                <p className="dash-chart-title">Live Field Map</p>
+                <p className="dash-chart-sub">Real-time agent positions — updates every 30s</p>
               </div>
-              <div className="map-legend">
-                <span className="legend-dot legend-dot--green" />On-Site
-                <span className="legend-dot legend-dot--blue" />Transit
-              </div>
+              <span className="dash-chart-badge" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span className="live-blink" style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
+                LIVE
+              </span>
             </div>
-
-            <div className="map-body map-body--live">
-              {/* Grid lines */}
-              <svg className="map-grid" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {[20,40,60,80].map(v => (
-                  <g key={v}>
-                    <line x1={v} y1="0" x2={v} y2="100" stroke="rgba(255,255,255,0.05)" strokeWidth="0.4" />
-                    <line x1="0" y1={v} x2="100" y2={v} stroke="rgba(255,255,255,0.05)" strokeWidth="0.4" />
-                  </g>
+            <div className="map-body--live">
+              <svg className="map-grid" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid meet">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <line key={`v${i}`} x1={i * 35} y1="0" x2={i * 35} y2="260" stroke="rgba(96,165,250,0.15)" strokeWidth="1" />
                 ))}
-                {/* Route lines */}
-                <polyline points="28,61 40,30 52,44 68,58 75,35"
-                  fill="none" stroke="rgba(99,179,237,0.3)" strokeWidth="0.5" strokeDasharray="2,2" />
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <line key={`h${i}`} x1="0" y1={i * 35} x2="400" y2={i * 35} stroke="rgba(96,165,250,0.15)" strokeWidth="1" />
+                ))}
+                <path d="M112,78 Q180,120 192,143 Q210,175 140,182" stroke="#60A5FA" strokeWidth="1.5" fill="none" strokeDasharray="5 4" opacity="0.6" />
+                <path d="M272,104 Q260,140 264,175" stroke="#60A5FA" strokeWidth="1.5" fill="none" strokeDasharray="5 4" opacity="0.6" />
               </svg>
-
-              {/* Dots */}
-              {MAP_DOTS.map((dot, i) => (
+              {mapDots.map((dot, i) => (
                 <div
                   key={i}
-                  className={`map-dot map-dot--${dot.type} ${i === activeDot ? "map-dot--active" : ""}`}
-                  style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
-                  title={dot.label}
+                  className={`map-dot map-dot--${dot.type}`}
+                  style={{ top: dot.top, left: dot.left }}
                 >
-                  {i === activeDot && <span className="map-dot-ring" />}
-                  {i === 0 && <span className="map-task-float">Task: Terminal A Inspection</span>}
+                  <div className="map-dot-ring" />
+                  <div className="map-task-float">{dot.task}</div>
                 </div>
               ))}
-
-              <div className="map-controls">
-                <button>+</button>
-                <button>−</button>
-                <button><span className="material-symbols-outlined" style={{ fontSize: 17 }}>my_location</span></button>
+            </div>
+            <div style={{ padding: "10px 16px", display: "flex", gap: 16, borderTop: "1px solid #E2E8F0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#475569" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+                On-site ({mapDots.filter(d => d.type === "onsite").length})
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#475569" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#60A5FA" }} />
+                In Transit ({mapDots.filter(d => d.type === "transit").length})
               </div>
             </div>
           </div>
 
-          {/* Weekly bar chart */}
-          <div className={`dash-chart-card dash-fade-up`} style={{ "--du": "0.4s" }}>
+          {/* Weekly Tasks Chart */}
+          <div className="dash-chart-card dash-fade-up" style={{ "--du": "0.2s" }}>
             <div className="dash-chart-header">
               <div>
-                <p className="dash-chart-title">Weekly Activity</p>
-                <p className="dash-chart-sub">Check-ins across all sites</p>
+                <p className="dash-chart-title">Weekly Task Completions</p>
+                <p className="dash-chart-sub">Doctor visits completed per day — this week</p>
               </div>
-              <span className="dash-chart-badge">This Week</span>
+              <span className="dash-chart-badge">↑ 18% vs last week</span>
             </div>
-            <ResponsiveContainer width="100%" height={90}>
-              <BarChart data={weeklyBar} barCategoryGap="25%">
-                <Bar dataKey="v" radius={[4,4,0,0]} isAnimationActive={animated} animationDuration={1200}>
-                  {weeklyBar.map((_, i) => (
-                    <Cell key={i} fill={i === 2 ? "#24339a" : "#dde3f5"} />
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={weeklyData} barSize={28}>
+                <Tooltip
+                  content={({ active, payload }) => active && payload?.length ? (
+                    <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8, padding: "6px 12px", fontSize: 12 }}>
+                      <b style={{ color: "#1E3A8A" }}>{payload[0].value}</b> tasks
+                    </div>
+                  ) : null}
+                />
+                <Bar dataKey="v" radius={[5, 5, 0, 0]}>
+                  {weeklyData.map((e, i) => (
+                    <Cell key={i} fill={e.v === Math.max(...weeklyData.map(d => d.v)) ? "#1E3A8A" : "#EEF2FF"} />
                   ))}
                 </Bar>
-                <Tooltip
-                  cursor={false}
-                  content={({ active, payload, label }) =>
-                    active && payload?.length
-                      ? <div className="rpt-tooltip"><p className="rpt-tooltip-val">{payload[0].value}%</p></div>
-                      : null
-                  }
-                />
               </BarChart>
             </ResponsiveContainer>
+            <div style={{ display: "flex", justifyContent: "space-around", paddingTop: 4 }}>
+              {weeklyData.map(d => (
+                <span key={d.d} style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}>{d.d}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="op-right">
+
+          {/* Efficiency */}
+          <div className="efficiency-card dash-fade-up" style={{ "--du": "0.1s" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,.7)", margin: 0, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>Platform Efficiency</p>
+                <p className="efficiency-big-val">94%</p>
+              </div>
+              <div>
+                <ResponsiveContainer width={80} height={60}>
+                  <AreaChart data={effData}>
+                    <Area type="monotone" dataKey="v" stroke="rgba(255,255,255,.8)" fill="rgba(255,255,255,.15)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="efficiency-progress-wrap">
+              <div className="efficiency-progress-bar">
+                <div className="efficiency-progress-fill" style={{ width: `${effProgress}%`, transition: "width 1.4s ease" }} />
+              </div>
+              <span className="efficiency-progress-label">{effProgress}%</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+              {[
+                { label: "Check-in Rate", val: "98.2%" },
+                { label: "On-time Rate", val: "91.7%" },
+                { label: "Feedback Rate", val: "96.4%" },
+                { label: "Avg Rating", val: "4.7/5" },
+              ].map(m => (
+                <div key={m.label} style={{ background: "rgba(255,255,255,.1)", borderRadius: 8, padding: "8px 10px" }}>
+                  <p style={{ fontSize: 9, color: "rgba(255,255,255,.6)", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: ".07em", fontWeight: 700 }}>{m.label}</p>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: "#fff", margin: 0 }}>{m.val}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Metric row */}
-          <div className="metric-row">
-            {[
-              { icon: "route", label: "TOTAL DISTANCE (TODAY)", val: "1,420.5 km" },
-              { icon: "timer", label: "RESPONSE LATENCY",       val: "14.2 min"   },
-            ].map((m, i) => (
-              <div className={`metric-card dash-fade-up`} key={i} style={{ "--du": `${0.5 + i * 0.08}s` }}>
-                <div className="metric-icon">
-                  <span className="material-symbols-outlined">{m.icon}</span>
+          {/* Live Alerts */}
+          <div className="panel-card dash-fade-up" style={{ "--du": "0.18s" }}>
+            <div className="panel-head">
+              <span className="panel-title">Live Activity Feed</span>
+              <span className="dash-chart-badge" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10 }}>
+                <span className="live-blink" style={{ width: 5, height: 5, borderRadius: "50%", background: "#EF4444", display: "inline-block" }} />
+                LIVE
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {alerts.map((a, i) => (
+                <div key={a._id || i} className={`alert-item${i === 0 ? " alert-item--new" : ""}`}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: a.color, fontVariationSettings: "'FILL' 1", flexShrink: 0, marginTop: 1 }}>
+                    {a.icon}
+                  </span>
+                  <span className="alert-text">{a.text}</span>
+                  <span className="alert-time">{i === 0 ? "just now" : `${(i + 1) * 2}m ago`}</span>
                 </div>
-                <div>
-                  <p className="metric-label">{m.label}</p>
-                  <p className="metric-value">{m.val}</p>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick stats */}
+          <div className="panel-card dash-fade-up" style={{ "--du": "0.22s" }}>
+            <div className="panel-head">
+              <span className="panel-title">Today's Summary</span>
+              <span style={{ fontSize: 11, color: "#94A3B8" }}>Apr 7, 2026</span>
+            </div>
+            {[
+              { label: "New Registrations", val: "12 companies", icon: "apartment", color: "#1E3A8A", bg: "#EEF2FF" },
+              { label: "Doctor Visits Done", val: "1,284 visits", icon: "medical_services", color: "#06B6D4", bg: "#ECFEFF" },
+              { label: "Feedback Submitted", val: "1,198 forms", icon: "rate_review", color: "#8B5CF6", bg: "#EDE9FE" },
+              { label: "Pending Tasks", val: "234 tasks", icon: "pending_actions", color: "#F59E0B", bg: "#FEF3C7" },
+            ].map((item, i) => (
+              <div key={item.label} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 10px", borderRadius: 8, background: "#F8FAFC",
+                marginBottom: 6, animation: `dashRowIn 0.35s ease ${i * 0.06 + 0.1}s both`
+              }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: item.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: item.color, fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>{item.label}</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{item.val}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Right panel */}
-        <div className="op-right">
-
-          {/* Recent Alerts */}
-          <div className={`panel-card dash-fade-up`} style={{ "--du": "0.2s" }}>
-            <div className="panel-header">
-              <span className="panel-title">Recent Alerts</span>
-              <span className="live-badge live-blink">LIVE</span>
+      {/* Companies Table */}
+      <div style={{ padding: "16px 20px 0" }}>
+        <div className="table-card" style={{ margin: 0 }}>
+          <div className="table-toolbar">
+            <span className="table-toolbar-title">Recent Companies</span>
+            <div className="table-search">
+              <span className="material-symbols-outlined">search</span>
+              <input type="text" placeholder="Search companies..." />
             </div>
-            <div className="alerts-list">
-              {alerts.map((a) => (
-                <div key={a.id} className={`alert-item ${a.isNew ? "alert-item--new" : ""}`}>
-                  <div className="alert-bar" />
-                  <div style={{ flex: 1 }}>
-                    <p className="alert-title">{a.title}</p>
-                    <p className="alert-desc">{a.desc}</p>
-                  </div>
-                  <span className="alert-time">{a.time}</span>
-                </div>
-              ))}
+            <div className="filter-chip">
+              <span className="material-symbols-outlined">tune</span>
+              Filter
             </div>
-          </div>
-
-          {/* Active Tasks */}
-          <div className={`panel-card dash-fade-up`} style={{ "--du": "0.28s" }}>
-            <div className="panel-header">
-              <span className="panel-title">Active Tasks</span>
-              <a href="/dashboard/tasks" className="panel-link">View All</a>
-            </div>
-            <div className="tasks-list">
-              {tasks.map((t, i) => (
-                <div className="task-item task-item-anim" key={i} style={{ animationDelay: `${0.4 + i * 0.1}s` }}>
-                  <div className="task-item-top">
-                    <span className={`task-badge ${t.statusClass}`}>{t.status}</span>
-                    <span className="task-id">{t.id}</span>
-                  </div>
-                  <p className="task-title">{t.title}</p>
-                  <p className="task-assignee">
-                    {t.closed
-                      ? <span className="task-closed">✓ {t.assignee}</span>
-                      : t.assignee
-                        ? <><span className="task-avatar">{t.avatar}</span>Assigned to: {t.assignee}</>
-                        : <span className="task-unassigned">Unassigned</span>
-                    }
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Efficiency card */}
-          <div className={`efficiency-card dash-fade-up`} style={{ "--du": "0.36s" }}>
-            <p className="efficiency-label">Weekly Completion</p>
-            <p className="efficiency-value">{animated ? Math.round(effCount) : 0}% Efficiency</p>
-            <div className="efficiency-progress-wrap">
-              <div className="efficiency-progress-bar">
-                <div
-                  className="efficiency-progress-fill"
-                  style={{ width: animated ? `${efficiency}%` : "0%", transition: "width 1.6s cubic-bezier(.4,0,.2,1) 0.4s" }}
-                />
-              </div>
-              <span className="efficiency-progress-label">{efficiency}%</span>
-            </div>
-            <ResponsiveContainer width="100%" height={60}>
-              <AreaChart data={efficiencyData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="effGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="rgba(255,255,255,0.3)" />
-                    <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone" dataKey="v"
-                  stroke="rgba(255,255,255,0.8)" strokeWidth={2}
-                  fill="url(#effGrad)"
-                  dot={false}
-                  isAnimationActive={animated} animationDuration={1800}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-            <button className="efficiency-btn">
-              <span className="material-symbols-outlined" style={{ fontSize: 15 }}>download</span>
-              Download Report
+            <button className="btn btn-primary btn-sm" style={{ marginLeft: "auto" }}>
+              <span className="material-symbols-outlined">add</span>
+              New Company
             </button>
           </div>
-
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Manager</th>
+                <th>Employees</th>
+                <th>Plan</th>
+                <th>Tasks This Month</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPANIES.map((co, i) => (
+                <tr key={co.id} style={{ animation: `dashRowIn 0.35s ease ${i * 0.05 + 0.2}s both` }}>
+                  <td>
+                    <div className="avatar-cell">
+                      <div className="avatar" style={{ background: co.color, borderRadius: 9 }}>{co.initials}</div>
+                      <div>
+                        <div className="cell-name">{co.name}</div>
+                        <div className="cell-sub">{co.loc}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{co.manager}</td>
+                  <td><strong>{co.employees.toLocaleString()}</strong></td>
+                  <td>
+                    <span className={`badge ${PLAN_STYLES[co.plan]}`}>{co.plan}</span>
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, height: 4, background: "#E2E8F0", borderRadius: 999, overflow: "hidden" }}>
+                        <div style={{ width: `${co.taskPct}%`, height: "100%", background: co.plan === "PRO" ? "#8B5CF6" : "#1E3A8A", borderRadius: 999 }} />
+                      </div>
+                      <span style={{ fontSize: 11 }}>{co.tasks}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${co.status === "Active" ? "badge-success" : "badge-danger"}`}>
+                      {co.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="action-btns">
+                      <div className="icon-btn" title="View">
+                        <span className="material-symbols-outlined">visibility</span>
+                      </div>
+                      <div className="icon-btn" title="Edit">
+                        <span className="material-symbols-outlined">edit</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

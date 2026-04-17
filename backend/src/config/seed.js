@@ -29,39 +29,48 @@ async function seed() {
       process.exit(0);
     }
 
-    const { passwordSalt, passwordHash, passwordIterations } = generateHash("Admin@123");
+    // Get the SuperAdmin role id
+    const roleResult = await pool
+      .request()
+      .input("roleName", sql.NVarChar, "SuperAdmin")
+      .query("SELECT Id FROM Roles WHERE Name = @roleName");
 
-    await pool.request().query("ALTER TABLE Users NOCHECK CONSTRAINT FK_Users_Tenants");
+    if (roleResult.recordset.length === 0) {
+      console.error("SuperAdmin role not found. Please run migrations first: npm run migrate");
+      process.exit(1);
+    }
+
+    const roleId = roleResult.recordset[0].Id;
+
+    const { passwordSalt, passwordHash, passwordIterations } = generateHash("Admin@123");
 
     await pool
       .request()
-      .input("tenantId",           sql.Int,      1)
-      .input("username",           sql.NVarChar, "admin")
-      .input("email",              sql.NVarChar, "admin@workiya.com")
-      .input("displayName",        sql.NVarChar, "Admin User")
-      .input("firstName",          sql.NVarChar, "Admin")
-      .input("lastName",           sql.NVarChar, "User")
-      .input("passwordHash",       sql.NVarChar, passwordHash)
-      .input("passwordSalt",       sql.NVarChar, passwordSalt)
-      .input("passwordIterations", sql.Int,      passwordIterations)
-      .input("status",             sql.Int,             1)
-      .input("isActive",           sql.Bit,             1)
-      .input("isDeleted",          sql.Bit,             0)
-      .input("createdAtUtc",       sql.DateTimeOffset,  new Date())
+      .input("roleId",             sql.Int,            roleId)
+      .input("username",           sql.NVarChar,       "admin")
+      .input("email",              sql.NVarChar,       "admin@workiya.com")
+      .input("displayName",        sql.NVarChar,       "Super Admin")
+      .input("firstName",          sql.NVarChar,       "Super")
+      .input("lastName",           sql.NVarChar,       "Admin")
+      .input("passwordHash",       sql.NVarChar,       passwordHash)
+      .input("passwordSalt",       sql.NVarChar,       passwordSalt)
+      .input("passwordIterations", sql.Int,            passwordIterations)
+      .input("status",             sql.Int,            1)
+      .input("isActive",           sql.Bit,            1)
+      .input("isDeleted",          sql.Bit,            0)
+      .input("createdAtUtc",       sql.DateTimeOffset, new Date())
       .query(`
         INSERT INTO Users
-          (TenantId, Username, Email, DisplayName, FirstName, LastName,
+          (RoleId, Username, Email, DisplayName, FirstName, LastName,
            PasswordHash, PasswordSalt, PasswordIterations,
            Status, IsActive, IsDeleted, CreatedAtUtc)
         VALUES
-          (@tenantId, @username, @email, @displayName, @firstName, @lastName,
+          (@roleId, @username, @email, @displayName, @firstName, @lastName,
            @passwordHash, @passwordSalt, @passwordIterations,
            @status, @isActive, @isDeleted, @createdAtUtc)
       `);
 
-    await pool.request().query("ALTER TABLE Users CHECK CONSTRAINT FK_Users_Tenants");
-
-    console.log("Dummy user created successfully!");
+    console.log("Super Admin user created successfully!");
     console.log("  Email:    admin@workiya.com");
     console.log("  Password: Admin@123");
     process.exit(0);

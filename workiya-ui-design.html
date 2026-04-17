@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WorKiya — Full UI Design & Database Structure</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<style>
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary:       #1E3A8A;
+  --primary-light: #3B5FCF;
+  --primary-soft:  #EEF2FF;
+  --accent:        #06B6D4;
+  --accent-soft:   #ECFEFF;
+  --success:       #10B981;
+  --success-soft:  #D1FAE5;
+  --warning:       #F59E0B;
+  --warning-soft:  #FEF3C7;
+  --danger:        #EF4444;
+  --danger-soft:   #FEE2E2;
+  --purple:        #8B5CF6;
+  --purple-soft:   #EDE9FE;
+  --bg:            #F1F5F9;
+  --surface:       #FFFFFF;
+  --border:        #E2E8F0;
+  --text:          #0F172A;
+  --text-2:        #475569;
+  --text-3:        #94A3B8;
+  --sidebar-w:     220px;
+  --radius:        14px;
+  --radius-sm:     9px;
+  --shadow:        0 4px 24px rgba(30,58,138,.08);
+  --shadow-lg:     0 12px 40px rgba(30,58,138,.14);
+}
+body { font-family: 'Inter', sans-serif; background: #0F172A; color: var(--text); line-height: 1.5; }
+
+/* ── Layout helpers ───────────────────────────── */
+.section-title { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); padding: 48px 0 20px; }
+.page-wrap { max-width: 1440px; margin: 0 auto; padding: 32px 24px 80px; }
+.divider-label { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #475569; padding: 10px 0; position: relative; }
+.divider-label::before, .divider-label::after { content:''; position:absolute; top:50%; width:38%; height:1px; background:#334155; }
+.divider-label::before { left:0; } .divider-label::after { right:0; }
+
+/* ── DB Schema card ───────────────────────────── */
+.db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.db-table { background: #1E293B; border: 1px solid #334155; border-radius: var(--radius); overflow: hidden; }
+.db-table-header { padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #334155; }
+.db-table-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.db-table-name { font-size: 13px; font-weight: 700; color: #E2E8F0; }
+.db-table-body { padding: 8px 0; }
+.db-col { display: flex; align-items: center; gap: 8px; padding: 5px 16px; font-size: 12px; }
+.db-col-name { color: #CBD5E1; font-weight: 500; flex: 1; }
+.db-col-type { color: #64748B; font-size: 11px; }
+.db-col-tag { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; letter-spacing: .05em; }
+.tag-pk { background:#1E3A8A33; color:#60A5FA; }
+.tag-fk { background:#8B5CF633; color:#A78BFA; }
+.tag-nn { background:#10B98133; color:#34D399; }
+.db-rel { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; font-size: 12px; color: #94A3B8; border-top: 1px solid #1E293B; }
+.db-rel .material-symbols-outlined { font-size: 14px; color: #475569; margin-top: 1px; }
+
+/* ── Screen wrapper ───────────────────────────── */
+.screen { border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid #E2E8F0; background: var(--surface); }
+.screen-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #64748B; margin-bottom: 8px; }
+.screen-desc { font-size: 13px; color: #94A3B8; margin-bottom: 16px; }
+.screens-grid { display: flex; flex-direction: column; gap: 48px; }
+.screen-row { display: grid; gap: 20px; }
+.screen-row-2 { grid-template-columns: 1fr 1fr; }
+.screen-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ── COMPONENT: Topbar ────────────────────────── */
+.topbar { display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 54px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.topbar-logo { display: flex; align-items: center; gap: 8px; }
+.topbar-logo-mark { width: 30px; height: 30px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.topbar-logo-mark .material-symbols-outlined { color: #fff; font-size: 16px; }
+.topbar-logo-name { font-size: 16px; font-weight: 800; color: var(--primary); letter-spacing: -.03em; }
+.topbar-sub { font-size: 10px; font-weight: 600; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+.topbar-sep { width: 1px; height: 24px; background: var(--border); }
+.topbar-search { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; max-width: 380px; }
+.topbar-search input { border: none; background: transparent; outline: none; font-size: 13px; color: var(--text); width: 100%; }
+.topbar-search .material-symbols-outlined { font-size: 17px; color: var(--text-3); }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.topbar-icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.topbar-icon-btn .material-symbols-outlined { font-size: 18px; color: var(--text-2); }
+.topbar-user { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); }
+.topbar-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+.topbar-user-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.topbar-user-role { font-size: 10px; color: var(--text-3); }
+.topbar-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 999px; letter-spacing: .06em; }
+
+/* ── COMPONENT: Sidebar ───────────────────────── */
+.layout { display: flex; height: 100%; min-height: 500px; }
+.sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 10px; flex-shrink: 0; }
+.sidebar-section-label { font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); padding: 12px 8px 6px; }
+.sidebar-link { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; margin-bottom: 1px; }
+.sidebar-link .material-symbols-outlined { font-size: 18px; }
+.sidebar-link:hover, .sidebar-link.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.sidebar-link.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+.sidebar-bottom { margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px; }
+.sidebar-plan { background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.sidebar-plan-label { font-size: 9px; font-weight: 700; letter-spacing: .1em; color: rgba(255,255,255,.6); text-transform: uppercase; }
+.sidebar-plan-name { font-size: 13px; font-weight: 700; color: #fff; }
+.sidebar-plan-bar { height: 3px; background: rgba(255,255,255,.2); border-radius: 999px; margin-top: 8px; overflow: hidden; }
+.sidebar-plan-fill { height: 100%; background: #fff; border-radius: 999px; }
+.main { flex: 1; background: var(--bg); overflow: hidden; }
+
+/* ── COMPONENT: Page header ───────────────────── */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 20px 0; }
+.page-header-left h1 { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.03em; }
+.page-header-left p { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-3); margin-bottom: 4px; }
+.breadcrumb .material-symbols-outlined { font-size: 12px; }
+.breadcrumb-active { color: var(--primary); font-weight: 600; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+.btn .material-symbols-outlined { font-size: 16px; }
+.btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(30,58,138,.3); }
+.btn-outline { background: var(--surface); border: 1px solid var(--border); color: var(--text-2); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-danger { background: var(--danger-soft); color: var(--danger); }
+
+/* ── COMPONENT: Stat card ─────────────────────── */
+.stat-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 16px 20px; }
+.stat-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; }
+.stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.stat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.stat-icon .material-symbols-outlined { font-size: 20px; font-variation-settings: 'FILL' 1; }
+.delta { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+.delta-up { background: var(--success-soft); color: var(--success); }
+.delta-dn { background: var(--danger-soft); color: var(--danger); }
+.stat-label { font-size: 11px; color: var(--text-3); font-weight: 500; }
+.stat-val { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -.04em; line-height: 1.1; }
+.stat-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+/* ── COMPONENT: Table ─────────────────────────── */
+.table-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin: 0 20px; overflow: hidden; }
+.table-toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.table-toolbar-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.table-search { display: flex; align-items: center; gap: 7px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; font-size: 12px; color: var(--text-3); }
+.table-search .material-symbols-outlined { font-size: 15px; }
+.filter-chip { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--text-2); cursor: pointer; }
+.filter-chip .material-symbols-outlined { font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead { background: #F8FAFC; }
+th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 12px 14px; border-bottom: 1px solid #F1F5F9; color: var(--text-2); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #FAFBFF; }
+.avatar-cell { display: flex; align-items: center; gap: 9px; }
+.avatar { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.avatar-circle { border-radius: 50%; }
+.cell-name { font-weight: 600; color: var(--text); font-size: 13px; }
+.cell-sub { font-size: 11px; color: var(--text-3); }
+.badge { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+.badge-success   { background: var(--success-soft); color: var(--success); }
+.badge-warning   { background: var(--warning-soft); color: var(--warning); }
+.badge-danger    { background: var(--danger-soft);  color: var(--danger); }
+.badge-primary   { background: var(--primary-soft); color: var(--primary); }
+.badge-accent    { background: var(--accent-soft);  color: #0E7490; }
+.badge-purple    { background: var(--purple-soft);  color: var(--purple); }
+.badge-gray      { background: #F1F5F9; color: #64748B; }
+.action-btns { display: flex; gap: 5px; }
+.icon-btn { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.icon-btn .material-symbols-outlined { font-size: 14px; color: var(--text-2); }
+.icon-btn:hover { background: var(--primary-soft); }
+.icon-btn:hover .material-symbols-outlined { color: var(--primary); }
+.icon-btn-danger:hover { background: var(--danger-soft); }
+.icon-btn-danger:hover .material-symbols-outlined { color: var(--danger); }
+
+/* ── COMPONENT: Panel card ────────────────────── */
+.panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.panel-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.panel-link { font-size: 11px; color: var(--primary); font-weight: 600; text-decoration: none; }
+
+/* ── COMPONENT: Form ──────────────────────────── */
+.modal-overlay { background: rgba(15,23,42,.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: var(--surface); border-radius: 18px; width: 100%; max-width: 520px; box-shadow: var(--shadow-lg); overflow: hidden; }
+.modal-header { padding: 20px 22px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.modal-header-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; }
+.modal-header-icon .material-symbols-outlined { font-size: 20px; color: var(--primary); font-variation-settings:'FILL' 1; }
+.modal-title { font-size: 16px; font-weight: 800; color: var(--text); }
+.modal-sub { font-size: 12px; color: var(--text-3); }
+.modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: grid; gap: 14px; }
+.form-row-2 { grid-template-columns: 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.form-input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); outline: none; background: var(--surface); transition: border-color .15s; }
+.form-input:focus { border-color: var(--primary); }
+.form-select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); background: var(--surface); outline: none; }
+.form-textarea { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); resize: none; height: 80px; outline: none; }
+.form-hint { font-size: 11px; color: var(--text-3); }
+.modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+.map-preview { background: linear-gradient(135deg, #E0F2FE, #BAE6FD); border-radius: 9px; height: 110px; display: flex; align-items: center; justify-content: center; border: 1px solid #BAE6FD; position: relative; overflow: hidden; }
+.map-pin { position: absolute; color: var(--danger); }
+.map-pin .material-symbols-outlined { font-size: 28px; font-variation-settings:'FILL' 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
+.map-grid-lines { position: absolute; inset: 0; opacity: .3; background-image: linear-gradient(#93C5FD 1px, transparent 1px), linear-gradient(90deg, #93C5FD 1px, transparent 1px); background-size: 20px 20px; }
+.map-label-tag { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.12); white-space: nowrap; }
+
+/* ── COMPONENT: Task card ─────────────────────── */
+.task-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 20px; }
+.task-col { background: var(--bg); border-radius: var(--radius-sm); padding: 12px; }
+.task-col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.task-col-title { font-size: 12px; font-weight: 700; color: var(--text-2); }
+.task-col-count { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+.task-card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); padding: 12px; margin-bottom: 8px; cursor: pointer; }
+.task-card:hover { box-shadow: var(--shadow); }
+.task-card-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.task-card-doctor { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-3); margin-bottom: 8px; }
+.task-card-doctor .material-symbols-outlined { font-size: 13px; color: var(--accent); }
+.task-card-footer { display: flex; align-items: center; justify-content: space-between; }
+.task-assignee { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-3); }
+.task-priority { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 5px; letter-spacing: .04em; }
+.priority-high   { background: var(--danger-soft);  color: var(--danger); }
+.priority-medium { background: var(--warning-soft); color: var(--warning); }
+.priority-low    { background: var(--success-soft); color: var(--success); }
+.task-progress-bar { height: 3px; background: var(--border); border-radius: 999px; margin-top: 8px; overflow: hidden; }
+.task-progress-fill { height: 100%; border-radius: 999px; }
+
+/* ── COMPONENT: Feedback form ─────────────────── */
+.feedback-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; }
+.feedback-doctor-header { display: flex; align-items: center; gap: 14px; padding: 14px; background: var(--bg); border-radius: 10px; margin-bottom: 16px; border: 1px solid var(--border); }
+.feedback-doctor-avatar { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--primary)); display: flex; align-items: center; justify-content: center; color: #fff; }
+.feedback-doctor-avatar .material-symbols-outlined { font-size: 22px; font-variation-settings:'FILL' 1; }
+.feedback-doctor-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.feedback-doctor-spec { font-size: 12px; color: var(--text-3); }
+.feedback-doctor-loc { font-size: 11px; color: var(--accent); display: flex; align-items: center; gap: 3px; margin-top: 2px; }
+.feedback-doctor-loc .material-symbols-outlined { font-size: 12px; }
+.star-row { display: flex; gap: 4px; }
+.star { font-size: 22px; color: var(--warning); }
+.star.empty { color: var(--border); }
+.met-toggle { display: flex; gap: 10px; margin-top: 4px; }
+.met-btn { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; }
+.met-btn.active-yes { border-color: var(--success); background: var(--success-soft); color: var(--success); }
+.met-btn.active-no  { border-color: var(--danger);  background: var(--danger-soft);  color: var(--danger); }
+.photo-upload { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; color: var(--text-3); font-size: 12px; cursor: pointer; }
+.photo-upload .material-symbols-outlined { font-size: 28px; display: block; margin: 0 auto 6px; color: var(--text-3); }
+
+/* ── COMPONENT: Login ─────────────────────────── */
+.login-screen { display: grid; grid-template-columns: 1fr 1fr; min-height: 560px; }
+.login-left { display: flex; flex-direction: column; padding: 40px; justify-content: center; }
+.login-right { background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 50%, #0E7490 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; position: relative; overflow: hidden; }
+.login-right-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,.1); }
+.login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
+.login-brand-mark { width: 38px; height: 38px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.login-brand-mark .material-symbols-outlined { color: #fff; font-size: 20px; font-variation-settings:'FILL' 1; }
+.login-brand-name { font-size: 20px; font-weight: 900; color: var(--primary); letter-spacing: -.04em; }
+.login-heading { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -.03em; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--text-3); margin-bottom: 28px; }
+.login-form { display: flex; flex-direction: column; gap: 14px; }
+.login-divider { display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: 12px; }
+.login-divider::before, .login-divider::after { content:''; flex:1; height:1px; background: var(--border); }
+.social-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--surface); color: var(--text-2); }
+.submit-btn { padding: 11px; background: var(--primary); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px rgba(30,58,138,.35); }
+.submit-btn .material-symbols-outlined { font-size: 18px; }
+.login-right-quote { background: rgba(255,255,255,.1); border-radius: 14px; padding: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.15); max-width: 320px; z-index: 1; }
+.login-right-quote p { color: rgba(255,255,255,.9); font-size: 14px; line-height: 1.6; font-style: italic; }
+.login-right-quote cite { display: block; margin-top: 12px; color: rgba(255,255,255,.6); font-size: 12px; font-weight: 600; font-style: normal; }
+.login-role-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+.login-role-tab { flex: 1; padding: 7px; border-radius: 7px; border: 1px solid var(--border); font-size: 11px; font-weight: 600; text-align: center; cursor: pointer; background: var(--surface); color: var(--text-2); }
+.login-role-tab.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
+
+/* ── COMPONENT: Employee task detail ──────────── */
+.task-detail { padding: 16px 20px; display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+.task-detail-main { display: flex; flex-direction: column; gap: 14px; }
+.task-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.task-status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.task-detail-title { font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 6px; letter-spacing: -.02em; }
+.task-detail-desc { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+.task-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.task-info-item { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+.task-info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); margin-bottom: 3px; }
+.task-info-value { font-size: 13px; font-weight: 600; color: var(--text); }
+.doctor-visit-card { background: linear-gradient(135deg, #EFF6FF, #E0F2FE); border: 1px solid #BAE6FD; border-radius: var(--radius); padding: 16px; }
+.doctor-visit-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.doctor-big-avatar { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--primary)); display: flex; align-items: center; justify-content: center; color: #fff; }
+.doctor-big-avatar .material-symbols-outlined { font-size: 24px; font-variation-settings:'FILL' 1; }
+.doctor-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.doctor-spec { font-size: 12px; color: var(--text-3); }
+.doctor-details { display: flex; flex-direction: column; gap: 7px; }
+.doctor-detail-row { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-2); }
+.doctor-detail-row .material-symbols-outlined { font-size: 15px; color: var(--accent); }
+.navigate-btn { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; }
+.navigate-btn .material-symbols-outlined { font-size: 16px; }
+.checkin-btn { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--success); color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 8px; }
+
+/* ── COMPONENT: Notification dot ─────────────── */
+.notif-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); position: absolute; top: 6px; right: 6px; border: 1.5px solid #fff; }
+.icon-wrap { position: relative; display: inline-flex; }
+
+/* ── COMPONENT: Progress ring ─────────────────── */
+.progress-ring-wrap { display: flex; align-items: center; gap: 12px; }
+.progress-ring { width: 44px; height: 44px; }
+.progress-ring circle { fill: none; stroke-width: 5; stroke-linecap: round; }
+.ring-bg   { stroke: var(--border); }
+.ring-fill { stroke: var(--primary); stroke-dasharray: 113; transform-origin: center; transform: rotate(-90deg); transition: stroke-dashoffset 1s; }
+
+/* ── COMPONENT: Map pin card ──────────────────── */
+.map-big { background: linear-gradient(135deg, #DBEAFE, #BAE6FD); border-radius: var(--radius); height: 180px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.map-big-grid { position: absolute; inset: 0; opacity: .25; background-image: linear-gradient(#60A5FA 1px, transparent 1px), linear-gradient(90deg, #60A5FA 1px, transparent 1px); background-size: 24px 24px; }
+.map-big-route { position: absolute; inset: 0; }
+.map-big-pin { position: absolute; color: var(--danger); }
+.map-big-pin .material-symbols-outlined { font-size: 32px; font-variation-settings:'FILL' 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,.2)); }
+.map-big-you { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 3px solid #fff; box-shadow: 0 0 0 4px rgba(30,58,138,.2); }
+.map-big-label { position: absolute; background: #fff; border-radius: 7px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+
+/* ── COMPONENT: Role badge ─────────────────────── */
+.role-super { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; }
+.role-manager { background: linear-gradient(135deg, var(--purple), #A855F7); color: #fff; }
+.role-employee { background: linear-gradient(135deg, var(--accent), #0284C7); color: #fff; }
+
+/* ── Page: section background ─────────────────── */
+.section-bg { background: #0F172A; padding: 40px 0; }
+.section-bg-alt { background: #111827; padding: 40px 0; }
+
+/* ── Misc ─────────────────────────────────────── */
+.tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-3); }
+.empty-state .material-symbols-outlined { font-size: 40px; display: block; margin: 0 auto 8px; opacity: .4; }
+.empty-state p { font-size: 13px; }
+.inline-flex { display: inline-flex; align-items: center; gap: 4px; }
+.scroll-x { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 1 — DATABASE STRUCTURE
+══════════════════════════════════════════════════════════ -->
+<div class="section-title">① Database Structure — MSSQL Schema</div>
+
+<div class="db-grid">
+
+  <!-- Tenants -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <div class="db-table-icon" style="background:#1E3A8A22"><span style="font-size:14px">🏢</span></div>
+      <span class="db-table-name">Tenants</span>
+      <span class="badge badge-primary" style="margin-left:auto;font-size:9px">Company</span>
+    </div>
+    <div class="db-table-body">
+      <div class="db-col"><span class="db-col-name">Id</span><span class="db-col-tag tag-pk">PK</span><span class="db-col-type">INT IDENTITY</span></div>
+      <div class="db-col"><span class="db-col-name">Name</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(200)</span></div>
+      <div class="db-col"><span class="db-col-name">Key</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(100) UNIQUE</span></div>
+      <div class="db-col"><span class="db-col-name">LogoUrl</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">ContactEmail</span><span class="db-col-type">NVARCHAR(255)</span></div>
+      <div class="db-col"><span class="db-col-name">ContactPhone</span><span class="db-col-type">NVARCHAR(30)</span></div>
+      <div class="db-col"><span class="db-col-name">Address</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">Plan</span><span class="db-col-type">NVARCHAR(50)</span></div>
+      <div class="db-col"><span class="db-col-name">Status</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">INT (1=Active)</span></div>
+      <div class="db-col"><span class="db-col-name">IsActive</span><span class="db-col-type">BIT DEFAULT 1</span></div>
+      <div class="db-col"><span class="db-col-name">IsDeleted</span><span class="db-col-type">BIT DEFAULT 0</span></div>
+      <div class="db-col"><span class="db-col-name">CreatedAtUtc</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <div class="db-table-icon" style="background:#8B5CF622"><span style="font-size:14px">👤</span></div>
+      <span class="db-table-name">Users</span>
+      <span class="badge badge-purple" style="margin-left:auto;font-size:9px">All Roles</span>
+    </div>
+    <div class="db-table-body">
+      <div class="db-col"><span class="db-col-name">Id</span><span class="db-col-tag tag-pk">PK</span><span class="db-col-type">INT IDENTITY</span></div>
+      <div class="db-col"><span class="db-col-name">TenantId</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Tenants</span></div>
+      <div class="db-col"><span class="db-col-name">ManagerId</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Users (self)</span></div>
+      <div class="db-col"><span class="db-col-name">Role</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(20)*</span></div>
+      <div class="db-col"><span class="db-col-name">Username</span><span class="db-col-type">NVARCHAR(100)</span></div>
+      <div class="db-col"><span class="db-col-name">Email</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(255) UNIQUE</span></div>
+      <div class="db-col"><span class="db-col-name">PasswordHash</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">PasswordSalt</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">PasswordIterations</span><span class="db-col-type">INT</span></div>
+      <div class="db-col"><span class="db-col-name">FirstName</span><span class="db-col-type">NVARCHAR(100)</span></div>
+      <div class="db-col"><span class="db-col-name">LastName</span><span class="db-col-type">NVARCHAR(100)</span></div>
+      <div class="db-col"><span class="db-col-name">DisplayName</span><span class="db-col-type">NVARCHAR(200)</span></div>
+      <div class="db-col"><span class="db-col-name">PhoneNumber</span><span class="db-col-type">NVARCHAR(30)</span></div>
+      <div class="db-col"><span class="db-col-name">ProfilePhotoUrl</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">LastLoginUtc</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+      <div class="db-col"><span class="db-col-name">IsActive</span><span class="db-col-type">BIT DEFAULT 1</span></div>
+      <div class="db-col"><span class="db-col-name">IsDeleted</span><span class="db-col-type">BIT DEFAULT 0</span></div>
+      <div class="db-col"><span class="db-col-name">CreatedAtUtc</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+    </div>
+    <div class="db-rel"><span class="material-symbols-outlined">info</span>Role values: SuperAdmin | Manager | Employee</div>
+  </div>
+
+  <!-- Doctors -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <div class="db-table-icon" style="background:#06B6D422"><span style="font-size:14px">🩺</span></div>
+      <span class="db-table-name">Doctors</span>
+      <span class="badge badge-accent" style="margin-left:auto;font-size:9px">Location</span>
+    </div>
+    <div class="db-table-body">
+      <div class="db-col"><span class="db-col-name">Id</span><span class="db-col-tag tag-pk">PK</span><span class="db-col-type">INT IDENTITY</span></div>
+      <div class="db-col"><span class="db-col-name">TenantId</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Tenants</span></div>
+      <div class="db-col"><span class="db-col-name">CreatedBy</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Users (Manager)</span></div>
+      <div class="db-col"><span class="db-col-name">Name</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(200)</span></div>
+      <div class="db-col"><span class="db-col-name">Specialization</span><span class="db-col-type">NVARCHAR(100)</span></div>
+      <div class="db-col"><span class="db-col-name">HospitalName</span><span class="db-col-type">NVARCHAR(200)</span></div>
+      <div class="db-col"><span class="db-col-name">PhoneNumber</span><span class="db-col-type">NVARCHAR(30)</span></div>
+      <div class="db-col"><span class="db-col-name">Email</span><span class="db-col-type">NVARCHAR(255)</span></div>
+      <div class="db-col"><span class="db-col-name">Address</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">City</span><span class="db-col-type">NVARCHAR(100)</span></div>
+      <div class="db-col"><span class="db-col-name">State</span><span class="db-col-type">NVARCHAR(100)</span></div>
+      <div class="db-col"><span class="db-col-name">Country</span><span class="db-col-type">NVARCHAR(100)</span></div>
+      <div class="db-col"><span class="db-col-name">Latitude</span><span class="db-col-type">DECIMAL(10,7)</span></div>
+      <div class="db-col"><span class="db-col-name">Longitude</span><span class="db-col-type">DECIMAL(10,7)</span></div>
+      <div class="db-col"><span class="db-col-name">PhotoUrl</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">Notes</span><span class="db-col-type">NVARCHAR(1000)</span></div>
+      <div class="db-col"><span class="db-col-name">IsActive</span><span class="db-col-type">BIT DEFAULT 1</span></div>
+      <div class="db-col"><span class="db-col-name">IsDeleted</span><span class="db-col-type">BIT DEFAULT 0</span></div>
+      <div class="db-col"><span class="db-col-name">CreatedAtUtc</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <div class="db-table-icon" style="background:#10B98122"><span style="font-size:14px">✅</span></div>
+      <span class="db-table-name">Tasks</span>
+      <span class="badge badge-success" style="margin-left:auto;font-size:9px">Visit Task</span>
+    </div>
+    <div class="db-table-body">
+      <div class="db-col"><span class="db-col-name">Id</span><span class="db-col-tag tag-pk">PK</span><span class="db-col-type">INT IDENTITY</span></div>
+      <div class="db-col"><span class="db-col-name">TenantId</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Tenants</span></div>
+      <div class="db-col"><span class="db-col-name">DoctorId</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Doctors</span></div>
+      <div class="db-col"><span class="db-col-name">AssignedTo</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Users (Employee)</span></div>
+      <div class="db-col"><span class="db-col-name">AssignedBy</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Users (Manager)</span></div>
+      <div class="db-col"><span class="db-col-name">Title</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(300)</span></div>
+      <div class="db-col"><span class="db-col-name">Description</span><span class="db-col-type">NVARCHAR(2000)</span></div>
+      <div class="db-col"><span class="db-col-name">Status</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(20)*</span></div>
+      <div class="db-col"><span class="db-col-name">Priority</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">NVARCHAR(10)**</span></div>
+      <div class="db-col"><span class="db-col-name">DueDate</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+      <div class="db-col"><span class="db-col-name">CompletedAt</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+      <div class="db-col"><span class="db-col-name">IsDeleted</span><span class="db-col-type">BIT DEFAULT 0</span></div>
+      <div class="db-col"><span class="db-col-name">CreatedAtUtc</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+    </div>
+    <div class="db-rel"><span class="material-symbols-outlined">info</span>*Status: Pending|InProgress|Completed|Cancelled</div>
+    <div class="db-rel"><span class="material-symbols-outlined">info</span>**Priority: Low|Medium|High</div>
+  </div>
+
+  <!-- TaskFeedback -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <div class="db-table-icon" style="background:#F59E0B22"><span style="font-size:14px">💬</span></div>
+      <span class="db-table-name">TaskFeedback</span>
+      <span class="badge badge-warning" style="margin-left:auto;font-size:9px">Employee</span>
+    </div>
+    <div class="db-table-body">
+      <div class="db-col"><span class="db-col-name">Id</span><span class="db-col-tag tag-pk">PK</span><span class="db-col-type">INT IDENTITY</span></div>
+      <div class="db-col"><span class="db-col-name">TaskId</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Tasks</span></div>
+      <div class="db-col"><span class="db-col-name">EmployeeId</span><span class="db-col-tag tag-fk">FK</span><span class="db-col-type">INT → Users</span></div>
+      <div class="db-col"><span class="db-col-name">DoctorMet</span><span class="db-col-tag tag-nn">NN</span><span class="db-col-type">BIT</span></div>
+      <div class="db-col"><span class="db-col-name">FeedbackText</span><span class="db-col-type">NVARCHAR(3000)</span></div>
+      <div class="db-col"><span class="db-col-name">Rating</span><span class="db-col-type">TINYINT (1-5)</span></div>
+      <div class="db-col"><span class="db-col-name">PhotoUrl</span><span class="db-col-type">NVARCHAR(500)</span></div>
+      <div class="db-col"><span class="db-col-name">CheckInTime</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+      <div class="db-col"><span class="db-col-name">CheckOutTime</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+      <div class="db-col"><span class="db-col-name">CheckInLatitude</span><span class="db-col-type">DECIMAL(10,7)</span></div>
+      <div class="db-col"><span class="db-col-name">CheckInLongitude</span><span class="db-col-type">DECIMAL(10,7)</span></div>
+      <div class="db-col"><span class="db-col-name">SubmittedAt</span><span class="db-col-type">DATETIMEOFFSET</span></div>
+    </div>
+  </div>
+
+  <!-- Relationships summary -->
+  <div class="db-table" style="border-color:#F59E0B44">
+    <div class="db-table-header" style="background:#F59E0B11">
+      <div class="db-table-icon"><span style="font-size:14px">🔗</span></div>
+      <span class="db-table-name" style="color:#F59E0B">Relationships</span>
+    </div>
+    <div class="db-table-body">
+      <div class="db-col" style="padding:8px 16px; flex-direction:column; align-items:flex-start; gap:4px">
+        <span style="color:#60A5FA; font-size:11px; font-weight:600">Tenants → Users</span>
+        <span style="color:#94A3B8; font-size:11px">1 Company has many Users (all roles)</span>
+      </div>
+      <div class="db-col" style="padding:8px 16px; flex-direction:column; align-items:flex-start; gap:4px">
+        <span style="color:#A78BFA; font-size:11px; font-weight:600">Users (Manager) → Users (Employee)</span>
+        <span style="color:#94A3B8; font-size:11px">1 Manager has many Employees (ManagerId self-ref)</span>
+      </div>
+      <div class="db-col" style="padding:8px 16px; flex-direction:column; align-items:flex-start; gap:4px">
+        <span style="color:#34D399; font-size:11px; font-weight:600">Users (Manager) → Doctors</span>
+        <span style="color:#94A3B8; font-size:11px">Manager creates & owns doctors in their territory</span>
+      </div>
+      <div class="db-col" style="padding:8px 16px; flex-direction:column; align-items:flex-start; gap:4px">
+        <span style="color:#34D399; font-size:11px; font-weight:600">Tasks → Doctors + Users</span>
+        <span style="color:#94A3B8; font-size:11px">Each task targets 1 doctor, assigned to 1 employee</span>
+      </div>
+      <div class="db-col" style="padding:8px 16px; flex-direction:column; align-items:flex-start; gap:4px">
+        <span style="color:#FCD34D; font-size:11px; font-weight:600">Tasks → TaskFeedback</span>
+        <span style="color:#94A3B8; font-size:11px">Employee submits 1 feedback per task</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /db-grid -->
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 2 — USER FLOWS
+══════════════════════════════════════════════════════════ -->
+<div class="section-title">② User Roles & Access Flow</div>
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:8px">
+  <div style="background:#1E293B; border:1px solid #1E3A8A55; border-radius:14px; padding:20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#1E3A8A,#3B5FCF);display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-outlined" style="color:#fff;font-size:18px;font-variation-settings:'FILL' 1">shield_person</span>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#E2E8F0">Super Admin</div>
+        <div style="font-size:11px;color:#64748B">Platform Owner</div>
+      </div>
+    </div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Create & manage companies</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Create managers per company</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> View all tasks & feedback</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Platform-wide analytics</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Manage plans & billing</li>
+    </ul>
+  </div>
+  <div style="background:#1E293B; border:1px solid #8B5CF655; border-radius:14px; padding:20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#8B5CF6,#A855F7);display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-outlined" style="color:#fff;font-size:18px;font-variation-settings:'FILL' 1">manage_accounts</span>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#E2E8F0">Manager</div>
+        <div style="font-size:11px;color:#64748B">Company Manager</div>
+      </div>
+    </div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Add/manage own employees</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Add doctors with location</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Create & assign visit tasks</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> View employee feedback</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Team performance reports</li>
+    </ul>
+  </div>
+  <div style="background:#1E293B; border:1px solid #06B6D455; border-radius:14px; padding:20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#06B6D4,#0284C7);display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-outlined" style="color:#fff;font-size:18px;font-variation-settings:'FILL' 1">person_pin_circle</span>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#E2E8F0">Employee</div>
+        <div style="font-size:11px;color:#64748B">Field Agent</div>
+      </div>
+    </div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> View assigned tasks</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Navigate to doctor location</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Check in / check out</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Submit visit feedback</li>
+      <li style="font-size:12px;color:#94A3B8;display:flex;align-items:center;gap:6px"><span style="color:#10B981">✓</span> Upload photos of visit</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 3 — UI SCREENS
+══════════════════════════════════════════════════════════ -->
+<div class="section-title">③ UI Screens — All Pages</div>
+
+<div class="screens-grid">
+
+<!-- ─── LOGIN ──────────────────────────────────── -->
+<div>
+  <div class="screen-label">Screen 1 — Login (All Roles)</div>
+  <div class="screen-desc">Role-aware login with auto-redirect based on role</div>
+  <div class="screen">
+    <div class="login-screen">
+      <div class="login-left">
+        <div class="login-brand">
+          <div class="login-brand-mark"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:20px">work</span></div>
+          <div>
+            <div class="login-brand-name">WorKiya</div>
+            <div style="font-size:10px;color:var(--text-3);font-weight:600;letter-spacing:.06em;text-transform:uppercase">Workforce Intel</div>
+          </div>
+        </div>
+        <div class="login-role-tabs">
+          <div class="login-role-tab active">Super Admin</div>
+          <div class="login-role-tab">Manager</div>
+          <div class="login-role-tab">Employee</div>
+        </div>
+        <div class="login-heading">Welcome back 👋</div>
+        <div class="login-sub">Sign in to access your WorKiya dashboard</div>
+        <div class="login-form">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input class="form-input" type="email" placeholder="admin@workiya.com" value="admin@workiya.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display:flex;justify-content:space-between">Password <a style="color:var(--primary);font-weight:600;font-size:12px;text-decoration:none">Forgot password?</a></label>
+            <input class="form-input" type="password" placeholder="••••••••" value="••••••••" />
+          </div>
+          <button class="submit-btn">Sign In <span class="material-symbols-outlined">arrow_forward</span></button>
+          <div class="login-divider">Or continue with</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="social-btn"><span style="font-size:16px">G</span> Google</button>
+            <button class="social-btn"><span class="material-symbols-outlined" style="font-size:16px">badge</span> SSO</button>
+          </div>
+          <p style="text-align:center;font-size:12px;color:var(--text-3)">Don't have an account? <a style="color:var(--primary);font-weight:600;text-decoration:none">Contact Admin</a></p>
+        </div>
+      </div>
+      <div class="login-right">
+        <div class="login-right-ring" style="width:300px;height:300px;bottom:-80px;right:-80px"></div>
+        <div class="login-right-ring" style="width:200px;height:200px;top:-40px;left:-60px"></div>
+        <div class="login-right-ring" style="width:150px;height:150px;top:40px;right:20px"></div>
+        <div style="text-align:center;margin-bottom:24px;z-index:1">
+          <div style="font-size:48px;font-weight:900;color:#fff;letter-spacing:-.04em;line-height:1">94%</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.7);font-weight:500">Average Team Efficiency</div>
+        </div>
+        <div class="login-right-quote">
+          <p>"WorKiya transformed how our field teams report doctor visits — real-time tracking, zero paperwork."</p>
+          <cite>— Priya Sharma, Regional Manager, PharmaCare India</cite>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:20px;z-index:1">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.8)"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SUPER ADMIN DASHBOARD ──────────────────── -->
+<div>
+  <div class="screen-label">Screen 2 — Super Admin Dashboard</div>
+  <div class="screen-desc">Platform-wide overview: companies, managers, task volume, revenue</div>
+  <div class="screen">
+    <div class="topbar">
+      <div class="topbar-logo">
+        <div class="topbar-logo-mark"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:16px">work</span></div>
+        <div><div class="topbar-logo-name">WorKiya</div><div class="topbar-sub">Super Admin Console</div></div>
+      </div>
+      <div class="topbar-sep"></div>
+      <div class="topbar-search"><span class="material-symbols-outlined">search</span><input placeholder="Global search..." /></div>
+      <div class="topbar-actions">
+        <div class="icon-wrap"><div class="topbar-icon-btn"><span class="material-symbols-outlined">notifications</span></div><div class="notif-dot"></div></div>
+        <div class="topbar-icon-btn"><span class="material-symbols-outlined">apps</span></div>
+        <div class="topbar-icon-btn"><span class="material-symbols-outlined">help</span></div>
+        <div class="topbar-sep"></div>
+        <div class="topbar-user">
+          <div class="topbar-avatar" style="background:linear-gradient(135deg,#1E3A8A,#3B5FCF)">SA</div>
+          <div><div class="topbar-user-name">Super Admin</div><div class="topbar-user-role">Platform Owner</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-section-label">Main</div>
+        <div class="sidebar-link active"><span class="material-symbols-outlined">dashboard</span>Dashboard</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">apartment</span>Companies</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">manage_accounts</span>Managers</div>
+        <div class="sidebar-section-label">Analytics</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">task_alt</span>All Tasks</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">bar_chart</span>Reports</div>
+        <div class="sidebar-section-label">System</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">settings</span>Settings</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">payments</span>Billing</div>
+        <div class="sidebar-bottom">
+          <div class="sidebar-plan">
+            <div class="sidebar-plan-label">System Plan</div>
+            <div class="sidebar-plan-name">Enterprise Pro</div>
+            <div class="sidebar-plan-bar"><div class="sidebar-plan-fill" style="width:72%"></div></div>
+          </div>
+          <div class="sidebar-link"><span class="material-symbols-outlined">logout</span>Logout</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Platform Overview</h1>
+            <p>Real-time intelligence across all companies</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm"><span class="material-symbols-outlined">download</span>Export</button>
+            <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">add</span>Add Company</button>
+          </div>
+        </div>
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#EEF2FF"><span class="material-symbols-outlined" style="color:#1E3A8A">apartment</span></div><span class="delta delta-up">+12%</span></div>
+            <div class="stat-label">Total Companies</div><div class="stat-val">1,284</div><div class="stat-sub">48 added this month</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#EDE9FE"><span class="material-symbols-outlined" style="color:#8B5CF6">manage_accounts</span></div><span class="delta delta-up">+5%</span></div>
+            <div class="stat-label">Active Managers</div><div class="stat-val">4,902</div><div class="stat-sub">Across all companies</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#ECFEFF"><span class="material-symbols-outlined" style="color:#06B6D4">person_pin</span></div><span class="delta delta-up">+8%</span></div>
+            <div class="stat-label">Field Employees</div><div class="stat-val">84.2k</div><div class="stat-sub">Currently active: 52.1k</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#FEF3C7"><span class="material-symbols-outlined" style="color:#F59E0B">task_alt</span></div><span class="delta delta-up">+24%</span></div>
+            <div class="stat-label">Tasks Completed</div><div class="stat-val">128k</div><div class="stat-sub">This month</div>
+          </div>
+        </div>
+        <div class="table-card" style="margin:0 20px 20px">
+          <div class="table-toolbar">
+            <span class="table-toolbar-title">Recent Companies</span>
+            <div class="table-search"><span class="material-symbols-outlined">search</span>Search companies...</div>
+            <div class="filter-chip"><span class="material-symbols-outlined">tune</span>Filter</div>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto"><span class="material-symbols-outlined">add</span>New Company</button>
+          </div>
+          <table>
+            <thead><tr><th>Company</th><th>Manager</th><th>Employees</th><th>Plan</th><th>Tasks This Month</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="avatar-cell"><div class="avatar" style="background:#6C5CE7;border-radius:9px">NX</div><div><div class="cell-name">NexGen Solutions</div><div class="cell-sub">San Francisco, CA</div></div></div></td>
+                <td>Mark Veridan</td><td><b>1,420</b></td>
+                <td><span class="badge badge-primary">ENTERPRISE</span></td>
+                <td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"><div style="width:78%;height:100%;background:var(--primary);border-radius:999px"></div></div><span style="font-size:11px">892</span></div></td>
+                <td><span class="badge badge-success">Active</span></td>
+                <td><div class="action-btns"><div class="icon-btn"><span class="material-symbols-outlined">visibility</span></div><div class="icon-btn"><span class="material-symbols-outlined">edit</span></div></div></td>
+              </tr>
+              <tr>
+                <td><div class="avatar-cell"><div class="avatar" style="background:#00B894;border-radius:9px">LP</div><div><div class="cell-name">Lumina Partners</div><div class="cell-sub">London, UK</div></div></div></td>
+                <td>Sarah Jenkins</td><td><b>345</b></td>
+                <td><span class="badge badge-purple">PRO</span></td>
+                <td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"><div style="width:45%;height:100%;background:var(--purple);border-radius:999px"></div></div><span style="font-size:11px">312</span></div></td>
+                <td><span class="badge badge-success">Active</span></td>
+                <td><div class="action-btns"><div class="icon-btn"><span class="material-symbols-outlined">visibility</span></div><div class="icon-btn"><span class="material-symbols-outlined">edit</span></div></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MANAGER DASHBOARD ──────────────────────── -->
+<div>
+  <div class="screen-label">Screen 3 — Manager Dashboard</div>
+  <div class="screen-desc">Manager sees their team's tasks, doctor visits, and employee performance</div>
+  <div class="screen">
+    <div class="topbar" style="background:#F8FAFC">
+      <div class="topbar-logo">
+        <div class="topbar-logo-mark"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:16px">work</span></div>
+        <div><div class="topbar-logo-name">WorKiya</div><div class="topbar-sub">Manager Portal</div></div>
+      </div>
+      <div class="topbar-sep"></div>
+      <div class="topbar-search"><span class="material-symbols-outlined">search</span><input placeholder="Search tasks, doctors, employees..." /></div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">add</span>New Task</button>
+        <div class="icon-wrap"><div class="topbar-icon-btn"><span class="material-symbols-outlined">notifications</span></div><div class="notif-dot"></div></div>
+        <div class="topbar-sep"></div>
+        <div class="topbar-user">
+          <div class="topbar-avatar" style="background:linear-gradient(135deg,#8B5CF6,#A855F7)">MJ</div>
+          <div><div class="topbar-user-name">Marcus Johnson</div><div class="topbar-user-role">Regional Manager</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-section-label">My Workspace</div>
+        <div class="sidebar-link active"><span class="material-symbols-outlined">dashboard</span>Dashboard</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">group</span>My Employees</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">medical_services</span>Doctors</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">task_alt</span>Tasks</div>
+        <div class="sidebar-section-label">Insights</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">bar_chart</span>Reports</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">map</span>Field Map</div>
+        <div class="sidebar-bottom">
+          <div class="sidebar-link"><span class="material-symbols-outlined">settings</span>Settings</div>
+          <div class="sidebar-link"><span class="material-symbols-outlined">logout</span>Logout</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Good morning, Marcus 👋</h1>
+            <p>You have 3 pending tasks and 2 new feedback submissions</p>
+          </div>
+        </div>
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#EDE9FE"><span class="material-symbols-outlined" style="color:#8B5CF6">group</span></div><span class="badge badge-success" style="font-size:10px">10 active</span></div>
+            <div class="stat-label">My Employees</div><div class="stat-val">10</div><div class="stat-sub">2 on leave today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#ECFEFF"><span class="material-symbols-outlined" style="color:#06B6D4">medical_services</span></div><span class="delta delta-up">+3 new</span></div>
+            <div class="stat-label">Doctors Added</div><div class="stat-val">48</div><div class="stat-sub">Across 6 cities</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#FEF3C7"><span class="material-symbols-outlined" style="color:#F59E0B">pending_actions</span></div><span class="delta delta-dn">3 pending</span></div>
+            <div class="stat-label">Open Tasks</div><div class="stat-val">12</div><div class="stat-sub">5 due today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-top"><div class="stat-icon" style="background:#D1FAE5"><span class="material-symbols-outlined" style="color:#10B981">star</span></div><span class="delta delta-up">4.6 avg</span></div>
+            <div class="stat-label">Feedback Score</div><div class="stat-val">4.6/5</div><div class="stat-sub">This week</div>
+          </div>
+        </div>
+        <div style="padding:0 20px 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="panel-card">
+            <div class="panel-head"><span class="panel-title">Recent Task Activity</span><a class="panel-link">View All</a></div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:9px">
+                <div class="avatar avatar-circle" style="background:var(--success);width:28px;height:28px;font-size:10px">ER</div>
+                <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Dr. Mehta — Andheri Visit</div><div style="font-size:11px;color:var(--text-3)">Elena Rossi • Completed 2h ago</div></div>
+                <span class="badge badge-success" style="font-size:10px">✓ Done</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:9px">
+                <div class="avatar avatar-circle" style="background:var(--warning);width:28px;height:28px;font-size:10px">JD</div>
+                <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Dr. Singh — Bandra Visit</div><div style="font-size:11px;color:var(--text-3)">James Dunn • In progress</div></div>
+                <span class="badge badge-warning" style="font-size:10px">Active</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:9px">
+                <div class="avatar avatar-circle" style="background:var(--text-3);width:28px;height:28px;font-size:10px">AK</div>
+                <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Dr. Patel — Worli Visit</div><div style="font-size:11px;color:var(--text-3)">Arjun Kumar • Not started</div></div>
+                <span class="badge badge-gray" style="font-size:10px">Pending</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-head"><span class="panel-title">Employee Performance</span><a class="panel-link">Details</a></div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="avatar avatar-circle" style="background:var(--success);width:28px;height:28px;font-size:10px">ER</div>
+                <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Elena Rossi</div><div style="height:5px;background:#E2E8F0;border-radius:999px;margin-top:3px"><div style="width:95%;height:100%;background:var(--success);border-radius:999px"></div></div></div>
+                <span style="font-size:12px;font-weight:700;color:var(--success)">95%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="avatar avatar-circle" style="background:#3B5FCF;width:28px;height:28px;font-size:10px">JD</div>
+                <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">James Dunn</div><div style="height:5px;background:#E2E8F0;border-radius:999px;margin-top:3px"><div style="width:82%;height:100%;background:#3B5FCF;border-radius:999px"></div></div></div>
+                <span style="font-size:12px;font-weight:700;color:#3B5FCF">82%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="avatar avatar-circle" style="background:var(--warning);width:28px;height:28px;font-size:10px">AK</div>
+                <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Arjun Kumar</div><div style="height:5px;background:#E2E8F0;border-radius:999px;margin-top:3px"><div style="width:74%;height:100%;background:var(--warning);border-radius:999px"></div></div></div>
+                <span style="font-size:12px;font-weight:700;color:var(--warning)">74%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MANAGER: ADD DOCTOR MODAL ──────────────── -->
+<div>
+  <div class="screen-label">Screen 4 — Manager: Add Doctor</div>
+  <div class="screen-desc">Manager adds a doctor with hospital, specialization, and map location</div>
+  <div class="screen">
+    <div class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-header-icon"><span class="material-symbols-outlined">medical_services</span></div>
+          <div><div class="modal-title">Add New Doctor</div><div class="modal-sub">Doctor details will be available for task assignment</div></div>
+          <div style="margin-left:auto;cursor:pointer;color:var(--text-3)"><span class="material-symbols-outlined">close</span></div>
+        </div>
+        <div class="modal-body">
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">Doctor Name</label><input class="form-input" value="Dr. Rajesh Mehta" /></div>
+            <div class="form-group"><label class="form-label">Specialization</label><select class="form-select"><option>Cardiologist</option><option>General Physician</option></select></div>
+          </div>
+          <div class="form-group"><label class="form-label">Hospital / Clinic Name</label><input class="form-input" value="Lilavati Hospital, Bandra" /></div>
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" value="+91 98765 43210" /></div>
+            <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="dr.mehta@lilavati.in" /></div>
+          </div>
+          <div class="form-group"><label class="form-label">Full Address</label><input class="form-input" value="A-791 Bandra Reclamation, Mumbai 400050" /></div>
+          <div class="form-row form-row-2">
+            <div class="form-group"><label class="form-label">City</label><input class="form-input" value="Mumbai" /></div>
+            <div class="form-group"><label class="form-label">State</label><input class="form-input" value="Maharashtra" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pin on Map <span style="font-size:10px;color:var(--accent);font-weight:600">Auto-detect from address</span></label>
+            <div class="map-preview">
+              <div class="map-grid-lines"></div>
+              <div class="map-pin" style="top:30%"><span class="material-symbols-outlined">location_on</span></div>
+              <div class="map-label-tag">📍 Lilavati Hospital, Bandra</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+              <div class="form-group"><label class="form-label">Latitude</label><input class="form-input" value="19.0596" /></div>
+              <div class="form-group"><label class="form-label">Longitude</label><input class="form-input" value="72.8295" /></div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Notes for Employee</label><textarea class="form-textarea" placeholder="Visit instructions, best time to visit...">Visit between 10am–12pm. Ask for Dr. Mehta at reception, 2nd floor.</textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline">Cancel</button><button class="btn btn-primary"><span class="material-symbols-outlined">save</span>Save Doctor</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MANAGER: CREATE TASK MODAL ─────────────── -->
+<div>
+  <div class="screen-label">Screen 5 — Manager: Create Visit Task</div>
+  <div class="screen-desc">Manager selects doctor, assigns employee, sets priority & due date</div>
+  <div class="screen">
+    <div class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-header-icon" style="background:var(--success-soft)"><span class="material-symbols-outlined" style="color:var(--success)">assignment_add</span></div>
+          <div><div class="modal-title">Create Visit Task</div><div class="modal-sub">Assign a doctor visit to an employee</div></div>
+          <div style="margin-left:auto;cursor:pointer;color:var(--text-3)"><span class="material-symbols-outlined">close</span></div>
+        </div>
+        <div class="modal-body">
+          <div class="form-group"><label class="form-label">Task Title</label><input class="form-input" value="Visit Dr. Mehta — Product Pitch Q2" /></div>
+          <div class="form-group"><label class="form-label">Description / Instructions</label><textarea class="form-textarea">Present the new CardioPlus product line. Leave sample pack & brochure. Get signature on visit form.</textarea></div>
+          <div class="form-group">
+            <label class="form-label">Select Doctor</label>
+            <div style="border:1px solid var(--border);border-radius:9px;padding:10px;background:var(--bg);display:flex;align-items:center;gap:10px">
+              <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--primary));display:flex;align-items:center;justify-content:center;color:#fff"><span class="material-symbols-outlined" style="font-size:18px;font-variation-settings:'FILL' 1">medical_services</span></div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--text)">Dr. Rajesh Mehta</div>
+                <div style="font-size:11px;color:var(--text-3)">Cardiologist • Lilavati Hospital, Bandra</div>
+              </div>
+              <button class="btn btn-outline btn-sm" style="margin-left:auto">Change</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Assign To Employee</label>
+            <select class="form-select">
+              <option>Elena Rossi — Field Executive</option>
+              <option>James Dunn — Senior Rep</option>
+              <option>Arjun Kumar — Field Agent</option>
+            </select>
+          </div>
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label class="form-label">Priority</label>
+              <select class="form-select">
+                <option>🔴 High</option><option>🟡 Medium</option><option>🟢 Low</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" type="date" value="2026-04-10" /></div>
+          </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline">Cancel</button><button class="btn btn-primary"><span class="material-symbols-outlined">send</span>Assign Task</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MANAGER: TASK BOARD ─────────────────────── -->
+<div>
+  <div class="screen-label">Screen 6 — Manager: Task Board (Kanban)</div>
+  <div class="screen-desc">Manager sees all tasks organized by status with live updates</div>
+  <div class="screen">
+    <div class="topbar">
+      <div class="topbar-logo"><div class="topbar-logo-mark"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:16px">work</span></div><div class="topbar-logo-name" style="font-size:15px">WorKiya</div></div>
+      <div class="topbar-sep"></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3)"><span class="breadcrumb-active" style="font-size:12px">Tasks</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">add</span>New Task</button>
+        <div class="topbar-user"><div class="topbar-avatar" style="background:linear-gradient(135deg,#8B5CF6,#A855F7)">MJ</div></div>
+      </div>
+    </div>
+    <div class="layout">
+      <div class="sidebar" style="width:180px">
+        <div class="sidebar-link"><span class="material-symbols-outlined">dashboard</span>Dashboard</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">group</span>Employees</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">medical_services</span>Doctors</div>
+        <div class="sidebar-link active"><span class="material-symbols-outlined">task_alt</span>Tasks</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">bar_chart</span>Reports</div>
+      </div>
+      <div class="main">
+        <div style="padding:16px 20px 8px;display:flex;align-items:center;gap:10px">
+          <h2 style="font-size:16px;font-weight:800;color:var(--text);flex:1">Visit Tasks</h2>
+          <div class="filter-chip"><span class="material-symbols-outlined">person</span>All Employees</div>
+          <div class="filter-chip"><span class="material-symbols-outlined">medical_services</span>All Doctors</div>
+          <div style="display:flex;gap:4px">
+            <button class="icon-btn" style="background:var(--primary-soft)"><span class="material-symbols-outlined" style="color:var(--primary)">view_kanban</span></button>
+            <button class="icon-btn"><span class="material-symbols-outlined">table_rows</span></button>
+          </div>
+        </div>
+        <div class="task-board">
+          <div class="task-col">
+            <div class="task-col-header"><span class="task-col-title">PENDING</span><span class="task-col-count badge-warning" style="background:var(--warning-soft);color:var(--warning)">4</span></div>
+            <div class="task-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><span class="task-priority priority-high">HIGH</span><span style="font-size:10px;color:var(--text-3)">#TK-1042</span></div>
+              <div class="task-card-title">Dr. Singh — Andheri Clinic</div>
+              <div class="task-card-doctor"><span class="material-symbols-outlined">medical_services</span>Dr. Anand Singh • Cardiologist</div>
+              <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;display:flex;align-items:center;gap:4px"><span class="material-symbols-outlined" style="font-size:12px">location_on</span>Andheri West, Mumbai</div>
+              <div class="task-card-footer"><div class="task-assignee"><div class="avatar avatar-circle" style="background:#3B5FCF;width:18px;height:18px;font-size:8px">JD</div>James Dunn</div><div style="font-size:10px;color:var(--danger)">Due Apr 8</div></div>
+            </div>
+            <div class="task-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><span class="task-priority priority-medium">MEDIUM</span><span style="font-size:10px;color:var(--text-3)">#TK-1041</span></div>
+              <div class="task-card-title">Dr. Patel — Worli Hospital</div>
+              <div class="task-card-doctor"><span class="material-symbols-outlined">medical_services</span>Dr. Kavita Patel • GP</div>
+              <div class="task-card-footer"><div class="task-assignee"><div class="avatar avatar-circle" style="background:var(--warning);width:18px;height:18px;font-size:8px">AK</div>Arjun Kumar</div><div style="font-size:10px;color:var(--text-3)">Due Apr 10</div></div>
+            </div>
+          </div>
+          <div class="task-col">
+            <div class="task-col-header"><span class="task-col-title">IN PROGRESS</span><span class="task-col-count" style="background:var(--primary-soft);color:var(--primary)">3</span></div>
+            <div class="task-card" style="border-color:#BFDBFE">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><span class="task-priority priority-high">HIGH</span><span style="font-size:10px;color:var(--text-3)">#TK-1039</span></div>
+              <div class="task-card-title">Dr. Mehta — Bandra Visit</div>
+              <div class="task-card-doctor"><span class="material-symbols-outlined">medical_services</span>Dr. Rajesh Mehta • Cardiologist</div>
+              <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;display:flex;align-items:center;gap:4px"><span class="material-symbols-outlined" style="font-size:12px">location_on</span>Lilavati Hospital, Bandra</div>
+              <div class="task-card-footer"><div class="task-assignee"><div class="avatar avatar-circle" style="background:var(--success);width:18px;height:18px;font-size:8px">ER</div>Elena Rossi</div><span class="badge badge-accent" style="font-size:9px">Checked In</span></div>
+              <div class="task-progress-bar" style="margin-top:8px"><div class="task-progress-fill" style="width:60%;background:var(--primary)"></div></div>
+            </div>
+          </div>
+          <div class="task-col">
+            <div class="task-col-header"><span class="task-col-title">COMPLETED</span><span class="task-col-count" style="background:var(--success-soft);color:var(--success)">8</span></div>
+            <div class="task-card" style="opacity:.8">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><span class="badge badge-success" style="font-size:9px">DONE</span><span style="font-size:10px;color:var(--text-3)">#TK-1036</span></div>
+              <div class="task-card-title">Dr. Rao — Dadar Clinic</div>
+              <div class="task-card-doctor"><span class="material-symbols-outlined">medical_services</span>Dr. Suresh Rao • Neurologist</div>
+              <div class="task-card-footer"><div class="task-assignee"><div class="avatar avatar-circle" style="background:var(--success);width:18px;height:18px;font-size:8px">ER</div>Elena Rossi</div><div style="font-size:10px;color:var(--success)">⭐ 4.8/5</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── EMPLOYEE DASHBOARD ─────────────────────── -->
+<div>
+  <div class="screen-label">Screen 7 — Employee Dashboard</div>
+  <div class="screen-desc">Employee sees today's tasks, check-in status, and quick actions</div>
+  <div class="screen">
+    <div class="topbar" style="background:#F8FAFC">
+      <div class="topbar-logo"><div class="topbar-logo-mark"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:16px">work</span></div><div class="topbar-logo-name" style="font-size:15px">WorKiya</div></div>
+      <div class="topbar-sep"></div>
+      <div class="topbar-actions">
+        <div class="icon-wrap"><div class="topbar-icon-btn"><span class="material-symbols-outlined">notifications</span></div><div class="notif-dot"></div></div>
+        <div class="topbar-sep"></div>
+        <div class="topbar-user"><div class="topbar-avatar" style="background:linear-gradient(135deg,#06B6D4,#0284C7)">ER</div><div><div class="topbar-user-name">Elena Rossi</div><div class="topbar-user-role">Field Executive</div></div></div>
+      </div>
+    </div>
+    <div class="layout">
+      <div class="sidebar" style="width:180px">
+        <div class="sidebar-link active"><span class="material-symbols-outlined">dashboard</span>Dashboard</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">task_alt</span>My Tasks</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">history</span>Visit History</div>
+        <div class="sidebar-link"><span class="material-symbols-outlined">person</span>My Profile</div>
+        <div class="sidebar-bottom"><div class="sidebar-link"><span class="material-symbols-outlined">logout</span>Logout</div></div>
+      </div>
+      <div class="main">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>My Tasks — Today</h1>
+            <p>Tuesday, 7 April 2026 • Mumbai Region</p>
+          </div>
+          <div style="background:var(--success-soft);border:1px solid var(--success);border-radius:9px;padding:8px 14px;font-size:12px;font-weight:700;color:var(--success)">
+            ● 2 tasks remaining today
+          </div>
+        </div>
+        <div class="stat-cards">
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-icon" style="background:var(--primary-soft)"><span class="material-symbols-outlined" style="color:var(--primary)">task_alt</span></div></div><div class="stat-label">Assigned Today</div><div class="stat-val">3</div></div>
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-icon" style="background:var(--success-soft)"><span class="material-symbols-outlined" style="color:var(--success)">check_circle</span></div></div><div class="stat-label">Completed</div><div class="stat-val">1</div></div>
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-icon" style="background:var(--warning-soft)"><span class="material-symbols-outlined" style="color:var(--warning)">schedule</span></div></div><div class="stat-label">Remaining</div><div class="stat-val">2</div></div>
+          <div class="stat-card"><div class="stat-card-top"><div class="stat-icon" style="background:var(--accent-soft)"><span class="material-symbols-outlined" style="color:#0E7490">star</span></div></div><div class="stat-label">Avg Rating</div><div class="stat-val">4.8</div></div>
+        </div>
+        <div style="padding:0 20px 20px;display:flex;flex-direction:column;gap:10px">
+          <!-- Task row: In Progress -->
+          <div style="background:var(--surface);border:2px solid #BFDBFE;border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px">
+            <div style="width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--primary));display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0"><span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">medical_services</span></div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span class="badge badge-primary">IN PROGRESS</span><span class="badge badge-danger" style="font-size:9px">HIGH</span></div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Dr. Rajesh Mehta — Bandra Visit</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;display:flex;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:3px"><span class="material-symbols-outlined" style="font-size:12px;color:var(--accent)">location_on</span>Lilavati Hospital, Bandra</span><span>Due: Today 3PM</span></div>
+            </div>
+            <button class="btn btn-primary btn-sm">Open Task</button>
+          </div>
+          <!-- Task row: Pending -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px">
+            <div style="width:44px;height:44px;border-radius:11px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1;color:var(--text-3)">medical_services</span></div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span class="badge badge-gray">PENDING</span><span class="badge badge-warning" style="font-size:9px">MEDIUM</span></div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Dr. Anand Singh — Andheri</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;display:flex;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:3px"><span class="material-symbols-outlined" style="font-size:12px;color:var(--accent)">location_on</span>City Clinic, Andheri West</span><span>Due: Today 5PM</span></div>
+            </div>
+            <button class="btn btn-outline btn-sm">Start Task</button>
+          </div>
+          <!-- Task row: Completed -->
+          <div style="background:#F8FAFC;border:1px solid #D1FAE5;border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;opacity:.8">
+            <div style="width:44px;height:44px;border-radius:11px;background:var(--success-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1;color:var(--success)">check_circle</span></div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span class="badge badge-success">COMPLETED</span><span style="font-size:10px;color:var(--success)">⭐ 4.8/5 feedback</span></div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Dr. Suresh Rao — Dadar</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px">Completed at 11:32 AM • Feedback submitted</div>
+            </div>
+            <button class="btn btn-outline btn-sm">View</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── EMPLOYEE: TASK DETAIL + MAP ────────────── -->
+<div>
+  <div class="screen-label">Screen 8 — Employee: Task Detail & Navigation</div>
+  <div class="screen-desc">Task details with doctor info, map, check-in, and feedback form</div>
+  <div class="screen">
+    <div class="topbar">
+      <div class="topbar-logo"><div class="topbar-logo-mark"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:16px">work</span></div><div class="topbar-logo-name" style="font-size:15px">WorKiya</div></div>
+      <div class="topbar-sep"></div>
+      <div class="breadcrumb" style="font-size:12px"><span>My Tasks</span><span class="material-symbols-outlined">chevron_right</span><span class="breadcrumb-active">Task #TK-1039</span></div>
+      <div class="topbar-actions"><div class="topbar-user"><div class="topbar-avatar" style="background:linear-gradient(135deg,#06B6D4,#0284C7)">ER</div></div></div>
+    </div>
+    <div class="task-detail">
+      <div class="task-detail-main">
+        <div class="task-detail-card">
+          <div class="task-status-row"><span class="badge badge-primary">IN PROGRESS</span><span class="badge badge-danger">HIGH PRIORITY</span><span style="font-size:11px;color:var(--text-3);margin-left:auto">Due: Today 3:00 PM</span></div>
+          <div class="task-detail-title">Visit Dr. Rajesh Mehta — Product Pitch Q2</div>
+          <div class="task-detail-desc">Present the new CardioPlus product line. Leave sample pack & brochure. Get signature on visit form from the doctor or clinic receptionist.</div>
+          <div class="task-info-grid">
+            <div class="task-info-item"><div class="task-info-label">Assigned By</div><div class="task-info-value">Marcus Johnson</div></div>
+            <div class="task-info-item"><div class="task-info-label">Assigned On</div><div class="task-info-value">Apr 6, 2026</div></div>
+            <div class="task-info-item"><div class="task-info-label">Task ID</div><div class="task-info-value">#TK-1039</div></div>
+            <div class="task-info-item"><div class="task-info-label">Priority</div><div class="task-info-value" style="color:var(--danger)">🔴 High</div></div>
+          </div>
+        </div>
+        <div class="doctor-visit-card">
+          <div class="doctor-visit-header">
+            <div class="doctor-big-avatar"><span class="material-symbols-outlined">medical_services</span></div>
+            <div><div class="doctor-name">Dr. Rajesh Mehta</div><div class="doctor-spec">Cardiologist • MBBS, MD</div></div>
+            <button class="btn btn-outline btn-sm" style="margin-left:auto">View Profile</button>
+          </div>
+          <div class="doctor-details">
+            <div class="doctor-detail-row"><span class="material-symbols-outlined">local_hospital</span>Lilavati Hospital, Bandra Reclamation</div>
+            <div class="doctor-detail-row"><span class="material-symbols-outlined">location_on</span>A-791, Bandra West, Mumbai 400050</div>
+            <div class="doctor-detail-row"><span class="material-symbols-outlined">phone</span>+91 98765 43210</div>
+            <div class="doctor-detail-row"><span class="material-symbols-outlined">schedule</span>Best visit time: 10:00 AM – 12:00 PM</div>
+          </div>
+          <div class="map-big" style="margin-top:12px">
+            <div class="map-big-grid"></div>
+            <svg class="map-big-route" style="position:absolute;inset:0;width:100%;height:100%"><line x1="30%" y1="70%" x2="52%" y2="38%" stroke="#1E3A8A" stroke-width="2" stroke-dasharray="5,4" opacity=".5"/></svg>
+            <div class="map-big-you" style="left:30%;top:70%"></div>
+            <div class="map-big-pin" style="left:48%;top:28%"><span class="material-symbols-outlined">location_on</span></div>
+            <div class="map-big-label" style="bottom:10px;right:10px">📍 Lilavati Hospital</div>
+            <div class="map-big-label" style="bottom:10px;left:10px">📍 You are here</div>
+          </div>
+          <button class="navigate-btn"><span class="material-symbols-outlined">navigation</span>Navigate to Doctor</button>
+          <button class="checkin-btn"><span class="material-symbols-outlined">where_to_vote</span>Check In at Location</button>
+        </div>
+      </div>
+      <!-- Right panel: Feedback form -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="feedback-card">
+          <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:14px">Submit Feedback</div>
+          <div class="feedback-doctor-header">
+            <div class="feedback-doctor-avatar"><span class="material-symbols-outlined">medical_services</span></div>
+            <div><div class="feedback-doctor-name">Dr. Rajesh Mehta</div><div class="feedback-doctor-spec">Cardiologist</div><div class="feedback-doctor-loc"><span class="material-symbols-outlined">location_on</span>Lilavati Hospital, Bandra</div></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Did you meet the doctor?</label>
+            <div class="met-toggle"><button class="met-btn active-yes">✓ Yes, Met</button><button class="met-btn">✗ Not Available</button></div>
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label class="form-label">Visit Rating</label>
+            <div class="star-row"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star empty">★</span></div>
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label class="form-label">Feedback Notes</label>
+            <textarea class="form-textarea">Doctor showed interest in CardioPlus. Requested more clinical data. Left 2 sample packs and signed the visit form. Follow-up appointment scheduled for April 20.</textarea>
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label class="form-label">Upload Photo Proof</label>
+            <div class="photo-upload"><span class="material-symbols-outlined">add_photo_alternate</span>Tap to upload photo<br/><span style="font-size:10px">Signed form, doctor meeting, samples</span></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:14px"><span class="material-symbols-outlined">send</span>Submit Feedback</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MANAGER: FEEDBACK REVIEW ───────────────── -->
+<div>
+  <div class="screen-label">Screen 9 — Manager: Feedback Review</div>
+  <div class="screen-desc">Manager reviews all employee feedback per doctor visit task</div>
+  <div class="screen">
+    <div class="topbar"><div class="topbar-logo"><div class="topbar-logo-mark"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:16px">work</span></div><div class="topbar-logo-name" style="font-size:15px">WorKiya</div></div><div class="topbar-sep"></div><div class="breadcrumb" style="font-size:12px"><span>Tasks</span><span class="material-symbols-outlined">chevron_right</span><span class="breadcrumb-active">Feedback</span></div></div>
+    <div style="padding:16px 20px">
+      <div class="table-card" style="margin:0">
+        <div class="table-toolbar">
+          <span class="table-toolbar-title">Visit Feedback Log</span>
+          <div class="table-search"><span class="material-symbols-outlined">search</span>Search feedback...</div>
+          <div class="filter-chip"><span class="material-symbols-outlined">star</span>Rating</div>
+          <div class="filter-chip"><span class="material-symbols-outlined">person</span>Employee</div>
+          <button class="btn btn-outline btn-sm" style="margin-left:auto"><span class="material-symbols-outlined">download</span>Export</button>
+        </div>
+        <table>
+          <thead><tr><th>Employee</th><th>Doctor</th><th>Location</th><th>Doctor Met</th><th>Rating</th><th>Check-in</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="avatar-cell"><div class="avatar avatar-circle" style="background:var(--success);width:28px;height:28px;font-size:10px">ER</div><div><div class="cell-name">Elena Rossi</div><div class="cell-sub">Field Executive</div></div></div></td>
+              <td><div class="cell-name">Dr. Suresh Rao</div><div class="cell-sub">Neurologist</div></td>
+              <td><div style="display:flex;align-items:center;gap:4px;font-size:12px"><span class="material-symbols-outlined" style="font-size:13px;color:var(--accent)">location_on</span>Dadar, Mumbai</div></td>
+              <td><span class="badge badge-success">✓ Yes</span></td>
+              <td><div style="display:flex;gap:1px;font-size:13px"><span style="color:var(--warning)">★★★★</span><span style="color:var(--border)">★</span></div></td>
+              <td><div style="font-size:11px;font-weight:600;color:var(--text)">11:32 AM</div><div style="font-size:10px;color:var(--text-3)">Apr 7, 2026</div></td>
+              <td><span class="badge badge-success">Verified</span></td>
+              <td><div class="action-btns"><div class="icon-btn"><span class="material-symbols-outlined">visibility</span></div></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="avatar avatar-circle" style="background:#3B5FCF;width:28px;height:28px;font-size:10px">JD</div><div><div class="cell-name">James Dunn</div><div class="cell-sub">Senior Rep</div></div></div></td>
+              <td><div class="cell-name">Dr. Priya Nair</div><div class="cell-sub">Dermatologist</div></td>
+              <td><div style="display:flex;align-items:center;gap:4px;font-size:12px"><span class="material-symbols-outlined" style="font-size:13px;color:var(--accent)">location_on</span>Juhu, Mumbai</div></td>
+              <td><span class="badge badge-danger">✗ No</span></td>
+              <td><div style="display:flex;gap:1px;font-size:13px"><span style="color:var(--warning)">★★★</span><span style="color:var(--border)">★★</span></div></td>
+              <td><div style="font-size:11px;font-weight:600;color:var(--text)">02:15 PM</div><div style="font-size:10px;color:var(--text-3)">Apr 7, 2026</div></td>
+              <td><span class="badge badge-warning">Pending Review</span></td>
+              <td><div class="action-btns"><div class="icon-btn"><span class="material-symbols-outlined">visibility</span></div></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SUPER ADMIN: ADD MANAGER ───────────────── -->
+<div class="screen-row screen-row-2">
+  <div>
+    <div class="screen-label">Screen 10 — Super Admin: Add Manager</div>
+    <div class="screen-desc">Super Admin creates a manager and assigns them to a company</div>
+    <div class="screen">
+      <div class="modal-overlay">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-header-icon" style="background:var(--purple-soft)"><span class="material-symbols-outlined" style="color:var(--purple)">manage_accounts</span></div>
+            <div><div class="modal-title">Add New Manager</div><div class="modal-sub">Manager will receive login credentials via email</div></div>
+          </div>
+          <div class="modal-body">
+            <div class="form-row form-row-2">
+              <div class="form-group"><label class="form-label">First Name</label><input class="form-input" value="Rahul" /></div>
+              <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" value="Sharma" /></div>
+            </div>
+            <div class="form-group"><label class="form-label">Work Email</label><input class="form-input" value="rahul.sharma@nexgen.com" /></div>
+            <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" value="+91 98100 00123" /></div>
+            <div class="form-group">
+              <label class="form-label">Assign to Company</label>
+              <select class="form-select"><option>NexGen Solutions</option><option>Lumina Partners</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Role / Designation</label>
+              <input class="form-input" value="Regional Sales Manager" />
+            </div>
+            <div style="background:var(--bg);border-radius:9px;padding:12px;display:flex;align-items:center;gap:10px">
+              <span class="material-symbols-outlined" style="color:var(--accent);font-size:18px">mail</span>
+              <div><div style="font-size:12px;font-weight:600;color:var(--text)">Auto-send login credentials</div><div style="font-size:11px;color:var(--text-3)">Manager will receive email with username and temp password</div></div>
+              <input type="checkbox" checked style="margin-left:auto;width:16px;height:16px" />
+            </div>
+          </div>
+          <div class="modal-footer"><button class="btn btn-outline">Cancel</button><button class="btn btn-primary" style="background:var(--purple)"><span class="material-symbols-outlined">person_add</span>Create Manager</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="screen-label">Screen 11 — Manager: Add Employee</div>
+    <div class="screen-desc">Manager adds a field employee under their team</div>
+    <div class="screen">
+      <div class="modal-overlay">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-header-icon" style="background:var(--accent-soft)"><span class="material-symbols-outlined" style="color:#0E7490">person_add</span></div>
+            <div><div class="modal-title">Add New Employee</div><div class="modal-sub">Employee will be assigned under your team</div></div>
+          </div>
+          <div class="modal-body">
+            <div class="form-row form-row-2">
+              <div class="form-group"><label class="form-label">First Name</label><input class="form-input" value="Priya" /></div>
+              <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" value="Verma" /></div>
+            </div>
+            <div class="form-group"><label class="form-label">Work Email</label><input class="form-input" value="priya.verma@nexgen.com" /></div>
+            <div class="form-group"><label class="form-label">Phone</label><input class="form-input" value="+91 97000 11234" /></div>
+            <div class="form-group"><label class="form-label">Territory / Zone</label><select class="form-select"><option>Mumbai West</option><option>Mumbai Central</option><option>Navi Mumbai</option></select></div>
+            <div class="form-group"><label class="form-label">Designation</label><input class="form-input" value="Medical Sales Representative" /></div>
+            <div style="background:var(--bg);border-radius:9px;padding:12px;display:flex;align-items:center;gap:10px">
+              <span class="material-symbols-outlined" style="color:var(--accent);font-size:18px">mail</span>
+              <div><div style="font-size:12px;font-weight:600;color:var(--text)">Send welcome email</div><div style="font-size:11px;color:var(--text-3)">Employee receives app download link + credentials</div></div>
+              <input type="checkbox" checked style="margin-left:auto;width:16px;height:16px" />
+            </div>
+          </div>
+          <div class="modal-footer"><button class="btn btn-outline">Cancel</button><button class="btn btn-primary" style="background:#0E7490"><span class="material-symbols-outlined">person_add</span>Add Employee</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /screens-grid -->
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 4 — TECH STACK SUGGESTION
+══════════════════════════════════════════════════════════ -->
+<div class="section-title">④ Recommended Tech Stack & Architecture</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+  <div style="background:#1E293B;border:1px solid #334155;border-radius:14px;padding:20px">
+    <div style="font-size:13px;font-weight:800;color:#60A5FA;margin-bottom:12px;display:flex;align-items:center;gap:6px"><span class="material-symbols-outlined" style="font-size:16px">web</span>Frontend (Current)</div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>Next.js 16 + React 19</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>Tailwind CSS / Custom CSS</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>Recharts for analytics</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>Role-based routing per user</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>Google Maps API for navigation</li>
+    </ul>
+  </div>
+  <div style="background:#1E293B;border:1px solid #334155;border-radius:14px;padding:20px">
+    <div style="font-size:13px;font-weight:800;color:#A78BFA;margin-bottom:12px;display:flex;align-items:center;gap:6px"><span class="material-symbols-outlined" style="font-size:16px">dns</span>Backend (Current)</div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>Node.js + Express 5</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>MSSQL (mssql npm package)</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>PBKDF2 password hashing</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>JWT for auth tokens (add next)</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#34D399;margin-right:6px">▸</span>Role-based middleware guards</li>
+    </ul>
+  </div>
+  <div style="background:#1E293B;border:1px solid #334155;border-radius:14px;padding:20px">
+    <div style="font-size:13px;font-weight:800;color:#34D399;margin-bottom:12px;display:flex;align-items:center;gap:6px"><span class="material-symbols-outlined" style="font-size:16px">rocket_launch</span>Suggested Additions</div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#F59E0B;margin-right:6px">▸</span>JWT refresh token strategy</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#F59E0B;margin-right:6px">▸</span>Photo upload → Azure Blob / S3</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#F59E0B;margin-right:6px">▸</span>Push notifications (FCM)</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#F59E0B;margin-right:6px">▸</span>Geofencing check-in validation</li>
+      <li style="font-size:12px;color:#94A3B8"><span style="color:#F59E0B;margin-right:6px">▸</span>Mobile app (React Native)</li>
+    </ul>
+  </div>
+</div>
+
+</div><!-- /page-wrap -->
+</body>
+</html>

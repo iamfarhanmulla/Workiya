@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Role Permissions – Workiya</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #6366F1;
+      --primary-light: #EEF2FF;
+      --primary-mid: #C7D2FE;
+      --surface: #ffffff;
+      --bg: #F8FAFC;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --text2: #64748B;
+      --text3: #94A3B8;
+      --green: #10B981;
+      --yellow: #F59E0B;
+      --red: #EF4444;
+      --blue: #0EA5E9;
+      --pink: #EC4899;
+      --purple: #8B5CF6;
+      --amber: #D97706;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+      --transition: 0.15s ease;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar strip ── */
+    .sidebar-strip {
+      width: 64px;
+      background: linear-gradient(180deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0;
+      gap: 8px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .sidebar-strip .logo {
+      width: 38px; height: 38px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .sidebar-strip .logo span { color: #fff; font-size: 20px; }
+    .strip-nav-item {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .strip-nav-item:hover { background: rgba(255,255,255,0.12); }
+    .strip-nav-item.active { background: rgba(255,255,255,0.2); }
+    .strip-nav-item span { color: rgba(255,255,255,0.7); font-size: 22px; }
+    .strip-nav-item.active span { color: #fff; }
+    .sidebar-strip .divider { width: 32px; height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+    .sidebar-strip .avatar {
+      margin-top: auto;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #818cf8, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 13px;
+    }
+
+    /* ── Main area ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Topbar */
+    .topbar {
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 24px; gap: 12px;
+      flex-shrink: 0;
+    }
+    .topbar-breadcrumb {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--text2);
+    }
+    .topbar-breadcrumb .crumb-active { color: var(--text); font-weight: 600; }
+    .topbar-breadcrumb span.sep { font-size: 16px; color: var(--border); }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .topbar-icon-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .topbar-icon-btn:hover { background: var(--bg); }
+    .topbar-icon-btn span { font-size: 18px; color: var(--text2); }
+
+    /* ── Company Selector Bar ── */
+    .company-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 8;
+    }
+    .company-bar-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text3);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .company-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex: 1;
+      min-width: 0;
+    }
+    .company-pills::-webkit-scrollbar { display: none; }
+    .company-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+      position: relative;
+    }
+    .company-pill:hover { border-color: var(--primary-mid); color: var(--primary); background: var(--primary-light); }
+    .company-pill.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+    }
+    .company-pill.active .pill-dot { background: rgba(255,255,255,0.8) !important; }
+    .company-pill .global-icon { font-size: 14px; }
+    .pill-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background 0.18s;
+    }
+    .custom-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 5px;
+      background: #FEF3C7;
+      color: #92400E;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border: 1px solid #FDE68A;
+    }
+    .company-pill.active .custom-badge {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      border-color: rgba(255,255,255,0.3);
+    }
+
+    .company-bar-right {
+      display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .context-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+      white-space: nowrap;
+    }
+    .context-chip.global {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid var(--primary-mid);
+    }
+    .context-chip.company-ctx {
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+    .context-chip span { font-size: 14px; }
+    .copy-global-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 12px;
+      border: 1.5px solid var(--primary-mid);
+      border-radius: 8px;
+      background: var(--primary-light);
+      font-family: inherit;
+      font-size: 12px; font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .copy-global-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .copy-global-btn span { font-size: 14px; }
+
+    /* ── Two panel content ── */
+    .content-area { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      width: 280px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .left-panel-header {
+      padding: 18px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .left-panel-title-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .left-panel-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .role-count-badge {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1px 8px;
+      font-size: 11px; font-weight: 600; color: var(--text2);
+    }
+    .add-role-btn {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 10px;
+      background: var(--primary);
+      color: #fff;
+      border: none; border-radius: 7px;
+      font-size: 12px; font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+    .add-role-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .add-role-btn:active { transform: translateY(0); }
+    .add-role-btn span { font-size: 15px; }
+
+    .search-wrap { position: relative; }
+    .search-wrap .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      font-size: 16px; color: var(--text3);
+    }
+    .search-input {
+      width: 100%;
+      padding: 8px 10px 8px 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit; font-size: 13px; color: var(--text);
+      background: var(--bg); outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .search-input::placeholder { color: var(--text3); }
+
+    .roles-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .roles-list::-webkit-scrollbar { width: 4px; }
+    .roles-list::-webkit-scrollbar-track { background: transparent; }
+    .roles-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .role-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background var(--transition), border-color var(--transition);
+      position: relative;
+    }
+    .role-item:hover { background: var(--bg); }
+    .role-item:hover .role-edit-icon { opacity: 1; }
+    .role-item.active { background: var(--primary-light); border-left-color: var(--primary); }
+    .role-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .role-item-info { flex: 1; min-width: 0; }
+    .role-item-name-row { display: flex; align-items: center; gap: 6px; }
+    .role-item-name {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .system-badge {
+      background: var(--primary-light); color: var(--primary);
+      font-size: 9px; font-weight: 700;
+      padding: 1px 5px; border-radius: 4px;
+      letter-spacing: 0.04em; flex-shrink: 0;
+    }
+    .company-override-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--amber);
+      flex-shrink: 0;
+      display: inline-block;
+      margin-left: 2px;
+    }
+    .role-item-users { font-size: 11px; color: var(--text3); margin-top: 1px; }
+    .role-edit-icon { font-size: 14px; color: var(--text3); opacity: 0; transition: opacity var(--transition); }
+    .role-item.active .role-edit-icon { display: none; }
+    .role-arrow { font-size: 16px; color: var(--primary); display: none; }
+    .role-item.active .role-arrow { display: block; }
+
+    .role-empty-state { padding: 32px 20px; text-align: center; display: none; }
+    .role-empty-state span.mat { font-size: 36px; color: var(--text3); }
+    .role-empty-state p { font-size: 13px; color: var(--text3); margin-top: 8px; }
+
+    .left-panel-footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+      flex-shrink: 0;
+    }
+    .left-panel-footer span { font-size: 14px; color: var(--text3); }
+    .left-panel-footer p { font-size: 11px; color: var(--text3); }
+
+    /* ── RIGHT PANEL ── */
+    .right-panel {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; background: var(--bg);
+    }
+    .right-panel-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; align-items: flex-start; gap: 16px;
+      flex-shrink: 0;
+    }
+    .role-header-left { flex: 1; min-width: 0; }
+    .role-header-name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+    .role-header-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .role-header-name {
+      font-size: 20px; font-weight: 700; color: var(--text);
+      cursor: pointer; padding: 2px 4px; border-radius: 4px;
+      transition: background var(--transition);
+    }
+    .role-header-name:hover:not(.system) { background: var(--bg); }
+    .role-header-name-input {
+      font-size: 20px; font-weight: 700; color: var(--text);
+      font-family: inherit;
+      border: 2px solid var(--primary); border-radius: 6px;
+      padding: 2px 8px; outline: none;
+      background: var(--surface); display: none;
+    }
+    /* Breadcrumb context line */
+    .role-context-breadcrumb {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text3);
+      margin-bottom: 4px; margin-left: 24px;
+    }
+    .role-context-breadcrumb .ctx-sep { font-size: 14px; color: var(--border); }
+    .role-context-breadcrumb .ctx-company {
+      display: flex; align-items: center; gap: 4px;
+      font-weight: 600; color: var(--text2);
+    }
+    .role-context-breadcrumb .ctx-company span { font-size: 14px; }
+    .role-header-desc {
+      font-size: 13px; color: var(--text2);
+      cursor: pointer; padding: 2px 4px; border-radius: 4px;
+      transition: background var(--transition);
+      display: inline-block; margin-left: 24px;
+    }
+    .role-header-desc:hover:not(.system) { background: var(--bg); }
+    .role-header-desc-input {
+      font-size: 13px; color: var(--text2);
+      font-family: inherit;
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 2px 8px; outline: none;
+      background: var(--surface); display: none;
+      width: 340px; margin-left: 24px;
+    }
+    .role-header-desc-input:focus { border-color: var(--primary); }
+
+    .role-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .user-count-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--text2);
+    }
+    .user-count-chip span { font-size: 15px; color: var(--text3); }
+
+    .outline-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 7px 14px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface);
+      font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .outline-btn:hover { border-color: var(--text3); color: var(--text); background: var(--bg); }
+    .outline-btn span { font-size: 16px; }
+    .outline-btn.danger { color: var(--red); border-color: #fca5a5; }
+    .outline-btn.danger:hover { background: #fef2f2; border-color: var(--red); }
+
+    /* ── Table area ── */
+    .table-area { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    .table-area::-webkit-scrollbar { width: 5px; }
+    .table-area::-webkit-scrollbar-track { background: transparent; }
+    .table-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Inheritance banner */
+    .inherit-banner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px;
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      border-left: 3px solid #2563EB;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      font-size: 12px; color: #1D4ED8; font-weight: 500;
+      animation: fadeIn 0.2s ease;
+    }
+    .inherit-banner span.mat-icon { font-size: 16px; }
+    .inherit-banner .dismiss-btn {
+      margin-left: auto;
+      background: none; border: none;
+      color: #93C5FD; cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; transition: color 0.15s;
+    }
+    .inherit-banner .dismiss-btn:hover { color: #1D4ED8; }
+
+    .permissions-table-wrap {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    thead { position: sticky; top: 0; z-index: 5; }
+    thead th {
+      background: var(--bg);
+      border-bottom: 2px solid var(--border);
+      padding: 12px 16px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text2); text-align: left;
+    }
+    thead th:first-child { width: 260px; }
+    thead th:not(:first-child):not(:last-child) { width: 96px; text-align: center; }
+    thead th:last-child { width: 110px; text-align: center; }
+    .col-header { display: inline-flex; align-items: center; gap: 5px; }
+    .col-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+    /* Grant All row */
+    .grant-all-row td { background: #fafbff; border-bottom: 2px solid var(--border); padding: 10px 16px; }
+    .grant-all-label { display: flex; align-items: center; gap: 8px; }
+    .grant-all-label span.mat { font-size: 18px; color: var(--primary); }
+    .grant-all-label p { font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 0.02em; }
+    .grant-all-label small { font-size: 11px; color: var(--text3); font-weight: 400; }
+    .grant-all-cell { text-align: center; }
+
+    /* Module rows */
+    tbody tr.module-row {
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+    tbody tr.module-row:last-child { border-bottom: none; }
+    tbody tr.module-row:hover { background: #fafbff; }
+    tbody tr.module-row:nth-child(even) { background: #fdfcff; }
+    tbody tr.module-row:nth-child(even):hover { background: #f5f6ff; }
+
+    .module-cell { padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+    .module-cell-td { padding: 0; }
+    .module-icon-pill {
+      width: 34px; height: 34px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .module-icon-pill span { font-size: 18px; }
+    .module-info { min-width: 0; }
+    .module-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .module-desc { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Perm cells ── */
+    .perm-cell {
+      text-align: center;
+      padding: 10px 4px;
+      vertical-align: middle;
+      position: relative;
+    }
+    .perm-cell-inner {
+      display: inline-flex; flex-direction: column;
+      align-items: center; gap: 2px;
+      position: relative;
+    }
+    /* Inherited cell styling */
+    .perm-cell.inherited-cell {
+      opacity: 0.8;
+    }
+    .perm-cell.inherited-cell .perm-cell-inner::before {
+      content: '';
+      position: absolute;
+      inset: -6px -8px;
+      border: 1.5px dashed var(--text3);
+      border-radius: 6px;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+    .inherited-label {
+      font-size: 9px; font-weight: 600;
+      color: var(--text3); letter-spacing: 0.02em;
+      margin-top: 1px;
+    }
+    /* Custom cell dot indicator */
+    .custom-dot-indicator {
+      position: absolute;
+      top: -2px; right: -2px;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--amber);
+      border: 1px solid var(--surface);
+    }
+
+    /* iOS Toggle */
+    .toggle-wrap { display: inline-flex; align-items: center; justify-content: center; }
+    .toggle {
+      position: relative; width: 36px; height: 20px; cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      border-radius: 20px; background: #CBD5E1;
+      transition: background 0.2s ease;
+    }
+    .toggle-thumb {
+      position: absolute; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff;
+      top: 2px; left: 2px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .toggle input:checked ~ .toggle-track { background: var(--toggle-color, var(--primary)); }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+    .toggle input:disabled ~ .toggle-track { opacity: 0.5; cursor: not-allowed; }
+    .toggle input:disabled ~ .toggle-thumb { cursor: not-allowed; }
+    .toggle.disabled { cursor: not-allowed; }
+    /* Inherited toggle — slightly desaturated */
+    .toggle.inherited-toggle .toggle-track { filter: saturate(0.6); }
+    .toggle.inherited-toggle input:checked ~ .toggle-track { filter: saturate(0.5); }
+
+    /* Full access badge */
+    .full-access-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px;
+      background: #d1fae5; color: #065f46;
+      border-radius: 20px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .full-access-badge span { font-size: 12px; }
+    .full-access-none { font-size: 18px; color: var(--border); }
+
+    /* Table legend */
+    .table-legend {
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 16px 12px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; color: var(--text3);
+    }
+    .legend-dot-custom {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--amber);
+    }
+    .legend-circle-inherited {
+      width: 8px; height: 8px; border-radius: 50%;
+      border: 1.5px dashed var(--text3);
+    }
+
+    /* ── Footer ── */
+    .right-panel-footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+    }
+    .footer-info { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); }
+    .footer-info span { font-size: 15px; }
+    .footer-actions { margin-left: auto; display: flex; gap: 8px; }
+
+    .primary-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 18px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: 8px;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+    .primary-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .primary-btn:active { transform: translateY(0); }
+    .primary-btn span { font-size: 16px; }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 18px;
+      background: #1e293b; color: #fff;
+      border-radius: 10px; font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow-md);
+      animation: slideUp 0.25s ease forwards;
+      max-width: 360px;
+    }
+    .toast.success { background: #064e3b; border-left: 3px solid var(--green); }
+    .toast.error { background: #7f1d1d; border-left: 3px solid var(--red); }
+    .toast span { font-size: 18px; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeOut { to { transform: translateY(10px); opacity: 0; } }
+
+    .fade-in { animation: fadeIn 0.18s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .cell-fade { animation: cellFade 0.22s ease; }
+    @keyframes cellFade { from { opacity: 0.3; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar strip -->
+<div class="sidebar-strip">
+  <div class="logo"><span class="material-symbols-outlined">hub</span></div>
+  <div class="strip-nav-item active" title="Dashboard"><span class="material-symbols-outlined">dashboard</span></div>
+  <div class="strip-nav-item" title="Companies"><span class="material-symbols-outlined">business</span></div>
+  <div class="strip-nav-item" title="Employees"><span class="material-symbols-outlined">groups</span></div>
+  <div class="strip-nav-item" title="Tasks"><span class="material-symbols-outlined">task_alt</span></div>
+  <div class="strip-nav-item" title="Attendance"><span class="material-symbols-outlined">calendar_month</span></div>
+  <div class="strip-nav-item" title="Leaves"><span class="material-symbols-outlined">event_busy</span></div>
+  <div class="strip-nav-item" title="Billing"><span class="material-symbols-outlined">receipt_long</span></div>
+  <div class="divider"></div>
+  <div class="strip-nav-item" title="Settings"><span class="material-symbols-outlined">settings</span></div>
+  <div class="avatar">SA</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-breadcrumb">
+      <span class="material-symbols-outlined" style="font-size:16px;color:var(--text3)">settings</span>
+      <span>Settings</span>
+      <span class="sep material-symbols-outlined">chevron_right</span>
+      <span class="crumb-active">Role Permissions</span>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-icon-btn" title="Notifications"><span class="material-symbols-outlined">notifications</span></div>
+      <div class="topbar-icon-btn" title="Help"><span class="material-symbols-outlined">help_outline</span></div>
+    </div>
+  </div>
+
+  <!-- Company Selector Bar -->
+  <div class="company-bar">
+    <span class="company-bar-label">Configuring for:</span>
+    <div class="company-pills" id="companyPills"></div>
+    <div class="company-bar-right" id="companyBarRight"></div>
+  </div>
+
+  <!-- Content -->
+  <div class="content-area">
+
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+      <div class="left-panel-header">
+        <div class="left-panel-title-row">
+          <span class="left-panel-title">Roles</span>
+          <span class="role-count-badge" id="roleCountBadge">7</span>
+          <button class="add-role-btn" onclick="addNewRole()">
+            <span class="material-symbols-outlined">add</span>Add Role
+          </button>
+        </div>
+        <div class="search-wrap">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input class="search-input" type="text" id="roleSearch" placeholder="Search roles..." oninput="filterRoles(this.value)" />
+        </div>
+      </div>
+
+      <div class="roles-list" id="rolesList"></div>
+      <div class="role-empty-state" id="roleEmptyState">
+        <span class="material-symbols-outlined mat">manage_accounts</span>
+        <p>No roles match your search.</p>
+      </div>
+
+      <div class="left-panel-footer">
+        <span class="material-symbols-outlined">drag_indicator</span>
+        <p>Drag to reorder roles</p>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <!-- Header -->
+      <div class="right-panel-header" id="rightPanelHeader">
+        <div class="role-header-left">
+          <div class="role-header-name-row">
+            <div class="role-header-dot" id="headerDot"></div>
+            <div class="role-header-name" id="headerName" onclick="startEditName()"></div>
+            <input class="role-header-name-input" id="headerNameInput" onblur="finishEditName()" onkeydown="nameKeydown(event)" />
+            <span class="system-badge" id="headerSystemBadge" style="display:none">SYSTEM</span>
+          </div>
+          <!-- Breadcrumb context -->
+          <div class="role-context-breadcrumb" id="roleContextBreadcrumb"></div>
+          <div class="role-header-desc" id="headerDesc" onclick="startEditDesc()"></div>
+          <input class="role-header-desc-input" id="headerDescInput" onblur="finishEditDesc()" onkeydown="descKeydown(event)" />
+        </div>
+        <div class="role-header-actions">
+          <div class="user-count-chip" id="headerUserChip">
+            <span class="material-symbols-outlined">group</span>
+            <span id="headerUserCount"></span>
+          </div>
+          <button class="outline-btn" onclick="duplicateRole()">
+            <span class="material-symbols-outlined">content_copy</span>Duplicate
+          </button>
+          <button class="outline-btn danger" id="deleteRoleBtn" onclick="deleteRole()">
+            <span class="material-symbols-outlined">delete_outline</span>Delete
+          </button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-area" id="tableArea">
+        <!-- Inherit banner injected here -->
+        <div id="inheritBannerWrap"></div>
+        <div class="permissions-table-wrap">
+          <table id="permTable">
+            <thead>
+              <tr>
+                <th><span class="col-header">Module</span></th>
+                <th><span class="col-header"><span class="col-dot" style="background:var(--primary)"></span>View</span></th>
+                <th><span class="col-header"><span class="col-dot" style="background:var(--green)"></span>Create</span></th>
+                <th><span class="col-header"><span class="col-dot" style="background:var(--yellow)"></span>Edit</span></th>
+                <th><span class="col-header"><span class="col-dot" style="background:var(--red)"></span>Delete</span></th>
+                <th style="text-align:center"><span class="col-header">Full Access</span></th>
+              </tr>
+            </thead>
+            <tbody id="permTableBody"></tbody>
+          </table>
+          <!-- Legend (only for company view) -->
+          <div class="table-legend" id="tableLegend" style="display:none">
+            <span class="legend-item"><span class="legend-dot-custom"></span>Custom override</span>
+            <span class="legend-item"><span class="legend-circle-inherited"></span>Inherited from Global Default</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="right-panel-footer">
+        <div class="footer-info">
+          <span class="material-symbols-outlined">schedule</span>
+          Last updated 2 hours ago
+        </div>
+        <div class="footer-actions">
+          <button class="outline-btn" id="resetBtn" onclick="resetToDefault()">
+            <span class="material-symbols-outlined">restart_alt</span>
+            <span id="resetBtnLabel">Reset to Default</span>
+          </button>
+          <button class="primary-btn" onclick="saveChanges()">
+            <span class="material-symbols-outlined">save</span>Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- content-area -->
+</div><!-- main -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MODULES = [
+  { key:'dashboard',   name:'Dashboard',      desc:'Overview & analytics',        icon:'dashboard',        color:'#6366F1', bg:'#EEF2FF' },
+  { key:'companies',   name:'Companies',       desc:'Company management',          icon:'business',         color:'#0EA5E9', bg:'#E0F2FE' },
+  { key:'managers',    name:'Managers',        desc:'Manager accounts',            icon:'manage_accounts',  color:'#8B5CF6', bg:'#EDE9FE' },
+  { key:'employees',   name:'Employees',       desc:'Employee directory',          icon:'groups',           color:'#10B981', bg:'#D1FAE5' },
+  { key:'users',       name:'Users',           desc:'System user accounts',        icon:'people',           color:'#F59E0B', bg:'#FEF3C7' },
+  { key:'doctors',     name:'Doctors',         desc:'Medical staff',               icon:'medical_services', color:'#EC4899', bg:'#FCE7F3' },
+  { key:'tasks',       name:'Tasks',           desc:'Task assignment & tracking',  icon:'task_alt',         color:'#14B8A6', bg:'#CCFBF1' },
+  { key:'attendance',  name:'Attendance',      desc:'Check-in / check-out logs',   icon:'calendar_month',   color:'#F97316', bg:'#FFF7ED' },
+  { key:'leaves',      name:'Leaves',          desc:'Leave requests & approvals',  icon:'event_busy',       color:'#EF4444', bg:'#FEE2E2' },
+  { key:'billing',     name:'Billing',         desc:'Invoices & payments',         icon:'receipt_long',     color:'#10B981', bg:'#D1FAE5' },
+  { key:'settings',    name:'Settings',        desc:'System configuration',        icon:'settings',         color:'#64748B', bg:'#F1F5F9' },
+  { key:'reports',     name:'Reports',         desc:'Analytics & exports',         icon:'bar_chart',        color:'#6366F1', bg:'#EEF2FF' },
+];
+
+const COMPANIES = [
+  { id: 'global',      name: 'Global Default', dot: null },
+  { id: 'acme',        name: 'Acme Corp',       dot: '#6366F1' },
+  { id: 'medicare',    name: 'MediCare Ltd',    dot: '#10B981' },
+  { id: 'techvision',  name: 'TechVision Inc',  dot: '#F59E0B' },
+  { id: 'healthfirst', name: 'HealthFirst',     dot: '#EC4899' },
+];
+
+function blankPerms() {
+  const p = {};
+  MODULES.forEach(m => { p[m.key] = { view:false, create:false, edit:false, delete:false }; });
+  return p;
+}
+function fullPerms() {
+  const p = {};
+  MODULES.forEach(m => { p[m.key] = { view:true, create:true, edit:true, delete:true }; });
+  return p;
+}
+function buildPerms(spec) {
+  const p = blankPerms();
+  function set(keys, field, val) { (keys||[]).forEach(k => { if(p[k]) p[k][field] = val; }); }
+  if(spec.viewAll)  MODULES.forEach(m => p[m.key].view = true);
+  if(spec.view)     set(spec.view,   'view',   true);
+  if(spec.create)   set(spec.create, 'create', true);
+  if(spec.edit)     set(spec.edit,   'edit',   true);
+  if(spec.delete)   set(spec.delete, 'delete', true);
+  MODULES.forEach(m => {
+    if(p[m.key].create || p[m.key].edit || p[m.key].delete) p[m.key].view = true;
+  });
+  return p;
+}
+
+// Global default permissions per role
+const GLOBAL_DEFAULTS_INIT = [
+  {
+    id: 'super-admin',
+    name: 'Super Admin', desc: 'Full system access — all permissions enabled',
+    color: '#6366F1', users: 1, system: true,
+    perms: fullPerms(),
+  },
+  {
+    id: 'manager',
+    name: 'Manager', desc: 'Manage teams, tasks, attendance and leaves',
+    color: '#0EA5E9', users: 8, system: false,
+    perms: buildPerms({
+      viewAll: true,
+      create: ['managers','employees','doctors','tasks','attendance','leaves'],
+      edit:   ['managers','employees','doctors','tasks','attendance','leaves'],
+      delete: ['doctors','leaves'],
+    }),
+  },
+  {
+    id: 'employee',
+    name: 'Employee', desc: 'Limited to own tasks, attendance and leaves',
+    color: '#10B981', users: 47, system: false,
+    perms: buildPerms({
+      view:   ['dashboard','tasks','attendance','leaves','doctors'],
+      create: ['tasks'],
+      edit:   ['attendance'],
+    }),
+  },
+  {
+    id: 'field-executive',
+    name: 'Field Executive', desc: 'Field operations — tasks and attendance',
+    color: '#F59E0B', users: 23, system: false,
+    perms: buildPerms({
+      view:   ['dashboard','doctors','tasks','attendance'],
+      create: ['tasks','attendance'],
+      edit:   ['tasks','attendance'],
+    }),
+  },
+  {
+    id: 'hr-admin',
+    name: 'HR Admin', desc: 'Human resources — employees, leaves, attendance',
+    color: '#EC4899', users: 3, system: false,
+    perms: buildPerms({
+      view:   ['dashboard','companies','managers','employees','users','doctors','tasks','attendance','leaves','settings','reports'],
+      create: ['employees','attendance','leaves'],
+      edit:   ['employees','attendance','leaves'],
+      delete: ['leaves'],
+    }),
+  },
+  {
+    id: 'finance',
+    name: 'Finance', desc: 'Billing and financial reports only',
+    color: '#8B5CF6', users: 2, system: false,
+    perms: buildPerms({
+      view:   ['dashboard','companies','billing'],
+      create: ['billing'], edit: ['billing'], delete: ['billing'],
+    }),
+  },
+  {
+    id: 'read-only',
+    name: 'Read Only', desc: 'View-only access to selected modules',
+    color: '#94A3B8', users: 5, system: false,
+    perms: buildPerms({ view: ['dashboard','companies','employees','doctors','tasks'] }),
+  },
+];
+
+// Fix manager: no billing & settings
+(function() {
+  const m = GLOBAL_DEFAULTS_INIT.find(r => r.id === 'manager');
+  ['billing','settings'].forEach(k => { m.perms[k] = { view:false,create:false,edit:false,delete:false }; });
+})();
+
+// Company overrides: companyOverrides[companyId][roleId][moduleKey][perm] = true/false
+// Only keys explicitly set here are "custom"; everything else is inherited.
+const COMPANY_OVERRIDES_INIT = {
+  acme: {
+    manager: {
+      billing:   { view:true,  create:false, edit:false, delete:false },
+      settings:  { view:true,  create:false, edit:true,  delete:false },
+      employees: { view:true,  create:true,  edit:true,  delete:true  },
+    }
+  },
+  medicare: {
+    manager: {
+      reports:   { view:true, create:true,  edit:false, delete:false },
+      companies: { view:true, create:false, edit:true,  delete:false },
+    }
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────────────
+
+let roles = JSON.parse(JSON.stringify(GLOBAL_DEFAULTS_INIT));
+let globalDefaults = JSON.parse(JSON.stringify(GLOBAL_DEFAULTS_INIT));
+// companyOverrides[cid][rid][moduleKey] = { view, create, edit, delete } (partial — only custom keys present)
+let companyOverrides = JSON.parse(JSON.stringify(COMPANY_OVERRIDES_INIT));
+
+let selectedRoleId = 'super-admin';
+let selectedCompanyId = 'global';
+let bannerDismissed = false;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getRole(id) { return roles.find(r => r.id === id); }
+function getGlobal(id) { return globalDefaults.find(r => r.id === id); }
+function uniqueId() { return 'role-' + Math.random().toString(36).slice(2, 9); }
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function colorForPerm(perm) {
+  return { view:'var(--primary)', create:'var(--green)', edit:'var(--yellow)', delete:'var(--red)' }[perm] || 'var(--primary)';
+}
+
+// Get effective value for a module+perm under current company context
+// Returns { value, isCustom }
+function getEffective(roleId, moduleKey, perm) {
+  if (selectedCompanyId === 'global') {
+    const role = getRole(roleId);
+    return { value: role ? role.perms[moduleKey][perm] : false, isCustom: false };
+  }
+  const co = companyOverrides[selectedCompanyId];
+  if (co && co[roleId] && co[roleId][moduleKey] && perm in co[roleId][moduleKey]) {
+    return { value: co[roleId][moduleKey][perm], isCustom: true };
+  }
+  // Inherited from global
+  const role = getRole(roleId);
+  return { value: role ? role.perms[moduleKey][perm] : false, isCustom: false };
+}
+
+// Does this company+role have ANY custom overrides?
+function companyRoleHasOverrides(companyId, roleId) {
+  const co = companyOverrides[companyId];
+  return co && co[roleId] && Object.keys(co[roleId]).length > 0;
+}
+
+// Does any role in this company have overrides?
+function companyHasAnyOverride(companyId) {
+  const co = companyOverrides[companyId];
+  if (!co) return false;
+  return Object.values(co).some(r => Object.keys(r).length > 0);
+}
+
+// Set a company override
+function setCompanyOverride(companyId, roleId, moduleKey, perm, value) {
+  if (!companyOverrides[companyId]) companyOverrides[companyId] = {};
+  if (!companyOverrides[companyId][roleId]) companyOverrides[companyId][roleId] = {};
+  if (!companyOverrides[companyId][roleId][moduleKey]) {
+    // Seed with global values first, then set
+    const role = getRole(roleId);
+    companyOverrides[companyId][roleId][moduleKey] = role
+      ? JSON.parse(JSON.stringify(role.perms[moduleKey]))
+      : { view:false,create:false,edit:false,delete:false };
+  }
+  companyOverrides[companyId][roleId][moduleKey][perm] = value;
+}
+
+// Remove a company override for a module (revert to inherited)
+function clearCompanyModuleOverride(companyId, roleId, moduleKey) {
+  if (companyOverrides[companyId] && companyOverrides[companyId][roleId]) {
+    delete companyOverrides[companyId][roleId][moduleKey];
+  }
+}
+
+// Clear all overrides for a company+role
+function clearCompanyRoleOverrides(companyId, roleId) {
+  if (companyOverrides[companyId]) {
+    delete companyOverrides[companyId][roleId];
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPANY SELECTOR BAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderCompanyBar() {
+  const pillsEl = document.getElementById('companyPills');
+  const rightEl = document.getElementById('companyBarRight');
+
+  pillsEl.innerHTML = COMPANIES.map(c => {
+    const isActive = c.id === selectedCompanyId;
+    const isGlobal = c.id === 'global';
+    const hasCustom = !isGlobal && companyHasAnyOverride(c.id);
+
+    let innerHtml = '';
+    if (isGlobal) {
+      innerHtml = `<span class="material-symbols-outlined global-icon" style="font-size:15px">public</span>Global Default`;
+    } else {
+      innerHtml = `<span class="pill-dot" style="background:${c.dot}"></span>${escHtml(c.name)}`;
+    }
+    if (hasCustom) {
+      innerHtml += ` <span class="custom-badge">Custom</span>`;
+    }
+
+    return `<button class="company-pill ${isActive ? 'active' : ''}"
+      onclick="selectCompany('${c.id}')">${innerHtml}</button>`;
+  }).join('');
+
+  // Right side
+  const isGlobal = selectedCompanyId === 'global';
+  const company = COMPANIES.find(c => c.id === selectedCompanyId);
+
+  let rightHtml = '';
+  if (isGlobal) {
+    rightHtml = `<span class="context-chip global">
+      <span class="material-symbols-outlined" style="font-size:14px">info</span>
+      Applies to all companies unless overridden
+    </span>`;
+  } else {
+    rightHtml = `<span class="context-chip company-ctx">
+      <span class="material-symbols-outlined" style="font-size:14px">corporate_fare</span>
+      Company-specific override &middot; Inherits unset permissions from Global Default
+    </span>
+    <button class="copy-global-btn" onclick="copyFromGlobal()">
+      <span class="material-symbols-outlined">copy_all</span>Copy from Global
+    </button>`;
+  }
+  rightEl.innerHTML = rightHtml;
+}
+
+function selectCompany(id) {
+  selectedCompanyId = id;
+  bannerDismissed = false;
+  renderCompanyBar();
+  renderRolesList(document.getElementById('roleSearch').value);
+  renderRightPanel();
+}
+
+function copyFromGlobal() {
+  if (selectedCompanyId === 'global') return;
+  const roleId = selectedRoleId;
+  const role = getRole(roleId);
+  if (!role) return;
+
+  if (!companyOverrides[selectedCompanyId]) companyOverrides[selectedCompanyId] = {};
+  companyOverrides[selectedCompanyId][roleId] = {};
+
+  // Copy all module perms from global into overrides
+  MODULES.forEach(m => {
+    companyOverrides[selectedCompanyId][roleId][m.key] = JSON.parse(JSON.stringify(role.perms[m.key]));
+  });
+
+  const company = COMPANIES.find(c => c.id === selectedCompanyId);
+  renderCompanyBar();
+  renderRolesList(document.getElementById('roleSearch').value);
+  renderRightPanel();
+  showToast(`Global permissions copied to ${company ? company.name : selectedCompanyId} for ${role.name}`, 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEFT PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderRolesList(filter) {
+  const container = document.getElementById('rolesList');
+  const empty = document.getElementById('roleEmptyState');
+  const badge = document.getElementById('roleCountBadge');
+  const q = (filter || '').toLowerCase();
+
+  const filtered = roles.filter(r => r.name.toLowerCase().includes(q));
+  badge.textContent = roles.length;
+
+  if (filtered.length === 0) {
+    container.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  container.style.display = 'block';
+  empty.style.display = 'none';
+
+  const isCompanyView = selectedCompanyId !== 'global';
+
+  container.innerHTML = filtered.map(r => {
+    const hasCompanyOverride = isCompanyView && companyRoleHasOverrides(selectedCompanyId, r.id);
+    return `
+    <div class="role-item ${r.id === selectedRoleId ? 'active' : ''}"
+         data-id="${r.id}" onclick="selectRole('${r.id}')">
+      <div class="role-dot" style="background:${r.color}"></div>
+      <div class="role-item-info">
+        <div class="role-item-name-row">
+          <span class="role-item-name">${escHtml(r.name)}</span>
+          ${r.system ? '<span class="system-badge">SYSTEM</span>' : ''}
+          ${hasCompanyOverride ? '<span class="company-override-dot" title="Has company-specific overrides"></span>' : ''}
+        </div>
+        <div class="role-item-users">${r.users} ${r.users===1?'user':'users'}</div>
+      </div>
+      ${!r.system ? '<span class="material-symbols-outlined role-edit-icon">edit</span>' : ''}
+      <span class="material-symbols-outlined role-arrow">chevron_right</span>
+    </div>`;
+  }).join('');
+}
+
+function filterRoles(val) { renderRolesList(val); }
+
+function selectRole(id) {
+  selectedRoleId = id;
+  renderRolesList(document.getElementById('roleSearch').value);
+  renderRightPanel();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RIGHT PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderRightPanel() {
+  const role = getRole(selectedRoleId);
+  if (!role) return;
+
+  const header = document.getElementById('rightPanelHeader');
+  header.classList.add('fade-in');
+  setTimeout(() => header.classList.remove('fade-in'), 300);
+
+  document.getElementById('headerDot').style.background = role.color;
+
+  const nameEl = document.getElementById('headerName');
+  nameEl.textContent = role.name;
+  nameEl.className = 'role-header-name' + (role.system ? ' system' : '');
+  document.getElementById('headerNameInput').style.display = 'none';
+  nameEl.style.display = '';
+
+  document.getElementById('headerSystemBadge').style.display = role.system ? '' : 'none';
+
+  // Breadcrumb context line
+  const breadcrumb = document.getElementById('roleContextBreadcrumb');
+  const company = COMPANIES.find(c => c.id === selectedCompanyId);
+  if (selectedCompanyId === 'global') {
+    breadcrumb.innerHTML = `
+      <span class="material-symbols-outlined ctx-sep" style="font-size:12px;color:var(--text3)">circle</span>
+      <span style="color:var(--text3)">Role: ${escHtml(role.name)}</span>
+      <span class="ctx-sep material-symbols-outlined" style="font-size:14px">chevron_right</span>
+      <span class="ctx-company"><span class="material-symbols-outlined">public</span>Global Default</span>`;
+  } else {
+    breadcrumb.innerHTML = `
+      <span style="color:var(--text3)">Role: ${escHtml(role.name)}</span>
+      <span class="ctx-sep material-symbols-outlined" style="font-size:14px">chevron_right</span>
+      <span class="ctx-company">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${company.dot};margin-right:2px"></span>
+        ${escHtml(company.name)}
+      </span>`;
+  }
+
+  const descEl = document.getElementById('headerDesc');
+  descEl.textContent = role.desc || 'Click to add description';
+  descEl.className = 'role-header-desc' + (role.system ? ' system' : '');
+  document.getElementById('headerDescInput').style.display = 'none';
+  descEl.style.display = '';
+
+  document.getElementById('headerUserCount').textContent = `${role.users} ${role.users===1?'user':'users'}`;
+  document.getElementById('deleteRoleBtn').style.display = role.system ? 'none' : '';
+
+  // Reset button label
+  const resetLabel = document.getElementById('resetBtnLabel');
+  resetLabel.textContent = selectedCompanyId === 'global' ? 'Reset to Default' : 'Reset to Global Default';
+
+  // Inheritance banner
+  renderInheritBanner();
+
+  // Legend
+  document.getElementById('tableLegend').style.display = selectedCompanyId !== 'global' ? 'flex' : 'none';
+
+  renderTable(role);
+}
+
+function renderInheritBanner() {
+  const wrap = document.getElementById('inheritBannerWrap');
+  if (selectedCompanyId === 'global' || bannerDismissed) {
+    wrap.innerHTML = '';
+    return;
+  }
+  const company = COMPANIES.find(c => c.id === selectedCompanyId);
+  wrap.innerHTML = `
+    <div class="inherit-banner">
+      <span class="material-symbols-outlined mat-icon">info</span>
+      Showing <strong>${escHtml(company.name)}</strong> overrides. Cells without a custom value inherit from Global Default.
+      <button class="dismiss-btn" onclick="dismissBanner()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>`;
+}
+
+function dismissBanner() {
+  bannerDismissed = true;
+  document.getElementById('inheritBannerWrap').innerHTML = '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PERMISSION TABLE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderTable(role) {
+  const tbody = document.getElementById('permTableBody');
+  const isSystem = role.system;
+  const isCompanyView = selectedCompanyId !== 'global';
+
+  // Grant All row — compute from effective values
+  const grantAllChecked = (perm) => MODULES.every(m => getEffective(role.id, m.key, perm).value);
+  const allOn = MODULES.every(m => ['view','create','edit','delete'].every(p => getEffective(role.id, m.key, p).value));
+
+  let html = `
+    <tr class="grant-all-row">
+      <td>
+        <div class="module-cell">
+          <div class="grant-all-label">
+            <span class="material-symbols-outlined mat">select_all</span>
+            <div>
+              <p>Grant All Permissions</p>
+              <small>Toggle all modules at once</small>
+            </div>
+          </div>
+        </div>
+      </td>
+      ${['view','create','edit','delete'].map(perm => `
+        <td class="perm-cell grant-all-cell">
+          <div class="toggle-wrap">
+            <label class="toggle ${isSystem ? 'disabled' : ''}" style="--toggle-color:${colorForPerm(perm)}">
+              <input type="checkbox" data-grantall="${perm}"
+                ${grantAllChecked(perm) ? 'checked' : ''} ${isSystem?'disabled':''}
+                onchange="toggleGrantAll('${perm}', this.checked)" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </td>
+      `).join('')}
+      <td class="perm-cell">
+        <div class="toggle-wrap">
+          <label class="toggle ${isSystem ? 'disabled' : ''}" style="--toggle-color:var(--green)">
+            <input type="checkbox" data-grantall="full"
+              ${allOn ? 'checked' : ''} ${isSystem?'disabled':''}
+              onchange="toggleGrantAllFull(this.checked)" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </td>
+    </tr>`;
+
+  MODULES.forEach(m => {
+    const perms = ['view','create','edit','delete'];
+    const effMap = {};
+    perms.forEach(p => { effMap[p] = getEffective(role.id, m.key, p); });
+    const isFull = perms.every(p => effMap[p].value);
+    // Is any perm custom?
+    const anyCustom = perms.some(p => effMap[p].isCustom);
+
+    html += `
+      <tr class="module-row" style="border-left: 3px solid ${m.color}">
+        <td class="module-cell-td">
+          <div class="module-cell">
+            <div class="module-icon-pill" style="background:${m.bg}">
+              <span class="material-symbols-outlined" style="color:${m.color}">${m.icon}</span>
+            </div>
+            <div class="module-info">
+              <div class="module-name">${m.name}</div>
+              <div class="module-desc">${m.desc}</div>
+            </div>
+          </div>
+        </td>
+        ${perms.map(perm => {
+          const eff = effMap[perm];
+          const isInherited = isCompanyView && !eff.isCustom;
+          const isDisabled = isSystem;
+
+          return `<td class="perm-cell ${isInherited ? 'inherited-cell' : ''}" id="cell-${m.key}-${perm}">
+            <div class="perm-cell-inner">
+              ${eff.isCustom ? `<span class="custom-dot-indicator" title="Custom override"></span>` : ''}
+              <label class="toggle ${isDisabled ? 'disabled' : ''} ${isInherited ? 'inherited-toggle' : ''}"
+                style="--toggle-color:${colorForPerm(perm)}">
+                <input type="checkbox" data-module="${m.key}" data-perm="${perm}"
+                  ${eff.value ? 'checked' : ''} ${isDisabled?'disabled':''}
+                  onchange="togglePerm('${m.key}', '${perm}', this.checked, ${isInherited})" />
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              ${isInherited ? `<span class="inherited-label">Inherited</span>` : ''}
+            </div>
+          </td>`;
+        }).join('')}
+        <td class="perm-cell" id="fa-${m.key}">
+          ${renderFullAccessCell(role.id, m.key, isFull, isSystem)}
+        </td>
+      </tr>`;
+  });
+
+  const wrap = document.getElementById('permTableBody').parentElement.parentElement;
+  wrap.classList.add('fade-in');
+  setTimeout(() => wrap.classList.remove('fade-in'), 300);
+
+  tbody.innerHTML = html;
+}
+
+function renderFullAccessCell(roleId, moduleKey, isFull, isSystem) {
+  if (isSystem) {
+    return `<span class="full-access-badge"><span class="material-symbols-outlined">check_circle</span>Full</span>`;
+  }
+  if (isFull) {
+    return `<span class="full-access-badge" style="cursor:pointer" onclick="toggleFullAccess('${moduleKey}', false)">
+      <span class="material-symbols-outlined">check_circle</span>Full
+    </span>`;
+  }
+  return `<span class="full-access-none material-symbols-outlined" style="cursor:pointer;font-size:22px" title="Grant full access" onclick="toggleFullAccess('${moduleKey}', true)">radio_button_unchecked</span>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PERMISSION LOGIC
+// ─────────────────────────────────────────────────────────────────────────────
+
+function togglePerm(moduleKey, perm, val, wasInherited) {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+
+  if (selectedCompanyId === 'global') {
+    // Edit global default directly
+    role.perms[moduleKey][perm] = val;
+    if (perm === 'view' && !val) {
+      role.perms[moduleKey].create = false;
+      role.perms[moduleKey].edit = false;
+      role.perms[moduleKey].delete = false;
+    }
+    if (perm !== 'view' && val) role.perms[moduleKey].view = true;
+    // Also update global defaults store
+    const gd = getGlobal(selectedRoleId);
+    if (gd) gd.perms[moduleKey] = JSON.parse(JSON.stringify(role.perms[moduleKey]));
+
+  } else {
+    // Company view: promote to custom if was inherited
+    if (wasInherited) {
+      // Promote: seed from global then set
+      const seed = JSON.parse(JSON.stringify(role.perms[moduleKey]));
+      if (!companyOverrides[selectedCompanyId]) companyOverrides[selectedCompanyId] = {};
+      if (!companyOverrides[selectedCompanyId][selectedRoleId]) companyOverrides[selectedCompanyId][selectedRoleId] = {};
+      companyOverrides[selectedCompanyId][selectedRoleId][moduleKey] = seed;
+    }
+    setCompanyOverride(selectedCompanyId, selectedRoleId, moduleKey, perm, val);
+    // Cascade logic inside company override
+    const co = companyOverrides[selectedCompanyId][selectedRoleId][moduleKey];
+    if (perm === 'view' && !val) {
+      co.create = false; co.edit = false; co.delete = false;
+    }
+    if (perm !== 'view' && val) co.view = true;
+  }
+
+  syncModuleRow(moduleKey);
+  syncGrantAllRow();
+  renderCompanyBar();
+  renderRolesList(document.getElementById('roleSearch').value);
+}
+
+function syncModuleRow(moduleKey) {
+  const role = getRole(selectedRoleId);
+  if (!role) return;
+  const isSystem = role.system;
+  const isCompanyView = selectedCompanyId !== 'global';
+  const perms = ['view','create','edit','delete'];
+
+  perms.forEach(perm => {
+    const eff = getEffective(selectedRoleId, moduleKey, perm);
+    const isInherited = isCompanyView && !eff.isCustom;
+    const inp = document.querySelector(`input[data-module="${moduleKey}"][data-perm="${perm}"]`);
+    const cellEl = document.getElementById(`cell-${moduleKey}-${perm}`);
+    if (inp) {
+      inp.checked = eff.value;
+      // Update inherited attribute for onclick
+      inp.setAttribute('onchange', `togglePerm('${moduleKey}', '${perm}', this.checked, ${isInherited})`);
+    }
+    if (cellEl) {
+      cellEl.className = `perm-cell ${isInherited ? 'inherited-cell' : ''} cell-fade`;
+      setTimeout(() => cellEl.classList.remove('cell-fade'), 250);
+      // Update inner: custom dot + toggle class + inherited label
+      const inner = cellEl.querySelector('.perm-cell-inner');
+      if (inner) {
+        const toggleEl = inner.querySelector('.toggle');
+        if (toggleEl) {
+          toggleEl.className = `toggle ${isSystem ? 'disabled' : ''} ${isInherited ? 'inherited-toggle' : ''}`;
+        }
+        // Custom dot
+        let dotEl = inner.querySelector('.custom-dot-indicator');
+        if (eff.isCustom && !dotEl) {
+          dotEl = document.createElement('span');
+          dotEl.className = 'custom-dot-indicator';
+          dotEl.title = 'Custom override';
+          inner.insertBefore(dotEl, inner.firstChild);
+        } else if (!eff.isCustom && dotEl) {
+          dotEl.remove();
+        }
+        // Inherited label
+        let labelEl = inner.querySelector('.inherited-label');
+        if (isInherited && !labelEl) {
+          labelEl = document.createElement('span');
+          labelEl.className = 'inherited-label';
+          labelEl.textContent = 'Inherited';
+          inner.appendChild(labelEl);
+        } else if (!isInherited && labelEl) {
+          labelEl.remove();
+        }
+      }
+    }
+  });
+
+  const effAll = perms.every(p => getEffective(selectedRoleId, moduleKey, p).value);
+  const faCell = document.getElementById(`fa-${moduleKey}`);
+  if (faCell) faCell.innerHTML = renderFullAccessCell(selectedRoleId, moduleKey, effAll, isSystem);
+}
+
+function syncGrantAllRow() {
+  const perms = ['view','create','edit','delete'];
+  perms.forEach(perm => {
+    const inp = document.querySelector(`input[data-grantall="${perm}"]`);
+    if (inp) inp.checked = MODULES.every(m => getEffective(selectedRoleId, m.key, perm).value);
+  });
+  const fullInp = document.querySelector(`input[data-grantall="full"]`);
+  if (fullInp) fullInp.checked = MODULES.every(m =>
+    perms.every(p => getEffective(selectedRoleId, m.key, p).value)
+  );
+}
+
+function toggleFullAccess(moduleKey, val) {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+
+  if (selectedCompanyId === 'global') {
+    role.perms[moduleKey] = { view:val, create:val, edit:val, delete:val };
+    const gd = getGlobal(selectedRoleId);
+    if (gd) gd.perms[moduleKey] = { view:val, create:val, edit:val, delete:val };
+  } else {
+    if (!companyOverrides[selectedCompanyId]) companyOverrides[selectedCompanyId] = {};
+    if (!companyOverrides[selectedCompanyId][selectedRoleId]) companyOverrides[selectedCompanyId][selectedRoleId] = {};
+    companyOverrides[selectedCompanyId][selectedRoleId][moduleKey] = { view:val, create:val, edit:val, delete:val };
+  }
+
+  syncModuleRow(moduleKey);
+  syncGrantAllRow();
+  renderCompanyBar();
+  renderRolesList(document.getElementById('roleSearch').value);
+}
+
+function toggleGrantAll(perm, val) {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+
+  MODULES.forEach(m => {
+    if (selectedCompanyId === 'global') {
+      role.perms[m.key][perm] = val;
+      if (perm === 'view' && !val) { role.perms[m.key].create = false; role.perms[m.key].edit = false; role.perms[m.key].delete = false; }
+      if (perm !== 'view' && val) role.perms[m.key].view = true;
+      const gd = getGlobal(selectedRoleId);
+      if (gd) gd.perms[m.key] = JSON.parse(JSON.stringify(role.perms[m.key]));
+    } else {
+      // Promote all inherited cells when toggling grant-all in company view
+      const eff = getEffective(selectedRoleId, m.key, perm);
+      if (!eff.isCustom) {
+        // Seed module override from global
+        if (!companyOverrides[selectedCompanyId]) companyOverrides[selectedCompanyId] = {};
+        if (!companyOverrides[selectedCompanyId][selectedRoleId]) companyOverrides[selectedCompanyId][selectedRoleId] = {};
+        if (!companyOverrides[selectedCompanyId][selectedRoleId][m.key]) {
+          companyOverrides[selectedCompanyId][selectedRoleId][m.key] = JSON.parse(JSON.stringify(role.perms[m.key]));
+        }
+      }
+      setCompanyOverride(selectedCompanyId, selectedRoleId, m.key, perm, val);
+      const co = companyOverrides[selectedCompanyId][selectedRoleId][m.key];
+      if (perm === 'view' && !val) { co.create = false; co.edit = false; co.delete = false; }
+      if (perm !== 'view' && val) co.view = true;
+    }
+  });
+
+  MODULES.forEach(m => syncModuleRow(m.key));
+  syncGrantAllRow();
+  renderCompanyBar();
+  renderRolesList(document.getElementById('roleSearch').value);
+}
+
+function toggleGrantAllFull(val) {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+
+  MODULES.forEach(m => {
+    if (selectedCompanyId === 'global') {
+      role.perms[m.key] = { view:val, create:val, edit:val, delete:val };
+      const gd = getGlobal(selectedRoleId);
+      if (gd) gd.perms[m.key] = { view:val, create:val, edit:val, delete:val };
+    } else {
+      if (!companyOverrides[selectedCompanyId]) companyOverrides[selectedCompanyId] = {};
+      if (!companyOverrides[selectedCompanyId][selectedRoleId]) companyOverrides[selectedCompanyId][selectedRoleId] = {};
+      companyOverrides[selectedCompanyId][selectedRoleId][m.key] = { view:val, create:val, edit:val, delete:val };
+    }
+  });
+
+  MODULES.forEach(m => syncModuleRow(m.key));
+  syncGrantAllRow();
+  renderCompanyBar();
+  renderRolesList(document.getElementById('roleSearch').value);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NAME EDIT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function startEditName() {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+  const nameEl = document.getElementById('headerName');
+  const input = document.getElementById('headerNameInput');
+  input.value = role.name;
+  nameEl.style.display = 'none';
+  input.style.display = '';
+  input.focus(); input.select();
+}
+function finishEditName() {
+  const role = getRole(selectedRoleId);
+  if (!role) return;
+  const input = document.getElementById('headerNameInput');
+  const nameEl = document.getElementById('headerName');
+  const newName = input.value.trim();
+  if (newName) { role.name = newName; nameEl.textContent = newName; renderRolesList(document.getElementById('roleSearch').value); }
+  input.style.display = 'none'; nameEl.style.display = '';
+}
+function nameKeydown(e) {
+  if (e.key === 'Enter') e.target.blur();
+  if (e.key === 'Escape') { const role = getRole(selectedRoleId); document.getElementById('headerNameInput').value = role ? role.name : ''; e.target.blur(); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DESC EDIT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function startEditDesc() {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+  const descEl = document.getElementById('headerDesc');
+  const input = document.getElementById('headerDescInput');
+  input.value = role.desc || '';
+  descEl.style.display = 'none';
+  input.style.display = '';
+  input.focus();
+}
+function finishEditDesc() {
+  const role = getRole(selectedRoleId);
+  if (!role) return;
+  const input = document.getElementById('headerDescInput');
+  const descEl = document.getElementById('headerDesc');
+  const newDesc = input.value.trim();
+  role.desc = newDesc || 'Click to add description';
+  descEl.textContent = role.desc;
+  input.style.display = 'none'; descEl.style.display = '';
+}
+function descKeydown(e) {
+  if (e.key === 'Enter') e.target.blur();
+  if (e.key === 'Escape') e.target.blur();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROLE MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function duplicateRole() {
+  const role = getRole(selectedRoleId);
+  if (!role) return;
+  const newRole = {
+    id: uniqueId(),
+    name: 'Copy of ' + role.name,
+    desc: role.desc,
+    color: role.color,
+    users: 0,
+    system: false,
+    perms: JSON.parse(JSON.stringify(role.perms)),
+  };
+
+  // In company view: also copy company overrides for this role
+  if (selectedCompanyId !== 'global') {
+    const co = companyOverrides[selectedCompanyId];
+    if (co && co[selectedRoleId]) {
+      if (!companyOverrides[selectedCompanyId]) companyOverrides[selectedCompanyId] = {};
+      companyOverrides[selectedCompanyId][newRole.id] = JSON.parse(JSON.stringify(co[selectedRoleId]));
+    }
+  }
+
+  roles.push(newRole);
+  selectRole(newRole.id);
+  const company = COMPANIES.find(c => c.id === selectedCompanyId);
+  showToast(`Role duplicated: ${newRole.name}${selectedCompanyId !== 'global' ? ' · ' + company.name : ''}`, 'success');
+}
+
+function addNewRole() {
+  const newRole = {
+    id: uniqueId(),
+    name: 'New Role',
+    desc: 'Click to add description',
+    color: '#6366F1',
+    users: 0,
+    system: false,
+    perms: blankPerms(),
+  };
+  roles.push(newRole);
+  document.getElementById('roleSearch').value = '';
+  selectRole(newRole.id);
+  setTimeout(() => startEditName(), 80);
+  showToast('New role created. Enter a name to get started.', 'success');
+}
+
+function deleteRole() {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+  if (!confirm(`Delete the role "${role.name}"? This cannot be undone.`)) return;
+  const idx = roles.findIndex(r => r.id === selectedRoleId);
+  roles.splice(idx, 1);
+  // Clean up company overrides for this role
+  Object.keys(companyOverrides).forEach(cid => {
+    if (companyOverrides[cid][selectedRoleId]) delete companyOverrides[cid][selectedRoleId];
+  });
+  const newIdx = Math.max(0, Math.min(idx, roles.length - 1));
+  selectRole(roles[newIdx].id);
+  showToast(`Role "${role.name}" deleted.`, 'error');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESET & SAVE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function resetToDefault() {
+  const role = getRole(selectedRoleId);
+  if (!role || role.system) return;
+
+  if (selectedCompanyId === 'global') {
+    // Reset to initial global defaults
+    const orig = GLOBAL_DEFAULTS_INIT.find(r => r.id === selectedRoleId);
+    if (!orig) return;
+    role.perms = JSON.parse(JSON.stringify(orig.perms));
+    const gd = getGlobal(selectedRoleId);
+    if (gd) gd.perms = JSON.parse(JSON.stringify(orig.perms));
+    renderTable(role);
+    showToast(`Permissions reset to default for ${role.name}`, 'success');
+  } else {
+    const company = COMPANIES.find(c => c.id === selectedCompanyId);
+    if (!confirm(`Remove all custom overrides for "${role.name}" in ${company ? company.name : selectedCompanyId}? They will inherit from Global Default.`)) return;
+    clearCompanyRoleOverrides(selectedCompanyId, selectedRoleId);
+    renderCompanyBar();
+    renderRolesList(document.getElementById('roleSearch').value);
+    renderRightPanel();
+    showToast(`${role.name} overrides cleared for ${company ? company.name : selectedCompanyId}. Now inheriting Global Default.`, 'success');
+  }
+}
+
+function saveChanges() {
+  const role = getRole(selectedRoleId);
+  if (!role) return;
+  const company = COMPANIES.find(c => c.id === selectedCompanyId);
+  const ctx = selectedCompanyId === 'global' ? 'Global Default' : (company ? company.name : selectedCompanyId);
+  showToast(`Permissions saved for ${role.name} · ${ctx}`, 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────────────────────────────────
+
+function showToast(msg, type) {
+  const container = document.getElementById('toastContainer');
+  const icons = { success: 'check_circle', error: 'delete', default: 'info' };
+  const icon = icons[type] || icons.default;
+  const div = document.createElement('div');
+  div.className = `toast ${type || ''}`;
+  div.innerHTML = `<span class="material-symbols-outlined">${icon}</span>${escHtml(msg)}`;
+  container.appendChild(div);
+  setTimeout(() => {
+    div.style.animation = 'fadeOut 0.25s ease forwards';
+    setTimeout(() => div.remove(), 300);
+  }, 3500);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
+
+(function init() {
+  renderCompanyBar();
+  renderRolesList();
+  renderRightPanel();
+})();
+</script>
+</body>
+</html>

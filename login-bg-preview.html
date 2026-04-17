@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Workiya — Login Background Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0F172A; }
+
+/* ── Nav ── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; gap: 10px; padding: 16px 24px;
+  background: rgba(15,23,42,.85); backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.nav-btn {
+  padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,.15);
+  background: transparent; color: #94A3B8; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.nav-btn:hover, .nav-btn.active { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
+.nav-title { margin-left: auto; color: #475569; font-size: 12px; align-self: center; }
+
+/* ── Sections ── */
+section {
+  width: 100%; height: 100vh; display: flex;
+  align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+
+/* ── Login card (same in all) ── */
+.card {
+  position: relative; z-index: 10;
+  background: rgba(255,255,255,.92); backdrop-filter: blur(20px);
+  border-radius: 20px; padding: 40px 44px; width: 380px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.25);
+}
+.card-logo {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: linear-gradient(135deg,#1E3A8A,#3B5FCF);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 20px;
+}
+.card h2 { font-size: 22px; font-weight: 700; color: #0F172A; margin-bottom: 4px; }
+.card p  { font-size: 13px; color: #64748B; margin-bottom: 24px; }
+.card input {
+  width: 100%; padding: 11px 14px; border-radius: 10px;
+  border: 1.5px solid #E2E8F0; font-size: 14px; font-family: inherit;
+  margin-bottom: 12px; outline: none; transition: border .15s;
+}
+.card input:focus { border-color: #1E3A8A; }
+.card button {
+  width: 100%; padding: 12px; border-radius: 10px;
+  background: linear-gradient(135deg,#1E3A8A,#3B5FCF);
+  color: #fff; font-size: 14px; font-weight: 700;
+  border: none; cursor: pointer; font-family: inherit; margin-top: 4px;
+}
+.label {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(15,23,42,.7); color: #fff; font-size: 12px; font-weight: 600;
+  padding: 6px 16px; border-radius: 20px; white-space: nowrap; z-index: 10;
+  backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.1);
+}
+
+/* ══════════════════════════════════════════
+   1. ANIMATED GRADIENT MESH
+══════════════════════════════════════════ */
+#bg1 { background: #0a0f1e; }
+
+.mesh-blob {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); opacity: .7; animation: drift linear infinite;
+}
+.mb1 { width:500px;height:500px;background:radial-gradient(#1E3A8A,transparent); top:-100px;left:-100px; animation-duration:18s; }
+.mb2 { width:400px;height:400px;background:radial-gradient(#3B5FCF,transparent); bottom:-80px;right:-80px; animation-duration:22s;animation-delay:-6s; }
+.mb3 { width:350px;height:350px;background:radial-gradient(#6366F1,transparent); top:30%;left:30%; animation-duration:16s;animation-delay:-10s; }
+.mb4 { width:300px;height:300px;background:radial-gradient(#0EA5E9,transparent); bottom:20%;left:10%; animation-duration:20s;animation-delay:-3s; }
+
+@keyframes drift {
+  0%   { transform: translate(0,0) scale(1); }
+  25%  { transform: translate(40px,-30px) scale(1.05); }
+  50%  { transform: translate(-20px,50px) scale(.95); }
+  75%  { transform: translate(30px,20px) scale(1.08); }
+  100% { transform: translate(0,0) scale(1); }
+}
+
+/* ══════════════════════════════════════════
+   2. PARTICLE NETWORK
+══════════════════════════════════════════ */
+#bg2 { background: #060D1F; }
+#particleCanvas { position:absolute;top:0;left:0;width:100%;height:100%; }
+
+/* ══════════════════════════════════════════
+   3. AURORA / NOISE GRADIENT
+══════════════════════════════════════════ */
+#bg3 {
+  background: linear-gradient(135deg, #0D1B3E 0%, #0F172A 40%, #1a1040 70%, #0D1B3E 100%);
+}
+.aurora {
+  position:absolute; width:100%;height:100%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(30,58,138,.18) 20%,
+    rgba(99,102,241,.22) 40%,
+    rgba(14,165,233,.18) 60%,
+    rgba(139,92,246,.12) 80%,
+    transparent 100%
+  );
+  animation: auroraMove 8s ease-in-out infinite alternate;
+  filter: blur(30px);
+}
+.aurora2 {
+  position:absolute; width:120%;height:120%;left:-10%;top:-10%;
+  background: radial-gradient(ellipse 80% 50% at 60% 40%, rgba(59,95,207,.25), transparent 70%),
+              radial-gradient(ellipse 60% 40% at 20% 70%, rgba(99,102,241,.2), transparent 60%);
+  animation: auroraMove2 12s ease-in-out infinite alternate;
+}
+.noise {
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  opacity:.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+@keyframes auroraMove  { from{transform:translateY(0) skewX(0deg)} to{transform:translateY(-40px) skewX(3deg)} }
+@keyframes auroraMove2 { from{transform:rotate(-2deg) scale(1)} to{transform:rotate(2deg) scale(1.05)} }
+
+/* ══════════════════════════════════════════
+   4. GEOMETRIC GRID
+══════════════════════════════════════════ */
+#bg4 { background: #060D1F; }
+.grid-wrap {
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  perspective: 600px;
+}
+.grid-plane {
+  position:absolute; width:200%; height:200%;
+  left:-50%; top:20%;
+  transform: rotateX(55deg);
+  background-image:
+    linear-gradient(rgba(30,58,138,.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,58,138,.4) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridMove 4s linear infinite;
+}
+.grid-glow {
+  position:absolute; bottom:0;left:0;right:0;height:60%;
+  background: linear-gradient(to top, #060D1F 20%, transparent);
+}
+.grid-glow-top {
+  position:absolute; top:0;left:0;right:0;height:40%;
+  background: linear-gradient(to bottom, #060D1F 10%, transparent);
+}
+.grid-accent {
+  position:absolute; width:300px;height:300px;
+  border-radius:50%;
+  background: radial-gradient(circle, rgba(59,95,207,.3) 0%, transparent 70%);
+  top:10%; left:50%; transform:translateX(-50%);
+  filter: blur(40px);
+  animation: pulse 3s ease-in-out infinite;
+}
+@keyframes gridMove { from{background-position:0 0} to{background-position:0 60px} }
+@keyframes pulse { 0%,100%{opacity:.6;transform:translateX(-50%) scale(1)} 50%{opacity:1;transform:translateX(-50%) scale(1.1)} }
+
+/* ══════════════════════════════════════════
+   5. GLASSMORPHISM BLOBS
+══════════════════════════════════════════ */
+#bg5 { background: linear-gradient(135deg,#0a0f1e,#111827); }
+
+.glass-blob {
+  position:absolute; border-radius:50%;
+  animation: blobFloat ease-in-out infinite alternate;
+}
+.gb1 { width:420px;height:420px;top:-60px;left:-60px;
+  background: rgba(30,58,138,.5); filter:blur(60px);
+  animation-duration:7s; }
+.gb2 { width:350px;height:350px;bottom:-40px;right:-40px;
+  background: rgba(99,102,241,.45); filter:blur(55px);
+  animation-duration:9s;animation-delay:-3s; }
+.gb3 { width:280px;height:280px;top:40%;left:55%;
+  background: rgba(14,165,233,.35); filter:blur(50px);
+  animation-duration:6s;animation-delay:-1s; }
+.gb4 { width:220px;height:220px;bottom:15%;left:8%;
+  background: rgba(139,92,246,.4); filter:blur(45px);
+  animation-duration:8s;animation-delay:-4s; }
+
+@keyframes blobFloat {
+  from{transform:translate(0,0) scale(1)}
+  to{transform:translate(25px,-25px) scale(1.06)}
+}
+
+/* glass card override for bg5 */
+#bg5 .card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(24px);
+}
+#bg5 .card h2 { color:#fff; }
+#bg5 .card p  { color:rgba(255,255,255,.55); }
+#bg5 .card input { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); color:#fff; }
+#bg5 .card input::placeholder { color:rgba(255,255,255,.35); }
+#bg5 .card input:focus { border-color:rgba(99,102,241,.7); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<div class="nav">
+  <button class="nav-btn active" onclick="scrollTo(0)">1. Gradient Mesh ⭐</button>
+  <button class="nav-btn" onclick="go(1)">2. Particle Network</button>
+  <button class="nav-btn" onclick="go(2)">3. Aurora Gradient</button>
+  <button class="nav-btn" onclick="go(3)">4. Geometric Grid</button>
+  <button class="nav-btn" onclick="go(4)">5. Glassmorphism</button>
+  <span class="nav-title">Click buttons or scroll to compare</span>
+</div>
+
+<!-- 1. Animated Gradient Mesh -->
+<section id="bg1">
+  <div class="mesh-blob mb1"></div>
+  <div class="mesh-blob mb2"></div>
+  <div class="mesh-blob mb3"></div>
+  <div class="mesh-blob mb4"></div>
+  <div class="card">
+    <div class="card-logo">💼</div>
+    <h2>Welcome back</h2>
+    <p>Sign in to your Workiya account</p>
+    <input type="email" placeholder="admin@workiya.com" />
+    <input type="password" placeholder="Password" />
+    <button>Sign In →</button>
+  </div>
+  <div class="label">1 · Animated Gradient Mesh — ⭐ Recommended</div>
+</section>
+
+<!-- 2. Particle Network -->
+<section id="bg2">
+  <canvas id="particleCanvas"></canvas>
+  <div class="card">
+    <div class="card-logo">💼</div>
+    <h2>Welcome back</h2>
+    <p>Sign in to your Workiya account</p>
+    <input type="email" placeholder="admin@workiya.com" />
+    <input type="password" placeholder="Password" />
+    <button>Sign In →</button>
+  </div>
+  <div class="label">2 · Particle Network</div>
+</section>
+
+<!-- 3. Aurora Gradient -->
+<section id="bg3">
+  <div class="aurora"></div>
+  <div class="aurora2"></div>
+  <div class="noise"></div>
+  <div class="card">
+    <div class="card-logo">💼</div>
+    <h2>Welcome back</h2>
+    <p>Sign in to your Workiya account</p>
+    <input type="email" placeholder="admin@workiya.com" />
+    <input type="password" placeholder="Password" />
+    <button>Sign In →</button>
+  </div>
+  <div class="label">3 · Aurora / Noise Gradient</div>
+</section>
+
+<!-- 4. Geometric Grid -->
+<section id="bg4">
+  <div class="grid-wrap">
+    <div class="grid-plane"></div>
+    <div class="grid-glow"></div>
+    <div class="grid-glow-top"></div>
+  </div>
+  <div class="grid-accent"></div>
+  <div class="card">
+    <div class="card-logo">💼</div>
+    <h2>Welcome back</h2>
+    <p>Sign in to your Workiya account</p>
+    <input type="email" placeholder="admin@workiya.com" />
+    <input type="password" placeholder="Password" />
+    <button>Sign In →</button>
+  </div>
+  <div class="label">4 · Geometric Grid</div>
+</section>
+
+<!-- 5. Glassmorphism Blobs -->
+<section id="bg5">
+  <div class="glass-blob gb1"></div>
+  <div class="glass-blob gb2"></div>
+  <div class="glass-blob gb3"></div>
+  <div class="glass-blob gb4"></div>
+  <div class="card">
+    <div class="card-logo">💼</div>
+    <h2>Welcome back</h2>
+    <p>Sign in to your Workiya account</p>
+    <input type="email" placeholder="admin@workiya.com" />
+    <input type="password" placeholder="Password" />
+    <button>Sign In →</button>
+  </div>
+  <div class="label">5 · Glassmorphism Blobs</div>
+</section>
+
+<script>
+// Nav scroll
+const sections = document.querySelectorAll('section');
+const btns = document.querySelectorAll('.nav-btn');
+function go(i) { sections[i].scrollIntoView({ behavior: 'smooth' }); }
+window.addEventListener('scroll', () => {
+  let cur = 0;
+  sections.forEach((s,i) => { if (window.scrollY >= s.offsetTop - 200) cur = i; });
+  btns.forEach((b,i) => b.classList.toggle('active', i === cur));
+});
+
+// Particle Network
+const canvas = document.getElementById('particleCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles;
+
+function resize() {
+  W = canvas.width  = canvas.offsetWidth;
+  H = canvas.height = canvas.offsetHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); init(); });
+
+function init() {
+  particles = Array.from({ length: 80 }, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - .5) * .5, vy: (Math.random() - .5) * .5,
+    r: Math.random() * 2 + 1
+  }));
+}
+init();
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > W) p.vx *= -1;
+    if (p.y < 0 || p.y > H) p.vy *= -1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(99,102,241,.7)';
+    ctx.fill();
+  });
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i+1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 120) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(99,102,241,${.4 * (1 - dist/120)})`;
+        ctx.lineWidth = .8;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
