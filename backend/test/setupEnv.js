@@ -1,9 +1,10 @@
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 
+// eslint-disable-next-line n/no-sync -- one-time test key generation at load time
 const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
   modulusLength: 2048,
   publicKeyEncoding: { type: "spki", format: "pem" },
-  privateKeyEncoding: { type: "pkcs8", format: "pem" }
+  privateKeyEncoding: { type: "pkcs8", format: "pem" },
 });
 
 process.env.NODE_ENV = "test";

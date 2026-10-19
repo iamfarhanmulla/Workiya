@@ -4,7 +4,9 @@ jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: 
 
 const request = require("supertest");
 const app = require("../app");
-const { XHR, USERS, authCookie, mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const {
+  XHR, USERS, authCookie, mockPool, rows, affected,
+} = require("../../test/helpers/apiHarness");
 
 function call(method, url, user = USERS.superAdmin) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
@@ -31,7 +33,7 @@ describe("company.controller", () => {
 
   it.each([
     [[rows()], 404],
-    [[rows({ Id: 2 })], 200]
+    [[rows({ Id: 2 })], 200],
   ])("reads one company", async (responses, status) => {
     // Arrange
     mockPool(mockConnectDb, responses);
@@ -57,7 +59,7 @@ describe("company.controller", () => {
 
   it.each([
     [{}, [], 400],
-    [{ name: "Acme" }, [rows({ Id: 1 })], 409]
+    [{ name: "Acme" }, [rows({ Id: 1 })], 409],
   ])("rejects a company create %p", async (body, responses, status) => {
     // Arrange
     mockPool(mockConnectDb, responses);
@@ -71,7 +73,7 @@ describe("company.controller", () => {
 
   it.each([
     [[rows()], 404],
-    [[rows({ Id: 2 }), affected(1)], 200]
+    [[rows({ Id: 2 }), affected(1)], 200],
   ])("updates a company", async (responses, status) => {
     // Arrange
     mockPool(mockConnectDb, responses);
@@ -86,7 +88,7 @@ describe("company.controller", () => {
   it.each([
     [{ isActive: true }, 200, "Company activated."],
     [{ isActive: false }, 200, "Company deactivated."],
-    [{}, 400, "isActive is required."]
+    [{}, 400, "isActive is required."],
   ])("toggles company status %p", async (body, status, message) => {
     // Arrange
     mockPool(mockConnectDb, [affected(1)]);
@@ -116,7 +118,7 @@ describe("company.controller", () => {
     ["post", "/companies"],
     ["put", "/companies/2"],
     ["patch", "/companies/2/status"],
-    ["delete", "/companies/2"]
+    ["delete", "/companies/2"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
     mockPool(mockConnectDb, [new Error("db down")]);

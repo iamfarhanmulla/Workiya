@@ -23,7 +23,7 @@ describe("toUserDto", () => {
       middleName: null,
       lastName: "G",
       phoneNumber: null,
-      status: 1
+      status: 1,
     });
   });
 

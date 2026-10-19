@@ -20,9 +20,15 @@ describe("authCookies", () => {
     const [, rtValue, rtOptions] = cookieCall(res, "wk_rt");
     const [, sessionValue, sessionOptions] = cookieCall(res, "wk_session");
     expect([atValue, rtValue, sessionValue]).toEqual(["at", "rt", "1"]);
-    expect(atOptions).toEqual({ httpOnly: true, sameSite: "strict", secure: false, path: "/", maxAge: 900000 });
-    expect(rtOptions).toEqual({ httpOnly: true, sameSite: "strict", secure: false, path: REFRESH_PATH });
-    expect(sessionOptions).toEqual({ httpOnly: true, sameSite: "strict", secure: false, path: "/" });
+    expect(atOptions).toEqual({
+      httpOnly: true, sameSite: "strict", secure: false, path: "/", maxAge: 900000,
+    });
+    expect(rtOptions).toEqual({
+      httpOnly: true, sameSite: "strict", secure: false, path: REFRESH_PATH,
+    });
+    expect(sessionOptions).toEqual({
+      httpOnly: true, sameSite: "strict", secure: false, path: "/",
+    });
   });
 
   it("gives persistent cookies the remaining server-side lifetime", () => {
@@ -31,7 +37,9 @@ describe("authCookies", () => {
     const refreshExpiresAt = new Date(Date.now() + 10 * DAY_MS);
 
     // Act
-    setAuthCookies(res, { accessToken: "at", refreshToken: "rt", isPersistent: true, refreshExpiresAt });
+    setAuthCookies(res, {
+      accessToken: "at", refreshToken: "rt", isPersistent: true, refreshExpiresAt,
+    });
 
     // Assert
     const rtMaxAge = cookieCall(res, "wk_rt")[2].maxAge;
@@ -59,8 +67,9 @@ describe("authCookies", () => {
       jest.doMock("../config/env", () => ({
         ...jest.requireActual("../config/env"),
         secureCookies: true,
-        cookieDomain: ".example.com"
+        cookieDomain: ".example.com",
       }));
+      // eslint-disable-next-line n/global-require -- reload inside isolateModules with new env
       cookies = require("./authCookies");
     });
 
@@ -69,7 +78,8 @@ describe("authCookies", () => {
     cookies.clearAuthCookies(res);
 
     // Assert
-    const options = [...res.cookie.mock.calls, ...res.clearCookie.mock.calls].map((call) => call[call.length - 1]);
+    const options = [...res.cookie.mock.calls, ...res.clearCookie.mock.calls]
+      .map((call) => call[call.length - 1]);
     expect(options).toHaveLength(6);
     options.forEach((option) => {
       expect(option).toMatchObject({ secure: true, domain: ".example.com" });
@@ -89,7 +99,7 @@ describe("authCookies", () => {
     expect(cleared).toEqual([
       ["wk_at", "/"],
       ["wk_rt", REFRESH_PATH],
-      ["wk_session", "/"]
+      ["wk_session", "/"],
     ]);
   });
 });

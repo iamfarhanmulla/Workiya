@@ -1,25 +1,35 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import {
+  useState, useEffect, useRef, useCallback, memo,
+} from "react";
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { api, getErrorMessage } from "@/lib/apiClient";
+import activateOnKey from "@/app/dashboard/_utils/activateOnKey";
 
-const AVATAR_COLORS = ["#8B5CF6","#10B981","#1E3A8A","#F59E0B","#EF4444","#06B6D4","#D946EF","#3B5FCF"];
+const AVATAR_COLORS = [
+  "#8B5CF6", "#10B981", "#1E3A8A", "#F59E0B", "#EF4444", "#06B6D4", "#D946EF", "#3B5FCF",
+];
 const avatarColor = (id) => AVATAR_COLORS[id % AVATAR_COLORS.length];
-const initials    = (e) => ((e.FirstName?.[0] || "") + (e.LastName?.[0] || "")).toUpperCase() || e.Email?.[0]?.toUpperCase() || "?";
-const fullName    = (e) => `${e.FirstName || ""} ${e.LastName || ""}`.trim() || e.DisplayName || e.Email || "—";
+const initials = (e) => ((e.FirstName?.[0] || "") + (e.LastName?.[0] || "")).toUpperCase()
+  || e.Email?.[0]?.toUpperCase()
+  || "?";
+const fullName = (e) => `${e.FirstName || ""} ${e.LastName || ""}`.trim()
+  || e.DisplayName
+  || e.Email
+  || "—";
 
 function useCountUp(target, active, duration = 1200) {
   const [val, setVal] = useState(0);
   const raf = useRef(null);
   useEffect(() => {
-    if (!active) return;
+    if (!active) return undefined;
     let start = null;
     const step = (ts) => {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
-      setVal((1 - Math.pow(1 - p, 3)) * target);
+      setVal((1 - (1 - p) ** 3) * target);
       if (p < 1) raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
@@ -28,13 +38,22 @@ function useCountUp(target, active, duration = 1200) {
   return val;
 }
 
-const StatCard = memo(function StatCard({ icon, bg, color, label, value, sub, index, active }) {
+// Named function: keeps "StatCard" as the component name in React DevTools and error stacks.
+// eslint-disable-next-line prefer-arrow-callback -- see comment above
+const StatCard = memo(function StatCard({
+  icon, bg, color, label, value, sub, index, active,
+}) {
   const count = useCountUp(value, active);
   return (
     <div className="stat-card dash-anim-card" style={{ "--card-delay": `${index * 0.08}s` }}>
       <div className="stat-card-top">
         <div className="stat-icon" style={{ background: bg }}>
-          <span className="material-symbols-outlined" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+          <span
+            className="material-symbols-outlined"
+            style={{ color, fontVariationSettings: "'FILL' 1" }}
+          >
+            {icon}
+          </span>
         </div>
       </div>
       <p className="stat-label">{label}</p>
@@ -45,39 +64,76 @@ const StatCard = memo(function StatCard({ icon, bg, color, label, value, sub, in
 });
 
 const EMPTY_FORM = {
-  firstName: "", lastName: "", middleName: "", email: "",
-  phoneNumber: "", displayName: "", companyId: "", managerId: "", password: "", isActive: 1,
+  firstName: "",
+  lastName: "",
+  middleName: "",
+  email: "",
+  phoneNumber: "",
+  displayName: "",
+  companyId: "",
+  managerId: "",
+  password: "",
+  isActive: 1,
 };
 
+// Task progress bar (pure, so it lives outside the page component).
+function ProgressBar({ done, total }) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6, minWidth: 100,
+    }}
+    >
+      <div style={{
+        flex: 1, height: 5, borderRadius: 99, background: "#E2E8F0", overflow: "hidden",
+      }}
+      >
+        <div style={{
+          width: `${pct}%`,
+          height: "100%",
+          borderRadius: 99,
+          background: pct === 100 ? "#10B981" : "#1E3A8A",
+        }}
+        />
+      </div>
+      <span style={{ fontSize: 11, color: "#64748B", whiteSpace: "nowrap" }}>{done}/{total}</span>
+    </div>
+  );
+}
+
 export default function EmployeesPage() {
-  const [employees,  setEmployees]  = useState([]);
-  const [companies,  setCompanies]  = useState([]);
-  const [managers,   setManagers]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState(null);
-  const [active,     setActive]     = useState(false);
-  const [search,     setSearch]     = useState("");
+  const [employees, setEmployees] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [managers, setManagers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [active, setActive] = useState(false);
+  const [search, setSearch] = useState("");
   const [compFilter, setCompFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [showModal,  setShowModal]  = useState(false);
-  const [viewModal,  setViewModal]  = useState(false);
-  const [editEmp,    setEditEmp]    = useState(null);
-  const [viewEmp,    setViewEmp]    = useState(null);
-  const [form,       setForm]       = useState(EMPTY_FORM);
-  const [saving,     setSaving]     = useState(false);
-  const [formError,  setFormError]  = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [viewModal, setViewModal] = useState(false);
+  const [editEmp, setEditEmp] = useState(null);
+  const [viewEmp, setViewEmp] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
   const { toasts, showToast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true);
-      const res  = await api.get("/employees");
+      const res = await api.get("/employees");
       const json = res.data;
       if (json.success) setEmployees(json.data);
       else setError("Failed to load employees.");
-    } catch (err) { setError(err.response ? "Failed to load employees." : "Cannot connect to server."); }
-    finally { setLoading(false); setTimeout(() => setActive(true), 50); }
+    } catch (err) {
+      setError(err.response ? "Failed to load employees." : "Cannot connect to server.");
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActive(true), 50);
+    }
   }, []);
 
   const fetchDropdowns = useCallback(async () => {
@@ -90,76 +146,110 @@ export default function EmployeesPage() {
     if (mJson?.success) setManagers(mJson.data);
   }, []);
 
-  useEffect(() => { fetchEmployees(); fetchDropdowns(); }, [fetchEmployees, fetchDropdowns]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
+    fetchEmployees();
+    fetchDropdowns();
+  }, [fetchEmployees, fetchDropdowns]);
 
   // ── Stats ──
-  const total     = employees.length;
-  const activeC   = employees.filter(e => e.IsActive).length;
-  const inactiveC = employees.filter(e => !e.IsActive).length;
+  const total = employees.length;
+  const activeC = employees.filter((e) => e.IsActive).length;
+  const inactiveC = employees.filter((e) => !e.IsActive).length;
   const totalTasks = employees.reduce((s, e) => s + (e.TaskCount || 0), 0);
 
   // ── Filter ──
-  const filtered = employees.filter(e => {
+  const filtered = employees.filter((e) => {
     const nm = `${fullName(e)} ${e.Email || ""}`.toLowerCase();
-    const ms  = nm.includes(search.toLowerCase());
-    const mc  = compFilter === "All" || String(e.CompanyId) === compFilter;
+    const ms = nm.includes(search.toLowerCase());
+    const mc = compFilter === "All" || String(e.CompanyId) === compFilter;
     const mst = statusFilter === "All" || (statusFilter === "Active" ? e.IsActive : !e.IsActive);
     return ms && mc && mst;
   });
 
   // ── Modals ──
   function openAdd() {
-    setEditEmp(null); setForm(EMPTY_FORM); setFormError(""); setShowModal(true);
+    setEditEmp(null);
+    setForm(EMPTY_FORM);
+    setFormError("");
+    setShowModal(true);
   }
   function openEdit(e) {
     setEditEmp(e);
     setForm({
-      firstName:   e.FirstName   || "",
-      lastName:    e.LastName    || "",
-      middleName:  e.MiddleName  || "",
-      email:       e.Email       || "",
+      firstName: e.FirstName || "",
+      lastName: e.LastName || "",
+      middleName: e.MiddleName || "",
+      email: e.Email || "",
       phoneNumber: e.PhoneNumber || "",
       displayName: e.DisplayName || "",
-      companyId:   e.CompanyId   || "",
-      managerId:   e.ManagerId   || "",
-      password:    "",
-      isActive:    e.IsActive ? 1 : 0,
+      companyId: e.CompanyId || "",
+      managerId: e.ManagerId || "",
+      password: "",
+      isActive: e.IsActive ? 1 : 0,
     });
-    setFormError(""); setShowModal(true);
+    setFormError("");
+    setShowModal(true);
   }
-  function openView(e) { setViewEmp(e); setViewModal(true); }
-  function closeModal() { setShowModal(false); setEditEmp(null); }
-  function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
+  function openView(e) {
+    setViewEmp(e);
+    setViewModal(true);
+  }
+  function closeModal() {
+    setShowModal(false);
+    setEditEmp(null);
+  }
+  function setF(k, v) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
 
   // ── Save ──
   async function handleSave() {
     setFormError("");
-    if (!form.email) return setFormError("Email is required.");
-    if (!editEmp && !form.password) return setFormError("Password is required for new employee.");
+    if (!form.email) {
+      setFormError("Email is required.");
+      return;
+    }
+    if (!editEmp && !form.password) {
+      setFormError("Password is required for new employee.");
+      return;
+    }
     setSaving(true);
     try {
-      const body   = { ...form };
+      const body = { ...form };
       if (editEmp && !body.password) delete body.password;
-      const res  = editEmp ? await api.put(`/employees/${editEmp.Id}`, body) : await api.post("/employees", body);
+      const res = editEmp
+        ? await api.put(`/employees/${editEmp.Id}`, body)
+        : await api.post("/employees", body);
       const json = res.data;
-      if (!json.success) { setFormError(json.message || "Failed to save."); return; }
+      if (!json.success) {
+        setFormError(json.message || "Failed to save.");
+        return;
+      }
       showToast(editEmp ? "Employee updated successfully!" : "Employee created successfully!");
-      closeModal(); fetchEmployees();
+      closeModal();
+      fetchEmployees();
     } catch (err) {
       const msg = getErrorMessage(err, "Failed to save.");
       setFormError(msg);
       if (!err.response) showToast(msg, "error");
+    } finally {
+      setSaving(false);
     }
-    finally  { setSaving(false); }
   }
 
   // ── Toggle active ──
   async function toggleActive(e) {
     try {
       await api.patch(`/employees/${e.Id}/status`, { isActive: e.IsActive ? 0 : 1 });
-      showToast(e.IsActive ? "Employee deactivated." : "Employee activated.", e.IsActive ? "warning" : "success");
+      showToast(
+        e.IsActive ? "Employee deactivated." : "Employee activated.",
+        e.IsActive ? "warning" : "success",
+      );
       fetchEmployees();
-    } catch { showToast("Failed to update status.", "error"); }
+    } catch {
+      showToast("Failed to update status.", "error");
+    }
   }
 
   // ── Delete ──
@@ -172,22 +262,14 @@ export default function EmployeesPage() {
       await api.delete(`/employees/${deleteTarget}`);
       showToast("Employee deleted successfully!", "success");
       fetchEmployees();
-    } catch { showToast("Failed to delete employee.", "error"); }
-    finally { setDeleteTarget(null); }
+    } catch {
+      showToast("Failed to delete employee.", "error");
+    } finally {
+      setDeleteTarget(null);
+    }
   }
 
-  // task progress bar
-  function ProgressBar({ done, total }) {
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 100 }}>
-        <div style={{ flex: 1, height: 5, borderRadius: 99, background: "#E2E8F0", overflow: "hidden" }}>
-          <div style={{ width: `${pct}%`, height: "100%", borderRadius: 99, background: pct === 100 ? "#10B981" : "#1E3A8A" }} />
-        </div>
-        <span style={{ fontSize: 11, color: "#64748B", whiteSpace: "nowrap" }}>{done}/{total}</span>
-      </div>
-    );
-  }
+  const saveLabel = editEmp ? "Update Employee" : "Add Employee";
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -204,10 +286,10 @@ export default function EmployeesPage() {
           <p className="page-hd-sub">Manage field employees and their assignments</p>
         </div>
         <div className="page-hd-actions">
-          <button className="btn btn-outline btn-sm" onClick={fetchEmployees}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={fetchEmployees}>
             <span className="material-symbols-outlined">refresh</span>Refresh
           </button>
-          <button className="btn btn-primary btn-sm" onClick={openAdd}>
+          <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
             <span className="material-symbols-outlined">add</span>Add Employee
           </button>
         </div>
@@ -215,23 +297,72 @@ export default function EmployeesPage() {
 
       {/* Stat Cards */}
       <div className="stat-cards">
-        <StatCard index={0} icon="group"         bg="#EEF2FF" color="#1E3A8A" label="Total Employees" value={total}      sub="All employees"       active={active} />
-        <StatCard index={1} icon="check_circle"  bg="#D1FAE5" color="#10B981" label="Active"          value={activeC}    sub="Currently active"    active={active} />
-        <StatCard index={2} icon="cancel"        bg="#FEE2E2" color="#EF4444" label="Inactive"        value={inactiveC}  sub="Deactivated"         active={active} />
-        <StatCard index={3} icon="task_alt"      bg="#EDE9FE" color="#8B5CF6" label="Total Tasks"     value={totalTasks} sub="Assigned across all" active={active} />
+        <StatCard
+          index={0}
+          icon="group"
+          bg="#EEF2FF"
+          color="#1E3A8A"
+          label="Total Employees"
+          value={total}
+          sub="All employees"
+          active={active}
+        />
+        <StatCard
+          index={1}
+          icon="check_circle"
+          bg="#D1FAE5"
+          color="#10B981"
+          label="Active"
+          value={activeC}
+          sub="Currently active"
+          active={active}
+        />
+        <StatCard
+          index={2}
+          icon="cancel"
+          bg="#FEE2E2"
+          color="#EF4444"
+          label="Inactive"
+          value={inactiveC}
+          sub="Deactivated"
+          active={active}
+        />
+        <StatCard
+          index={3}
+          icon="task_alt"
+          bg="#EDE9FE"
+          color="#8B5CF6"
+          label="Total Tasks"
+          value={totalTasks}
+          sub="Assigned across all"
+          active={active}
+        />
       </div>
 
       {/* Toolbar */}
       <div className="co-toolbar">
         <div className="co-search">
           <span className="material-symbols-outlined">search</span>
-          <input type="text" placeholder="Search employees..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Search employees..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <select className="co-filter-select" value={compFilter} onChange={e => setCompFilter(e.target.value)}>
+        <select
+          className="co-filter-select"
+          value={compFilter}
+          onChange={(e) => setCompFilter(e.target.value)}
+        >
           <option value="All">All Companies</option>
-          {companies.map(c => <option key={c.Id} value={String(c.Id)}>{c.Name}</option>)}
+          {companies.map((c) => <option key={c.Id} value={String(c.Id)}>{c.Name}</option>)}
         </select>
-        <select className="co-filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select
+          className="co-filter-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
           <option value="All">All Status</option>
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
@@ -241,17 +372,29 @@ export default function EmployeesPage() {
       {/* Table */}
       <div style={{ margin: "0 20px 20px" }}>
         <div className="table-card" style={{ margin: 0 }}>
-          {loading ? (
+          {loading && (
             <div className="page-placeholder" style={{ minHeight: 200 }}>
-              <span className="material-symbols-outlined page-placeholder-icon" style={{ animation: "spin 1s linear infinite" }}>progress_activity</span>
+              <span
+                className="material-symbols-outlined page-placeholder-icon"
+                style={{ animation: "spin 1s linear infinite" }}
+              >
+                progress_activity
+              </span>
               <p>Loading employees...</p>
             </div>
-          ) : error ? (
+          )}
+          {!loading && error && (
             <div className="page-placeholder" style={{ minHeight: 200 }}>
-              <span className="material-symbols-outlined page-placeholder-icon" style={{ color: "#EF4444" }}>error</span>
+              <span
+                className="material-symbols-outlined page-placeholder-icon"
+                style={{ color: "#EF4444" }}
+              >
+                error
+              </span>
               <p style={{ color: "#EF4444" }}>{error}</p>
             </div>
-          ) : (
+          )}
+          {!loading && !error && (
             <table>
               <thead>
                 <tr>
@@ -270,16 +413,27 @@ export default function EmployeesPage() {
                   <tr key={e.Id} style={{ animation: `dashRowIn 0.35s ease ${i * 0.04}s both` }}>
                     <td>
                       <div className="avatar-cell">
-                        <div className="avatar avatar-circle" style={{ background: avatarColor(e.Id) }}>{initials(e)}</div>
+                        <div
+                          className="avatar avatar-circle"
+                          style={{ background: avatarColor(e.Id) }}
+                        >
+                          {initials(e)}
+                        </div>
                         <div>
                           <div className="cell-name">{fullName(e)}</div>
                           <div className="cell-sub">{e.Email}</div>
                         </div>
                       </div>
                     </td>
-                    <td style={{ fontSize: 13 }}>{e.CompanyName || <span style={{ color: "#94A3B8" }}>—</span>}</td>
-                    <td style={{ fontSize: 13 }}>{e.ManagerName?.trim() || <span style={{ color: "#94A3B8" }}>—</span>}</td>
-                    <td style={{ fontSize: 13 }}>{e.PhoneNumber || <span style={{ color: "#94A3B8" }}>—</span>}</td>
+                    <td style={{ fontSize: 13 }}>
+                      {e.CompanyName || <span style={{ color: "#94A3B8" }}>—</span>}
+                    </td>
+                    <td style={{ fontSize: 13 }}>
+                      {e.ManagerName?.trim() || <span style={{ color: "#94A3B8" }}>—</span>}
+                    </td>
+                    <td style={{ fontSize: 13 }}>
+                      {e.PhoneNumber || <span style={{ color: "#94A3B8" }}>—</span>}
+                    </td>
                     <td><ProgressBar done={e.TaskDone || 0} total={e.TaskCount || 0} /></td>
                     <td>
                       <span className={`badge ${e.IsActive ? "badge-success" : "badge-danger"}`}>
@@ -291,20 +445,48 @@ export default function EmployeesPage() {
                     </td>
                     <td>
                       <div className="action-btns">
-                        <div className="icon-btn" title="View" onClick={() => openView(e)}>
+                        <div
+                          className="icon-btn"
+                          title="View"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openView(e)}
+                          onKeyDown={activateOnKey}
+                        >
                           <span className="material-symbols-outlined">visibility</span>
                         </div>
-                        <div className="icon-btn" title="Edit" onClick={() => openEdit(e)}>
+                        <div
+                          className="icon-btn"
+                          title="Edit"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openEdit(e)}
+                          onKeyDown={activateOnKey}
+                        >
                           <span className="material-symbols-outlined">edit</span>
                         </div>
                         <div
-                          className={`icon-btn ${e.IsActive ? "icon-btn-warning" : "icon-btn-success"}`}
+                          className={`icon-btn ${
+                            e.IsActive ? "icon-btn-warning" : "icon-btn-success"
+                          }`}
                           title={e.IsActive ? "Deactivate" : "Activate"}
+                          role="button"
+                          tabIndex={0}
                           onClick={() => toggleActive(e)}
+                          onKeyDown={activateOnKey}
                         >
-                          <span className="material-symbols-outlined">{e.IsActive ? "block" : "check_circle"}</span>
+                          <span className="material-symbols-outlined">
+                            {e.IsActive ? "block" : "check_circle"}
+                          </span>
                         </div>
-                        <div className="icon-btn icon-btn-danger" title="Delete" onClick={() => handleDelete(e.Id)}>
+                        <div
+                          className="icon-btn icon-btn-danger"
+                          title="Delete"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleDelete(e.Id)}
+                          onKeyDown={activateOnKey}
+                        >
                           <span className="material-symbols-outlined">delete</span>
                         </div>
                       </div>
@@ -326,9 +508,9 @@ export default function EmployeesPage() {
             <div className="co-pagination">
               <span>Showing {filtered.length} of {employees.length} employees</span>
               <div className="co-page-btns">
-                <button className="co-page-btn" disabled>‹</button>
-                <button className="co-page-btn active">1</button>
-                <button className="co-page-btn" disabled>›</button>
+                <button type="button" className="co-page-btn" disabled>‹</button>
+                <button type="button" className="co-page-btn active">1</button>
+                <button type="button" className="co-page-btn" disabled>›</button>
               </div>
             </div>
           )}
@@ -337,88 +519,165 @@ export default function EmployeesPage() {
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
           <div className="modal" style={{ maxWidth: 560 }}>
             <div className="modal-header">
               <div className="modal-header-icon" style={{ background: "#EEF2FF" }}>
-                <span className="material-symbols-outlined" style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}
+                >
                   {editEmp ? "edit" : "person_add"}
                 </span>
               </div>
               <div>
                 <div className="modal-title">{editEmp ? "Edit Employee" : "Add New Employee"}</div>
-                <div className="modal-sub">{editEmp ? `Editing ${editEmp.Email}` : "Create a new employee account"}</div>
+                <div className="modal-sub">
+                  {editEmp ? `Editing ${editEmp.Email}` : "Create a new employee account"}
+                </div>
               </div>
-              <button className="modal-close" onClick={closeModal}>
+              <button type="button" className="modal-close" onClick={closeModal}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <div className="modal-body">
               {formError && (
-                <div style={{ background: "#FEE2E2", color: "#DC2626", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>
+                <div style={{
+                  background: "#FEE2E2",
+                  color: "#DC2626",
+                  borderRadius: 8,
+                  padding: "10px 14px",
+                  fontSize: 13,
+                  marginBottom: 12,
+                }}
+                >
                   {formError}
                 </div>
               )}
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">First Name</label>
-                  <input className="form-input" placeholder="John" value={form.firstName} onChange={e => setF("firstName", e.target.value)} />
+                  <label htmlFor="employee-first-name" className="form-label">First Name</label>
+                  <input
+                    id="employee-first-name"
+                    className="form-input"
+                    placeholder="John"
+                    value={form.firstName}
+                    onChange={(e) => setF("firstName", e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Last Name</label>
-                  <input className="form-input" placeholder="Doe" value={form.lastName} onChange={e => setF("lastName", e.target.value)} />
+                  <label htmlFor="employee-last-name" className="form-label">Last Name</label>
+                  <input
+                    id="employee-last-name"
+                    className="form-input"
+                    placeholder="Doe"
+                    value={form.lastName}
+                    onChange={(e) => setF("lastName", e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Email Address <span style={{ color: "#EF4444" }}>*</span></label>
-                <input className="form-input" type="email" placeholder="employee@company.com" value={form.email} onChange={e => setF("email", e.target.value)} />
+                <label htmlFor="employee-email-address" className="form-label">
+                  Email Address <span style={{ color: "#EF4444" }}>*</span>
+                </label>
+                <input
+                  id="employee-email-address"
+                  className="form-input"
+                  type="email"
+                  placeholder="employee@company.com"
+                  value={form.email}
+                  onChange={(e) => setF("email", e.target.value)}
+                />
               </div>
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">Phone</label>
-                  <input className="form-input" placeholder="+91 9999999999" value={form.phoneNumber} onChange={e => setF("phoneNumber", e.target.value)} />
+                  <label htmlFor="employee-phone" className="form-label">Phone</label>
+                  <input
+                    id="employee-phone"
+                    className="form-input"
+                    placeholder="+91 9999999999"
+                    value={form.phoneNumber}
+                    onChange={(e) => setF("phoneNumber", e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">
-                    {editEmp ? "New Password" : "Password"} {!editEmp && <span style={{ color: "#EF4444" }}>*</span>}
+                  <label htmlFor="employee-password" className="form-label">
+                    {editEmp ? "New Password" : "Password"}
+                    {" "}
+                    {!editEmp && <span style={{ color: "#EF4444" }}>*</span>}
                   </label>
                   <input
-                    className="form-input" type="password"
+                    id="employee-password"
+                    className="form-input"
+                    type="password"
                     placeholder={editEmp ? "Leave blank to keep" : "Min 6 characters"}
-                    value={form.password} onChange={e => setF("password", e.target.value)}
+                    value={form.password}
+                    onChange={(e) => setF("password", e.target.value)}
                   />
                 </div>
               </div>
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">Company</label>
-                  <select className="form-select" value={form.companyId} onChange={e => setF("companyId", e.target.value)}>
+                  <label htmlFor="employee-company" className="form-label">Company</label>
+                  <select
+                    id="employee-company"
+                    className="form-select"
+                    value={form.companyId}
+                    onChange={(e) => setF("companyId", e.target.value)}
+                  >
                     <option value="">Select company...</option>
-                    {companies.map(c => <option key={c.Id} value={c.Id}>{c.Name}</option>)}
+                    {companies.map((c) => <option key={c.Id} value={c.Id}>{c.Name}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Manager</label>
-                  <select className="form-select" value={form.managerId} onChange={e => setF("managerId", e.target.value)}>
+                  <label htmlFor="employee-manager" className="form-label">Manager</label>
+                  <select
+                    id="employee-manager"
+                    className="form-select"
+                    value={form.managerId}
+                    onChange={(e) => setF("managerId", e.target.value)}
+                  >
                     <option value="">Select manager...</option>
-                    {managers.map(m => <option key={m.Id} value={m.Id}>{m.Name} {m.CompanyName ? `(${m.CompanyName})` : ""}</option>)}
+                    {managers.map((m) => (
+                      <option
+                        key={m.Id}
+                        value={m.Id}
+                      >
+                        {m.Name} {m.CompanyName ? `(${m.CompanyName})` : ""}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">Display Name</label>
-                  <input className="form-input" placeholder="John Doe" value={form.displayName} onChange={e => setF("displayName", e.target.value)} />
+                  <label htmlFor="employee-display-name" className="form-label">Display Name</label>
+                  <input
+                    id="employee-display-name"
+                    className="form-input"
+                    placeholder="John Doe"
+                    value={form.displayName}
+                    onChange={(e) => setF("displayName", e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select className="form-select" value={form.isActive} onChange={e => setF("isActive", Number(e.target.value))}>
+                  <label htmlFor="employee-status" className="form-label">Status</label>
+                  <select
+                    id="employee-status"
+                    className="form-select"
+                    value={form.isActive}
+                    onChange={(e) => setF("isActive", Number(e.target.value))}
+                  >
                     <option value={1}>Active</option>
                     <option value={0}>Inactive</option>
                   </select>
@@ -427,10 +686,24 @@ export default function EmployeesPage() {
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={closeModal} disabled={saving}>Cancel</button>
-              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                <span className="material-symbols-outlined">{saving ? "progress_activity" : "save"}</span>
-                {saving ? "Saving..." : (editEmp ? "Update Employee" : "Add Employee")}
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={closeModal}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                <span className="material-symbols-outlined">
+                  {saving ? "progress_activity" : "save"}
+                </span>
+                {saving ? "Saving..." : saveLabel}
               </button>
             </div>
           </div>
@@ -439,50 +712,114 @@ export default function EmployeesPage() {
 
       {/* ── View Modal ── */}
       {viewModal && viewEmp && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setViewModal(false)}>
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && setViewModal(false)}
+        >
           <div className="modal" style={{ maxWidth: 480 }}>
             <div className="modal-header">
               <div className="modal-header-icon" style={{ background: "#EEF2FF" }}>
-                <span className="material-symbols-outlined" style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}>badge</span>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}
+                >
+                  badge
+                </span>
               </div>
               <div>
                 <div className="modal-title">Employee Details</div>
                 <div className="modal-sub">Full profile information</div>
               </div>
-              <button className="modal-close" onClick={() => setViewModal(false)}>
+              <button type="button" className="modal-close" onClick={() => setViewModal(false)}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="modal-body">
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-                <div style={{ width: 56, height: 56, borderRadius: "50%", background: avatarColor(viewEmp.Id), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 20, fontWeight: 700 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 16, marginBottom: 20,
+              }}
+              >
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: avatarColor(viewEmp.Id),
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontSize: 20,
+                  fontWeight: 700,
+                }}
+                >
                   {initials(viewEmp)}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: "#0F172A" }}>{fullName(viewEmp)}</div>
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: 16,
+                    color: "#0F172A",
+                  }}
+                  >
+                    {fullName(viewEmp)}
+                  </div>
                   <div style={{ fontSize: 12, color: "#64748B" }}>{viewEmp.Email}</div>
-                  <span className={`badge ${viewEmp.IsActive ? "badge-success" : "badge-danger"}`} style={{ marginTop: 4 }}>
+                  <span
+                    className={`badge ${viewEmp.IsActive ? "badge-success" : "badge-danger"}`}
+                    style={{ marginTop: 4 }}
+                  >
                     {viewEmp.IsActive ? "Active" : "Inactive"}
                   </span>
                 </div>
               </div>
 
               {[
-                { label: "Company",   value: viewEmp.CompanyName         || "—" },
-                { label: "Manager",   value: viewEmp.ManagerName?.trim() || "—" },
-                { label: "Phone",     value: viewEmp.PhoneNumber          || "—" },
-                { label: "Tasks",     value: `${viewEmp.TaskDone || 0} / ${viewEmp.TaskCount || 0} completed` },
-                { label: "Joined",    value: viewEmp.CreatedAtUtc ? new Date(viewEmp.CreatedAtUtc).toLocaleDateString() : "—" },
+                { label: "Company", value: viewEmp.CompanyName || "—" },
+                { label: "Manager", value: viewEmp.ManagerName?.trim() || "—" },
+                { label: "Phone", value: viewEmp.PhoneNumber || "—" },
+                {
+                  label: "Tasks",
+                  value: `${viewEmp.TaskDone || 0} / ${viewEmp.TaskCount || 0} completed`,
+                },
+                {
+                  label: "Joined",
+                  value: viewEmp.CreatedAtUtc
+                    ? new Date(viewEmp.CreatedAtUtc).toLocaleDateString()
+                    : "—",
+                },
               ].map(({ label, value }) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: "1px solid #F1F5F9", fontSize: 13 }}>
+                <div
+                  key={label}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "9px 0",
+                    borderBottom: "1px solid #F1F5F9",
+                    fontSize: 13,
+                  }}
+                >
                   <span style={{ color: "#94A3B8", fontWeight: 600 }}>{label}</span>
                   <span style={{ color: "#0F172A", fontWeight: 500 }}>{value}</span>
                 </div>
               ))}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={() => setViewModal(false)}>Close</button>
-              <button className="btn btn-primary btn-sm" onClick={() => { setViewModal(false); openEdit(viewEmp); }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setViewModal(false)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  setViewModal(false);
+                  openEdit(viewEmp);
+                }}
+              >
                 <span className="material-symbols-outlined">edit</span>Edit Employee
               </button>
             </div>
@@ -494,7 +831,7 @@ export default function EmployeesPage() {
         open={!!deleteTarget}
         title="Delete Employee?"
         message="This will permanently remove this employee. This action cannot be undone."
-        onConfirm={confirmDelete}
+        onConfirm={() => confirmDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
       <ToastContainer toasts={toasts} />

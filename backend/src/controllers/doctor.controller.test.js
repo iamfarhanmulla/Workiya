@@ -4,7 +4,9 @@ jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: 
 
 const request = require("supertest");
 const app = require("../app");
-const { XHR, USERS, authCookie, mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const {
+  XHR, USERS, authCookie, mockPool, rows, affected,
+} = require("../../test/helpers/apiHarness");
 
 function call(method, url, user = USERS.manager) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
@@ -29,7 +31,7 @@ describe("doctor.controller tenant scoping", () => {
 
   it.each([
     [[rows()], 404],
-    [[rows({ Id: 3 })], 200]
+    [[rows({ Id: 3 })], 200],
   ])("reads one doctor within the caller's company", async (responses, status) => {
     // Arrange
     mockPool(mockConnectDb, responses);
@@ -46,16 +48,19 @@ describe("doctor.controller tenant scoping", () => {
     const db = mockPool(mockConnectDb, [rows({ Id: 4 })]);
 
     // Act
-    const res = await call("post", "/doctors").send({ name: "Dr A", companyId: "", latitude: 12.5 });
+    const res = await call("post", "/doctors")
+      .send({ name: "Dr A", companyId: "", latitude: 12.5 });
 
     // Assert
     expect(res.status).toBe(201);
-    expect(db.queries[0].inputs).toMatchObject({ companyId: 2, createdBy: 20, name: "Dr A", latitude: "12.5", longitude: null });
+    expect(db.queries[0].inputs).toMatchObject({
+      companyId: 2, createdBy: 20, name: "Dr A", latitude: "12.5", longitude: null,
+    });
   });
 
   it.each([
     [{ companyId: 2 }, 400],
-    [{ name: "Dr A", companyId: 3 }, 403]
+    [{ name: "Dr A", companyId: 3 }, 403],
   ])("rejects a doctor create %p", async (body, status) => {
     // Arrange
     const db = mockPool(mockConnectDb, []);
@@ -70,8 +75,9 @@ describe("doctor.controller tenant scoping", () => {
 
   it.each([
     [1, 200],
-    [0, 404]
-  ])("updates a doctor only within the caller's company (rows affected %i)", async (count, status) => {
+    [0, 404],
+  ])("updates a doctor only within the caller's company "
+    + "(rows affected %i)", async (count, status) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
 
@@ -80,7 +86,8 @@ describe("doctor.controller tenant scoping", () => {
 
     // Assert
     expect(res.status).toBe(status);
-    expect(db.queries[0].text).toContain("WHERE Id = @id AND IsDeleted = 0 AND CompanyId = @scopeCompanyId");
+    expect(db.queries[0].text)
+      .toContain("WHERE Id = @id AND IsDeleted = 0 AND CompanyId = @scopeCompanyId");
     expect(db.queries[0].inputs).toMatchObject({ companyId: 2, isActive: 1 });
   });
 
@@ -98,7 +105,7 @@ describe("doctor.controller tenant scoping", () => {
   it.each([
     [{ isActive: true }, 1, "Doctor activated."],
     [{ isActive: false }, 1, "Doctor deactivated."],
-    [{ isActive: false }, 0, "Doctor not found."]
+    [{ isActive: false }, 0, "Doctor not found."],
   ])("toggles status %p within scope", async (body, count, message) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
@@ -124,8 +131,9 @@ describe("doctor.controller tenant scoping", () => {
 
   it.each([
     [1, 200],
-    [0, 404]
-  ])("deletes a doctor only within the caller's company (rows affected %i)", async (count, status) => {
+    [0, 404],
+  ])("deletes a doctor only within the caller's company "
+    + "(rows affected %i)", async (count, status) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
 
@@ -156,7 +164,7 @@ describe("doctor.controller database errors", () => {
     ["post", "/doctors"],
     ["put", "/doctors/3"],
     ["patch", "/doctors/3/status"],
-    ["delete", "/doctors/3"]
+    ["delete", "/doctors/3"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
     mockPool(mockConnectDb, [new Error("db down")]);

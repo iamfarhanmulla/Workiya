@@ -1,9 +1,11 @@
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const jwt = require("jsonwebtoken");
 const config = require("../config/env");
 const tokenService = require("./token.service");
 
-const user = { id: 7, companyId: 3, roleId: 2, roleCode: "ADMIN" };
+const user = {
+  id: 7, companyId: 3, roleId: 2, roleCode: "ADMIN",
+};
 
 describe("token.service", () => {
   it("signs an RS256 access token with the expected claims", () => {
@@ -19,7 +21,7 @@ describe("token.service", () => {
       rid: 2,
       role: "ADMIN",
       iss: "workiya-api",
-      aud: "workiya-web"
+      aud: "workiya-web",
     });
     expect(decoded.payload.jti).toEqual(expect.any(String));
     expect(decoded.payload.exp - decoded.payload.iat).toBe(900);
@@ -44,9 +46,11 @@ describe("token.service", () => {
       sub: "1",
       iss: config.jwt.issuer,
       aud: config.jwt.audience,
-      exp: now + 60
+      exp: now + 60,
     })}`;
-    const signature = crypto.createHmac("sha256", config.jwt.publicKey).update(unsigned).digest("base64url");
+    const signature = crypto.createHmac("sha256", config.jwt.publicKey)
+      .update(unsigned)
+      .digest("base64url");
     const forged = `${unsigned}.${signature}`;
 
     // Act / Assert
@@ -58,12 +62,12 @@ describe("token.service", () => {
     const wrongIssuer = jwt.sign({ sub: "1" }, config.jwt.privateKey, {
       algorithm: "RS256",
       issuer: "someone-else",
-      audience: config.jwt.audience
+      audience: config.jwt.audience,
     });
     const wrongAudience = jwt.sign({ sub: "1" }, config.jwt.privateKey, {
       algorithm: "RS256",
       issuer: config.jwt.issuer,
-      audience: "other-app"
+      audience: "other-app",
     });
 
     // Act / Assert

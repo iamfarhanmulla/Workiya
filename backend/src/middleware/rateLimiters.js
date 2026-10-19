@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const { ERROR_CODES } = require("../constants/errorCodes");
 const { COOKIE_NAMES } = require("../utils/authCookies");
@@ -15,7 +15,9 @@ function ipKey(req) {
 }
 
 function loginKey(req) {
-  const email = req.body && typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const email = req.body && typeof req.body.email === "string"
+    ? req.body.email.trim().toLowerCase()
+    : "";
   return `${ipKey(req)}|${email}`;
 }
 
@@ -40,7 +42,7 @@ function limiter(limit, extra) {
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: rateLimitedHandler,
-    ...extra
+    ...extra,
   });
 }
 
@@ -71,5 +73,5 @@ module.exports = {
   createLoginLimiter,
   createRefreshIpLimiter,
   createRefreshLimiter,
-  loginKey
+  loginKey,
 };

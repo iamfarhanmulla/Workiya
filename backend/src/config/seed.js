@@ -1,17 +1,18 @@
-const crypto = require("crypto");
-const { connectDb, sql } = require("./db");
+const crypto = require("node:crypto");
 const dotenv = require("dotenv");
+const { connectDb, sql } = require("./db");
 
 dotenv.config();
 
 function generateHash(password) {
   const salt = crypto.randomBytes(16);
   const iterations = 10000;
+  // eslint-disable-next-line n/no-sync -- one-shot CLI seed script; a blocking hash is fine here
   const hash = crypto.pbkdf2Sync(password, salt, iterations, 32, "sha256");
   return {
     passwordSalt: salt.toString("base64"),
     passwordHash: hash.toString("base64"),
-    passwordIterations: iterations
+    passwordIterations: iterations,
   };
 }
 
@@ -26,6 +27,7 @@ async function seed() {
 
     if (existing.recordset.length > 0) {
       console.log("Dummy user already exists: admin@workiya.com");
+      // eslint-disable-next-line n/no-process-exit -- CLI: exit code reports the result
       process.exit(0);
     }
 
@@ -37,6 +39,7 @@ async function seed() {
 
     if (roleResult.recordset.length === 0) {
       console.error("SuperAdmin role not found. Please run migrations first: npm run migrate");
+      // eslint-disable-next-line n/no-process-exit -- CLI: exit code reports the result
       process.exit(1);
     }
 
@@ -46,19 +49,19 @@ async function seed() {
 
     await pool
       .request()
-      .input("roleId",             sql.Int,            roleId)
-      .input("username",           sql.NVarChar,       "admin")
-      .input("email",              sql.NVarChar,       "admin@workiya.com")
-      .input("displayName",        sql.NVarChar,       "Super Admin")
-      .input("firstName",          sql.NVarChar,       "Super")
-      .input("lastName",           sql.NVarChar,       "Admin")
-      .input("passwordHash",       sql.NVarChar,       passwordHash)
-      .input("passwordSalt",       sql.NVarChar,       passwordSalt)
-      .input("passwordIterations", sql.Int,            passwordIterations)
-      .input("status",             sql.Int,            1)
-      .input("isActive",           sql.Bit,            1)
-      .input("isDeleted",          sql.Bit,            0)
-      .input("createdAtUtc",       sql.DateTimeOffset, new Date())
+      .input("roleId", sql.Int, roleId)
+      .input("username", sql.NVarChar, "admin")
+      .input("email", sql.NVarChar, "admin@workiya.com")
+      .input("displayName", sql.NVarChar, "Super Admin")
+      .input("firstName", sql.NVarChar, "Super")
+      .input("lastName", sql.NVarChar, "Admin")
+      .input("passwordHash", sql.NVarChar, passwordHash)
+      .input("passwordSalt", sql.NVarChar, passwordSalt)
+      .input("passwordIterations", sql.Int, passwordIterations)
+      .input("status", sql.Int, 1)
+      .input("isActive", sql.Bit, 1)
+      .input("isDeleted", sql.Bit, 0)
+      .input("createdAtUtc", sql.DateTimeOffset, new Date())
       .query(`
         INSERT INTO Users
           (RoleId, Username, Email, DisplayName, FirstName, LastName,
@@ -73,9 +76,11 @@ async function seed() {
     console.log("Super Admin user created successfully!");
     console.log("  Email:    admin@workiya.com");
     console.log("  Password: Admin@123");
+    // eslint-disable-next-line n/no-process-exit -- CLI: exit code reports the result
     process.exit(0);
   } catch (err) {
     console.error("Seed failed:", err.message);
+    // eslint-disable-next-line n/no-process-exit -- CLI: exit code reports the result
     process.exit(1);
   }
 }

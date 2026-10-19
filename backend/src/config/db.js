@@ -11,8 +11,8 @@ function getMssqlConfig() {
     password: config.mssql.password,
     options: {
       encrypt: true,
-      trustServerCertificate: config.mssql.trustServerCertificate
-    }
+      trustServerCertificate: config.mssql.trustServerCertificate,
+    },
   };
 }
 
@@ -31,5 +31,5 @@ function connectDb() {
 module.exports = {
   sql,
   connectDb,
-  getMssqlConfig
+  getMssqlConfig,
 };

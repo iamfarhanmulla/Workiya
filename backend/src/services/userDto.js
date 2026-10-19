@@ -12,7 +12,7 @@ function toUserDto(row) {
     middleName: row.MiddleName,
     lastName: row.LastName,
     phoneNumber: row.PhoneNumber,
-    status: row.Status
+    status: row.Status,
   };
 }
 

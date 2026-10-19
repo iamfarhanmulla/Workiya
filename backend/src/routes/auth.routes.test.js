@@ -10,11 +10,13 @@ const auditLogRepository = require("../repositories/auditLog.repository");
 const {
   TEST_PASSWORD: PASSWORD,
   userRow: fixtureUserRow,
-  installFakeTokenStore
+  installFakeTokenStore,
 } = require("../../test/helpers/authFixtures");
 
 const XHR = { "X-Requested-With": "XMLHttpRequest" };
-const ADMIN = { Id: 21, CompanyId: 4, RoleId: 2, RoleCode: "ADMIN", RoleName: "Admin", Email: "admin@example.com" };
+const ADMIN = {
+  Id: 21, CompanyId: 4, RoleId: 2, RoleCode: "ADMIN", RoleName: "Admin", Email: "admin@example.com",
+};
 
 let tokenStore;
 
@@ -52,14 +54,17 @@ function ageRotation(seconds) {
 }
 
 describe("POST /api/v1/auth/login", () => {
-  it("sets three HttpOnly SameSite=Strict cookies and returns the user in the wrapper", async () => {
+  it("sets three HttpOnly SameSite=Strict cookies and returns the user "
+    + "in the wrapper", async () => {
     // Arrange / Act
     const response = await login({ rememberMe: true });
 
     // Assert
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ success: true, errorCode: null, message: "Login successful." });
-    expect(response.body.data.user).toMatchObject({ id: 21, roleCode: "ADMIN", email: "admin@example.com" });
+    expect(response.body)
+      .toMatchObject({ success: true, errorCode: null, message: "Login successful." });
+    expect(response.body.data.user)
+      .toMatchObject({ id: 21, roleCode: "ADMIN", email: "admin@example.com" });
     expect(JSON.stringify(response.body)).not.toMatch(/Password/i);
     ["wk_at", "wk_rt", "wk_session"].forEach((name) => {
       const cookie = cookieHeader(response, name);
@@ -76,13 +81,15 @@ describe("POST /api/v1/auth/login", () => {
 
     // Assert
     expect(response.status).toBe(401);
-    expect(response.body).toMatchObject({ success: false, data: null, errorCode: "AUTH_INVALID_CREDENTIALS" });
+    expect(response.body)
+      .toMatchObject({ success: false, data: null, errorCode: "AUTH_INVALID_CREDENTIALS" });
     expect(response.headers["set-cookie"]).toBeUndefined();
   });
 
   it("answers a locked account with the same 401 body as a wrong password", async () => {
     // Arrange
-    userRepository.findActiveByEmail.mockResolvedValue(userRow({ LockoutEndUtc: new Date(Date.now() + 60000) }));
+    userRepository.findActiveByEmail
+      .mockResolvedValue(userRow({ LockoutEndUtc: new Date(Date.now() + 60000) }));
     const wrong = await login({ password: "wrong-password" });
 
     // Act
@@ -97,7 +104,9 @@ describe("POST /api/v1/auth/login", () => {
 
   it("signs in and refreshes a SUPER_ADMIN who has no company", async () => {
     // Arrange
-    const superAdmin = userRow({ Id: 1, CompanyId: null, RoleId: 1, RoleCode: "SUPER_ADMIN" });
+    const superAdmin = userRow({
+      Id: 1, CompanyId: null, RoleId: 1, RoleCode: "SUPER_ADMIN",
+    });
     userRepository.findActiveByEmail.mockResolvedValue(superAdmin);
     userRepository.findActiveById.mockResolvedValue(superAdmin);
 
@@ -110,7 +119,8 @@ describe("POST /api/v1/auth/login", () => {
 
     // Assert
     expect(loginResponse.status).toBe(200);
-    expect(loginResponse.body.data.user).toMatchObject({ companyId: null, roleCode: "SUPER_ADMIN" });
+    expect(loginResponse.body.data.user)
+      .toMatchObject({ companyId: null, roleCode: "SUPER_ADMIN" });
     expect(refreshed.status).toBe(200);
     expect(tokenStore.map((t) => t.CompanyId)).toEqual([null, null]);
   });
@@ -177,7 +187,8 @@ describe("GET /api/v1/auth/me", () => {
     const loginResponse = await login();
 
     // Act
-    const response = await request(app).get("/api/v1/auth/me").set("Cookie", cookieValue(loginResponse, "wk_at"));
+    const response = await request(app).get("/api/v1/auth/me")
+      .set("Cookie", cookieValue(loginResponse, "wk_at"));
 
     // Assert
     expect(response.status).toBe(200);
@@ -192,11 +203,14 @@ describe("POST /api/v1/auth/refresh", () => {
     const firstRefresh = cookieValue(loginResponse, "wk_rt");
 
     // Act
-    const rotated = await request(app).post("/api/v1/auth/refresh").set(XHR).set("Cookie", firstRefresh);
+    const rotated = await request(app).post("/api/v1/auth/refresh").set(XHR)
+      .set("Cookie", firstRefresh);
     ageRotation(31);
-    const reused = await request(app).post("/api/v1/auth/refresh").set(XHR).set("Cookie", firstRefresh);
+    const reused = await request(app).post("/api/v1/auth/refresh").set(XHR)
+      .set("Cookie", firstRefresh);
     const secondRefresh = cookieValue(rotated, "wk_rt");
-    const afterReuse = await request(app).post("/api/v1/auth/refresh").set(XHR).set("Cookie", secondRefresh);
+    const afterReuse = await request(app).post("/api/v1/auth/refresh").set(XHR)
+      .set("Cookie", secondRefresh);
 
     // Assert
     expect(rotated.status).toBe(200);
@@ -210,14 +224,17 @@ describe("POST /api/v1/auth/refresh", () => {
     expect(tokenStore.every((t) => t.RevokedAtUtc)).toBe(true);
   });
 
-  it("answers a second tab that sends the just-rotated token without touching its cookies", async () => {
+  it("answers a second tab that sends the just-rotated token "
+    + "without touching its cookies", async () => {
     // Arrange
     const loginResponse = await login();
     const original = cookieValue(loginResponse, "wk_rt");
-    const firstTab = await request(app).post("/api/v1/auth/refresh").set(XHR).set("Cookie", original);
+    const firstTab = await request(app).post("/api/v1/auth/refresh").set(XHR)
+      .set("Cookie", original);
 
     // Act
-    const secondTab = await request(app).post("/api/v1/auth/refresh").set(XHR).set("Cookie", original);
+    const secondTab = await request(app).post("/api/v1/auth/refresh").set(XHR)
+      .set("Cookie", original);
 
     // Assert
     expect(firstTab.status).toBe(200);
@@ -232,7 +249,8 @@ describe("POST /api/v1/auth/refresh", () => {
     refreshTokenRepository.findByHash.mockRejectedValue(new Error("db down"));
 
     // Act
-    const response = await request(app).post("/api/v1/auth/refresh").set(XHR).set("Cookie", "wk_rt=abc");
+    const response = await request(app).post("/api/v1/auth/refresh").set(XHR)
+      .set("Cookie", "wk_rt=abc");
 
     // Assert
     expect(response.status).toBe(500);
@@ -274,7 +292,8 @@ describe("POST /api/v1/auth/logout", () => {
     refreshTokenRepository.findByHash.mockRejectedValue(new Error("db down"));
 
     // Act
-    const response = await request(app).post("/api/v1/auth/logout").set(XHR).set("Cookie", "wk_rt=abc");
+    const response = await request(app).post("/api/v1/auth/logout").set(XHR)
+      .set("Cookie", "wk_rt=abc");
 
     // Assert
     expect(response.status).toBe(500);

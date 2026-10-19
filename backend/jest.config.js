@@ -1,4 +1,6 @@
-const STRICT = { branches: 95, functions: 95, lines: 95, statements: 95 };
+const STRICT = {
+  branches: 95, functions: 95, lines: 95, statements: 95,
+};
 
 module.exports = {
   testEnvironment: "node",
@@ -13,10 +15,12 @@ module.exports = {
     "src/controllers/**/*.js",
     "src/repositories/**/*.js",
     "src/routes/**/*.js",
-    "!**/*.test.js"
+    "!**/*.test.js",
   ],
   coverageThreshold: {
-    global: { branches: 80, functions: 80, lines: 80, statements: 80 },
+    global: {
+      branches: 80, functions: 80, lines: 80, statements: 80,
+    },
     "./src/services/auth.service.js": STRICT,
     "./src/services/password.service.js": STRICT,
     "./src/services/token.service.js": STRICT,
@@ -28,6 +32,6 @@ module.exports = {
     "./src/controllers/auth.controller.js": STRICT,
     "./src/services/tenantScope.js": STRICT,
     "./src/repositories/user.repository.js": STRICT,
-    "./src/repositories/refreshToken.repository.js": STRICT
-  }
+    "./src/repositories/refreshToken.repository.js": STRICT,
+  },
 };

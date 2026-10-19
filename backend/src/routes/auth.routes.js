@@ -3,12 +3,14 @@ const { z } = require("zod");
 const authController = require("../controllers/auth.controller");
 const { authenticate } = require("../middleware/authenticate");
 const { validate } = require("../middleware/validate");
-const { loginIpLimiter, loginLimiter, refreshIpLimiter, refreshLimiter } = require("../middleware/rateLimiters");
+const {
+  loginIpLimiter, loginLimiter, refreshIpLimiter, refreshLimiter,
+} = require("../middleware/rateLimiters");
 
 const loginSchema = z.object({
   email: z.string().trim().max(320).pipe(z.email()),
   password: z.string().min(1).max(256),
-  rememberMe: z.boolean().optional()
+  rememberMe: z.boolean().optional(),
 });
 
 const router = express.Router();

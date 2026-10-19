@@ -4,7 +4,9 @@ jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: 
 
 const request = require("supertest");
 const app = require("../app");
-const { XHR, USERS, authCookie, mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const {
+  XHR, USERS, authCookie, mockPool, rows, affected,
+} = require("../../test/helpers/apiHarness");
 
 function call(method, url, user = USERS.admin) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
@@ -28,8 +30,10 @@ describe("user.controller tenant scoping", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true, data: [{ Id: 5 }] });
     expect(db.queries[0].text).toContain("u.CompanyId = @scopeCompanyId");
-    expect(db.queries[0].text).toContain("u.RoleId NOT IN (SELECT Id FROM Roles WHERE Code = @superAdminCode)");
-    expect(db.queries[0].inputs).toMatchObject({ scopeCompanyId: 2, superAdminCode: "SUPER_ADMIN" });
+    expect(db.queries[0].text)
+      .toContain("u.RoleId NOT IN (SELECT Id FROM Roles WHERE Code = @superAdminCode)");
+    expect(db.queries[0].inputs)
+      .toMatchObject({ scopeCompanyId: 2, superAdminCode: "SUPER_ADMIN" });
   });
 
   it("lists every user for a SUPER_ADMIN", async () => {
@@ -67,21 +71,25 @@ describe("user.controller tenant scoping", () => {
     expect(res.body).toEqual({ success: true, data: { Id: 7 } });
   });
 
-  it("returns 404 and runs no UPDATE when an ADMIN edits a SUPER_ADMIN or another company's user", async () => {
+  it("returns 404 and runs no UPDATE when an ADMIN edits a SUPER_ADMIN "
+    + "or another company's user", async () => {
     // Arrange
     const db = mockPool(mockConnectDb, [rows()]);
 
     // Act
-    const res = await call("put", "/users/1").send({ companyId: 2, roleId: 3, email: "evil@example.com" });
+    const res = await call("put", "/users/1")
+      .send({ companyId: 2, roleId: 3, email: "evil@example.com" });
 
     // Assert
     expect(res.status).toBe(404);
     expect(db.queries).toHaveLength(1);
     expect(db.queries[0].text).toMatch(/^SELECT Id FROM Users/);
-    expect(db.queries[0].inputs).toMatchObject({ scopeCompanyId: 2, superAdminCode: "SUPER_ADMIN" });
+    expect(db.queries[0].inputs)
+      .toMatchObject({ scopeCompanyId: 2, superAdminCode: "SUPER_ADMIN" });
   });
 
-  it("returns 403 without touching the DB when an ADMIN moves a user to another company", async () => {
+  it("returns 403 without touching the DB when an ADMIN moves a user "
+    + "to another company", async () => {
     // Arrange
     const db = mockPool(mockConnectDb, []);
 
@@ -115,8 +123,11 @@ describe("user.controller tenant scoping", () => {
     // Assert
     expect(res.status).toBe(200);
     const update = db.queries[2];
-    expect(update.text).toContain("WHERE Id = @id AND IsDeleted = 0 AND CompanyId = @scopeCompanyId");
-    expect(update.inputs).toMatchObject({ id: "7", companyId: 2, roleId: 3, firstName: "A", isActive: 1 });
+    expect(update.text)
+      .toContain("WHERE Id = @id AND IsDeleted = 0 AND CompanyId = @scopeCompanyId");
+    expect(update.inputs).toMatchObject({
+      id: "7", companyId: 2, roleId: 3, firstName: "A", isActive: 1,
+    });
   });
 
   it("returns 404 when the scoped UPDATE matches no row", async () => {
@@ -193,7 +204,7 @@ describe("user.controller tenant scoping", () => {
 describe("user.controller create", () => {
   it.each([
     ["no email", { password: "Str0ng!Pass", roleId: 3 }, /required/],
-    ["a short password", { ...NEW_USER, password: "short" }, /at least 8/]
+    ["a short password", { ...NEW_USER, password: "short" }, /at least 8/],
   ])("returns 400 for %s", async (_label, body, message) => {
     // Arrange
     mockPool(mockConnectDb, []);
@@ -229,7 +240,8 @@ describe("user.controller create", () => {
     expect(res.status).toBe(409);
   });
 
-  it("creates the user in the ADMIN's company with a PBKDF2 hash and no plain password", async () => {
+  it("creates the user in the ADMIN's company with a PBKDF2 hash "
+    + "and no plain password", async () => {
     // Arrange
     const db = mockPool(mockConnectDb, [rows({ Code: "EMPLOYEE" }), rows(), rows({ Id: 42 })]);
 
@@ -240,7 +252,9 @@ describe("user.controller create", () => {
     expect(res.status).toBe(201);
     expect(res.body.id).toBe(42);
     const insert = db.queries[2].inputs;
-    expect(insert).toMatchObject({ companyId: 2, roleId: 3, email: "new@example.com", passwordIterations: 10000 });
+    expect(insert).toMatchObject({
+      companyId: 2, roleId: 3, email: "new@example.com", passwordIterations: 10000,
+    });
     expect(Object.values(insert)).not.toContain("Str0ng!Pass");
   });
 
@@ -265,7 +279,7 @@ describe("user.controller database errors", () => {
     ["put", "/users/7"],
     ["delete", "/users/7"],
     ["get", "/users/roles"],
-    ["get", "/users/companies"]
+    ["get", "/users/companies"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
     mockPool(mockConnectDb, [new Error("db down")]);

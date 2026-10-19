@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const dotenv = require("dotenv");
 
 const BACKEND_ROOT = path.resolve(__dirname, "..", "..");
@@ -19,17 +19,23 @@ function loadKey(base64Name, pathName) {
   const keyPath = process.env[pathName];
   if (keyPath) {
     const resolved = resolveFromBackend(keyPath);
+    // eslint-disable-next-line n/no-sync -- key file read once, on first use
     if (!fs.existsSync(resolved)) {
-      throw new Error(`${pathName} points to a missing file. Run "npm run keys:generate --workspace backend".`);
+      throw new Error(
+        `${pathName} points to a missing file. Run "npm run keys:generate --workspace backend".`,
+      );
     }
+    // eslint-disable-next-line n/no-sync -- key file read once, on first use
     return fs.readFileSync(resolved, "utf8");
   }
   throw new Error(
-    `JWT key missing: set ${base64Name} (base64 PEM, from Azure Key Vault in production) or ${pathName}.`
+    `JWT key missing: set ${base64Name} (base64 PEM, from Azure Key Vault in production) `
+    + `or ${pathName}.`,
   );
 }
 
-// Keys load on first use, so tools that never sign tokens (e.g. the migration runner) start without them.
+// Keys load on first use, so tools that never sign tokens (e.g. the migration runner)
+// start without them.
 function lazyKey(base64Name, pathName) {
   let cached = null;
   return () => {
@@ -47,8 +53,9 @@ function readRehashFlag() {
   }
   if (process.env.PASSWORD_REHASH_SHARED_DB_ACK !== "true") {
     throw new Error(
-      "PASSWORD_REHASH_ON_LOGIN=true rewrites hashes in the shared Users table. " +
-      "Set PASSWORD_REHASH_SHARED_DB_ACK=true only after every system using that table can verify Argon2id."
+      "PASSWORD_REHASH_ON_LOGIN=true rewrites hashes in the shared Users table. "
+      + "Set PASSWORD_REHASH_SHARED_DB_ACK=true only after every system using that table "
+      + "can verify Argon2id.",
     );
   }
   return true;
@@ -75,25 +82,25 @@ const config = Object.freeze({
     },
     issuer: "workiya-api",
     audience: "workiya-web",
-    accessTtlSeconds: 900
+    accessTtlSeconds: 900,
   }),
   refresh: Object.freeze({
     persistentDays: 30,
     sessionHours: 12,
-    reuseGraceSeconds: 30
+    reuseGraceSeconds: 30,
   }),
   auth: Object.freeze({
     maxFailedLogins: 5,
     lockoutMinutes: 15,
-    passwordRehashOnLogin: readRehashFlag()
+    passwordRehashOnLogin: readRehashFlag(),
   }),
   mssql: Object.freeze({
     server: process.env.MSSQL_SERVER || "",
     database: process.env.MSSQL_DATABASE || "",
     user: process.env.MSSQL_USER || "",
     password: process.env.MSSQL_PASSWORD || "",
-    trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERTIFICATE === "true"
-  })
+    trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERTIFICATE === "true",
+  }),
 });
 
 module.exports = config;

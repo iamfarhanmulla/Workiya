@@ -4,9 +4,13 @@ const passwordService = require("../services/password.service");
 const { resolveCompanyId, companyFilter, roleFilter } = require("../services/tenantScope");
 const logger = require("../utils/logger");
 
-const ASSIGN_FORBIDDEN = { success: false, message: "You are not allowed to assign this role or company." };
+const ASSIGN_FORBIDDEN = {
+  success: false,
+  message: "You are not allowed to assign this role or company.",
+};
 const NOT_FOUND = { success: false, message: "Employee not found." };
-const PASSWORD_RULE = `Password must be at least ${passwordService.MIN_PASSWORD_LENGTH} characters.`;
+const PASSWORD_RULE = `Password must be at least ${passwordService.MIN_PASSWORD_LENGTH} `
+  + "characters.";
 
 const EMPLOYEE_SELECT = `
   SELECT
@@ -17,8 +21,9 @@ const EMPLOYEE_SELECT = `
     u.ManagerId,
     CONCAT(m.FirstName, ' ', m.LastName) AS ManagerName,
     u.Status, u.IsActive, u.CreatedAtUtc, u.UpdatedAtUtc,
-    (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.IsDeleted = 0)                              AS TaskCount,
-    (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.Status = 'Completed' AND t.IsDeleted = 0)  AS TaskDone
+    (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.IsDeleted = 0) AS TaskCount,
+    (SELECT COUNT(*) FROM Tasks t
+      WHERE t.AssignedTo = u.Id AND t.Status = 'Completed' AND t.IsDeleted = 0) AS TaskDone
   FROM Users u
   LEFT JOIN Companies c ON c.Id = u.CompanyId
   LEFT JOIN Roles r     ON r.Id = u.RoleId
@@ -26,7 +31,8 @@ const EMPLOYEE_SELECT = `
 
 // Binds the employee-role and caller-company filters on a dbo.Users request.
 function employeeScope(request, user, prefix = "") {
-  return `${roleFilter(request, ROLES.EMPLOYEE, prefix)} AND ${companyFilter(request, user, `${prefix}CompanyId`)}`;
+  const role = roleFilter(request, ROLES.EMPLOYEE, prefix);
+  return `${role} AND ${companyFilter(request, user, `${prefix}CompanyId`)}`;
 }
 
 // GET /api/v1/employees
@@ -64,21 +70,23 @@ async function getById(req, res) {
 }
 
 async function insertEmployee(pool, fields) {
-  const { passwordHash, passwordSalt, passwordIterations } = passwordService.hashForSharedUsersTable(fields.password);
+  const {
+    passwordHash, passwordSalt, passwordIterations,
+  } = passwordService.hashForSharedUsersTable(fields.password);
   const result = await pool.request()
-    .input("roleCode",           sql.NVarChar,       ROLES.EMPLOYEE)
-    .input("companyId",          sql.Int,            fields.companyId)
-    .input("managerId",          sql.Int,            fields.managerId   || null)
-    .input("firstName",          sql.NVarChar,       fields.firstName   || null)
-    .input("middleName",         sql.NVarChar,       fields.middleName  || null)
-    .input("lastName",           sql.NVarChar,       fields.lastName    || null)
-    .input("displayName",        sql.NVarChar,       fields.displayName || null)
-    .input("username",           sql.NVarChar,       fields.email.split("@")[0])
-    .input("email",              sql.NVarChar,       fields.email)
-    .input("phoneNumber",        sql.NVarChar,       fields.phoneNumber || null)
-    .input("passwordHash",       sql.NVarChar,       passwordHash)
-    .input("passwordSalt",       sql.NVarChar,       passwordSalt)
-    .input("passwordIterations", sql.Int,            passwordIterations)
+    .input("roleCode", sql.NVarChar, ROLES.EMPLOYEE)
+    .input("companyId", sql.Int, fields.companyId)
+    .input("managerId", sql.Int, fields.managerId || null)
+    .input("firstName", sql.NVarChar, fields.firstName || null)
+    .input("middleName", sql.NVarChar, fields.middleName || null)
+    .input("lastName", sql.NVarChar, fields.lastName || null)
+    .input("displayName", sql.NVarChar, fields.displayName || null)
+    .input("username", sql.NVarChar, fields.email.split("@")[0])
+    .input("email", sql.NVarChar, fields.email)
+    .input("phoneNumber", sql.NVarChar, fields.phoneNumber || null)
+    .input("passwordHash", sql.NVarChar, passwordHash)
+    .input("passwordSalt", sql.NVarChar, passwordSalt)
+    .input("passwordIterations", sql.Int, passwordIterations)
     .query(`
       INSERT INTO Users
         (RoleId, CompanyId, ManagerId, FirstName, MiddleName, LastName, DisplayName,
@@ -97,8 +105,9 @@ async function insertEmployee(pool, fields) {
 async function create(req, res) {
   const { email, password } = req.body;
   if (!email) return res.status(400).json({ success: false, message: "Email is required." });
-  if (!passwordService.isAcceptablePassword(password))
+  if (!passwordService.isAcceptablePassword(password)) {
     return res.status(400).json({ success: false, message: PASSWORD_RULE });
+  }
   const company = resolveCompanyId(req.user, req.body.companyId);
   if (!company.allowed) return res.status(403).json(ASSIGN_FORBIDDEN);
 
@@ -107,8 +116,9 @@ async function create(req, res) {
     const dup = await pool.request()
       .input("email", sql.NVarChar, email)
       .query("SELECT Id FROM Users WHERE Email = @email");
-    if (dup.recordset.length > 0)
+    if (dup.recordset.length > 0) {
       return res.status(409).json({ success: false, message: "Email already in use." });
+    }
 
     const id = await insertEmployee(pool, { ...req.body, companyId: company.companyId });
     return res.status(201).json({ success: true, message: "Employee created.", id });
@@ -120,22 +130,24 @@ async function create(req, res) {
 
 // PUT /api/v1/employees/:id
 async function update(req, res) {
-  const { firstName, lastName, middleName, email, phoneNumber, displayName, managerId, isActive } = req.body;
+  const {
+    firstName, lastName, middleName, email, phoneNumber, displayName, managerId, isActive,
+  } = req.body;
   const company = resolveCompanyId(req.user, req.body.companyId);
   if (!company.allowed) return res.status(403).json(ASSIGN_FORBIDDEN);
   try {
     const pool = await connectDb();
     const request = pool.request()
-      .input("id",          sql.Int,      req.params.id)
-      .input("firstName",   sql.NVarChar, firstName   ?? null)
-      .input("middleName",  sql.NVarChar, middleName  ?? null)
-      .input("lastName",    sql.NVarChar, lastName    ?? null)
+      .input("id", sql.Int, req.params.id)
+      .input("firstName", sql.NVarChar, firstName ?? null)
+      .input("middleName", sql.NVarChar, middleName ?? null)
+      .input("lastName", sql.NVarChar, lastName ?? null)
       .input("displayName", sql.NVarChar, displayName ?? null)
-      .input("email",       sql.NVarChar, email       ?? null)
+      .input("email", sql.NVarChar, email ?? null)
       .input("phoneNumber", sql.NVarChar, phoneNumber ?? null)
-      .input("companyId",   sql.Int,      company.companyId)
-      .input("managerId",   sql.Int,      managerId   ?? null)
-      .input("isActive",    sql.Bit,      isActive    ?? 1);
+      .input("companyId", sql.Int, company.companyId)
+      .input("managerId", sql.Int, managerId ?? null)
+      .input("isActive", sql.Bit, isActive ?? 1);
     const scope = employeeScope(request, req.user);
     const result = await request.query(`
       UPDATE Users SET
@@ -162,12 +174,13 @@ async function update(req, res) {
 // PATCH /api/v1/employees/:id/status
 async function toggleStatus(req, res) {
   const { isActive } = req.body;
-  if (isActive === undefined)
+  if (isActive === undefined) {
     return res.status(400).json({ success: false, message: "isActive is required." });
+  }
   try {
     const pool = await connectDb();
     const request = pool.request()
-      .input("id",       sql.Int, req.params.id)
+      .input("id", sql.Int, req.params.id)
       .input("isActive", sql.Bit, isActive ? 1 : 0);
     const scope = employeeScope(request, req.user);
     const result = await request.query(`
@@ -177,7 +190,10 @@ async function toggleStatus(req, res) {
       WHERE Id = @id AND IsDeleted = 0 AND ${scope}
     `);
     if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
-    return res.json({ success: true, message: isActive ? "Employee activated." : "Employee deactivated." });
+    return res.json({
+      success: true,
+      message: isActive ? "Employee activated." : "Employee deactivated.",
+    });
   } catch (err) {
     logger.error({ err }, "employees toggleStatus error");
     return res.status(500).json({ success: false, message: "Database error." });
@@ -186,8 +202,9 @@ async function toggleStatus(req, res) {
 
 // DELETE /api/v1/employees/:id (soft delete)
 async function remove(req, res) {
-  if (Number(req.params.id) === Number(req.user.id))
+  if (Number(req.params.id) === Number(req.user.id)) {
     return res.status(403).json({ success: false, message: "You cannot delete your own account." });
+  }
   try {
     const pool = await connectDb();
     const request = pool.request().input("id", sql.Int, req.params.id);
@@ -225,4 +242,6 @@ async function getManagersList(req, res) {
   }
 }
 
-module.exports = { getAll, getById, create, update, toggleStatus, remove, getManagersList };
+module.exports = {
+  getAll, getById, create, update, toggleStatus, remove, getManagersList,
+};

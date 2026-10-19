@@ -27,7 +27,7 @@ describe("user.repository", () => {
 
   it.each([
     ["findActiveByEmail", "x@y.z"],
-    ["findActiveById", 9]
+    ["findActiveById", 9],
   ])("%s returns null when nothing matches", async (method, arg) => {
     // Arrange
     mockPool(mockConnectDb, [rows()]);
@@ -57,25 +57,34 @@ describe("user.repository", () => {
     const db = mockPool(mockConnectDb, [rows({ FailedLoginCount: 5, LockoutEndUtc: lockout })]);
 
     // Act
-    const result = await userRepository.recordFailedLogin(4, { maxFailedLogins: 5, lockoutMinutes: 15 });
+    const result = await userRepository.recordFailedLogin(4, {
+      maxFailedLogins: 5, lockoutMinutes: 15,
+    });
 
     // Assert
     expect(result).toEqual({ failedLoginCount: 5, lockoutEndUtc: lockout });
     expect(db.queries).toHaveLength(1);
     expect(db.queries[0].inputs).toEqual({ id: 4, maxFailedLogins: 5, lockoutMinutes: 15 });
-    expect(db.queries[0].text).toContain(">= @maxFailedLogins THEN DATEADD(minute, @lockoutMinutes, GETUTCDATE())");
-    expect(db.queries[0].text).toContain("OUTPUT inserted.FailedLoginCount, inserted.LockoutEndUtc");
+    expect(db.queries[0].text)
+      .toContain(">= @maxFailedLogins THEN DATEADD(minute, @lockoutMinutes, GETUTCDATE())");
+    expect(db.queries[0].text)
+      .toContain("OUTPUT inserted.FailedLoginCount, inserted.LockoutEndUtc");
   });
 
   it.each([
-    [rows({ FailedLoginCount: 2, LockoutEndUtc: null }), { failedLoginCount: 2, lockoutEndUtc: null }],
-    [rows(), { failedLoginCount: 0, lockoutEndUtc: null }]
+    [
+      rows({ FailedLoginCount: 2, LockoutEndUtc: null }),
+      { failedLoginCount: 2, lockoutEndUtc: null },
+    ],
+    [rows(), { failedLoginCount: 0, lockoutEndUtc: null }],
   ])("maps the recordFailedLogin output %#", async (response, expected) => {
     // Arrange
     mockPool(mockConnectDb, [response]);
 
     // Act
-    const result = await userRepository.recordFailedLogin(4, { maxFailedLogins: 5, lockoutMinutes: 15 });
+    const result = await userRepository.recordFailedLogin(4, {
+      maxFailedLogins: 5, lockoutMinutes: 15,
+    });
 
     // Assert
     expect(result).toEqual(expected);
@@ -98,10 +107,14 @@ describe("user.repository", () => {
     const db = mockPool(mockConnectDb, [affected(1)]);
 
     // Act
-    await userRepository.updatePasswordHash(4, { passwordHash: "$argon2id$x", passwordSalt: "", passwordIterations: 0 });
+    await userRepository.updatePasswordHash(4, {
+      passwordHash: "$argon2id$x", passwordSalt: "", passwordIterations: 0,
+    });
 
     // Assert
-    expect(db.queries[0].inputs).toEqual({ id: 4, passwordHash: "$argon2id$x", passwordSalt: "", passwordIterations: 0 });
+    expect(db.queries[0].inputs).toEqual({
+      id: 4, passwordHash: "$argon2id$x", passwordSalt: "", passwordIterations: 0,
+    });
   });
 });
 
@@ -119,7 +132,7 @@ describe("refreshToken.repository", () => {
       isPersistent: false,
       expiresAtUtc: new Date(),
       createdByIp: null,
-      userAgent: null
+      userAgent: null,
     });
 
     // Assert
@@ -130,7 +143,7 @@ describe("refreshToken.repository", () => {
 
   it.each([
     [rows({ Id: 1 }), { Id: 1 }],
-    [rows(), null]
+    [rows(), null],
   ])("findByHash returns the row or null %#", async (response, expected) => {
     // Arrange
     mockPool(mockConnectDb, [response]);
@@ -144,7 +157,7 @@ describe("refreshToken.repository", () => {
 
   it.each([
     [1, "b".repeat(64), true],
-    [0, undefined, false]
+    [0, undefined, false],
   ])("revokes only a still-live token (rows affected %i)", async (count, replacedBy, expected) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
@@ -176,10 +189,13 @@ describe("auditLog.repository", () => {
     const db = mockPool(mockConnectDb, [affected(1)]);
 
     // Act
-    await auditLogRepository.insert({ eventType: "E", entityType: "User", entityId: "1", performedBy: 1 });
+    await auditLogRepository.insert({
+      eventType: "E", entityType: "User", entityId: "1", performedBy: 1,
+    });
 
     // Assert
     expect(db.queries[0].text).toContain("INSERT INTO AuditLogs");
-    expect(db.queries[0].inputs).toMatchObject({ eventType: "E", entityType: "User", performedBy: 1 });
+    expect(db.queries[0].inputs)
+      .toMatchObject({ eventType: "E", entityType: "User", performedBy: 1 });
   });
 });

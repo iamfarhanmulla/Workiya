@@ -21,7 +21,7 @@ describe("errorHandler middleware", () => {
       success: false,
       data: null,
       errorCode: "AUTH_ACCOUNT_LOCKED",
-      message: "Locked."
+      message: "Locked.",
     });
   });
 
@@ -52,6 +52,9 @@ describe("errorHandler middleware", () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(body.errorCode).toBe("INTERNAL_ERROR");
     expect(JSON.stringify(body)).not.toMatch(/'sa'|db01|stack/);
-    expect(logger.error).toHaveBeenCalledWith(expect.objectContaining({ err }), "Unhandled request error");
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err }),
+      "Unhandled request error",
+    );
   });
 });

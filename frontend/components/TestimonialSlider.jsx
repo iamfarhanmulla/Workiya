@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -6,24 +6,27 @@ const testimonials = [
   {
     title: "Optimizing workforce productivity through structural clarity.",
     description:
-      "Experience the next generation of workforce intelligence with WorKiya's architectural approach to data management.",
+      "Experience the next generation of workforce intelligence with WorKiya's "
+      + "architectural approach to data management.",
     trusted: "Trusted by 2,000+ teams",
-    avatars: ["AL", "RK", "JD"]
+    avatars: ["AL", "RK", "JD"],
   },
   {
     title: "Building reliable operations around a single source of workforce truth.",
     description:
-      "Unify attendance, approvals, and team structure in one connected experience designed for growing organizations.",
+      "Unify attendance, approvals, and team structure in one connected experience "
+      + "designed for growing organizations.",
     trusted: "Adopted by fast-scaling teams",
-    avatars: ["NS", "PM", "AR"]
+    avatars: ["NS", "PM", "AR"],
   },
   {
     title: "Turning workforce data into confident daily decisions.",
     description:
-      "Give managers real-time visibility into performance, staffing, and coordination without adding process overhead.",
+      "Give managers real-time visibility into performance, staffing, and coordination "
+      + "without adding process overhead.",
     trusted: "Chosen by modern HR leaders",
-    avatars: ["MJ", "SK", "TA"]
-  }
+    avatars: ["MJ", "SK", "TA"],
+  },
 ];
 
 export default function TestimonialSlider() {
@@ -45,8 +48,8 @@ export default function TestimonialSlider() {
         <article className="testimonial-card">
           <div className="trusted-row">
             <div className="avatar-stack" aria-hidden="true">
-              {activeSlide.avatars.map((avatar, index) => (
-                <span key={`${avatar}-${index}`}>{avatar}</span>
+              {activeSlide.avatars.map((avatar) => (
+                <span key={avatar}>{avatar}</span>
               ))}
             </div>
             <p>{activeSlide.trusted}</p>
@@ -76,4 +79,3 @@ export default function TestimonialSlider() {
     </>
   );
 }
-

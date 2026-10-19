@@ -34,7 +34,7 @@ describe("password.service", () => {
       // Act
       const results = await Promise.all([
         passwordService.verifyPassword(emptyHash, "x"),
-        passwordService.verifyPassword(emptySalt, "x")
+        passwordService.verifyPassword(emptySalt, "x"),
       ]);
 
       // Assert
@@ -74,7 +74,7 @@ describe("password.service", () => {
       const results = await Promise.all([
         passwordService.verifyPassword(unknownScheme, "abc"),
         passwordService.verifyPassword(null, "abc"),
-        passwordService.verifyPassword(unknownScheme, undefined)
+        passwordService.verifyPassword(unknownScheme, undefined),
       ]);
 
       // Assert
@@ -104,7 +104,9 @@ describe("password.service", () => {
     it("is true for PBKDF2 rows and false for Argon2 rows", () => {
       // Arrange
       const legacy = legacyPbkdf2Row("x");
-      const modern = { PasswordHash: "$argon2id$v=19$...", PasswordSalt: "", PasswordIterations: 0 };
+      const modern = {
+        PasswordHash: "$argon2id$v=19$...", PasswordSalt: "", PasswordIterations: 0,
+      };
 
       // Act
       const results = [passwordService.needsRehash(legacy), passwordService.needsRehash(modern)];
@@ -153,7 +155,7 @@ describe("password.service", () => {
       const ok = await passwordService.verifyPassword({
         PasswordHash: hashed.passwordHash,
         PasswordSalt: hashed.passwordSalt,
-        PasswordIterations: hashed.passwordIterations
+        PasswordIterations: hashed.passwordIterations,
       }, "Str0ng!Pass");
 
       // Assert
@@ -167,7 +169,7 @@ describe("password.service", () => {
       [undefined, false],
       ["short", false],
       ["x".repeat(257), false],
-      ["Employee1", true]
+      ["Employee1", true],
     ])("returns the right answer for %p", (input, expected) => {
       // Arrange / Act
       const result = passwordService.isAcceptablePassword(input);

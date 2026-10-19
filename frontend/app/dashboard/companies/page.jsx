@@ -2,8 +2,11 @@
 
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import {
+  useState, useEffect, useRef, useCallback, memo,
+} from "react";
 import { api, getErrorMessage } from "@/lib/apiClient";
+import activateOnKey from "@/app/dashboard/_utils/activateOnKey";
 
 const PLAN_STYLES = {
   ENTERPRISE: { bg: "#EDE9FE", color: "#8B5CF6" },
@@ -12,20 +15,23 @@ const PLAN_STYLES = {
 };
 const PLANS = ["STARTUP", "PROFESSIONAL", "ENTERPRISE"];
 
-const AVATAR_COLORS = ["#8B5CF6", "#10B981", "#1E3A8A", "#F59E0B", "#EF4444", "#06B6D4", "#D946EF", "#3B5FCF"];
+const AVATAR_COLORS = [
+  "#8B5CF6", "#10B981", "#1E3A8A", "#F59E0B", "#EF4444", "#06B6D4", "#D946EF", "#3B5FCF",
+];
 const avatarColor = (id) => AVATAR_COLORS[id % AVATAR_COLORS.length];
-const initials = (name) => name ? name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?";
+const initials = (name) => (name ? name.split(" ").map((w) => w[0]).join("").slice(0, 2)
+  .toUpperCase() : "?");
 
 function useCountUp(target, active, duration = 1200) {
   const [val, setVal] = useState(0);
   const raf = useRef(null);
   useEffect(() => {
-    if (!active) return;
+    if (!active) return undefined;
     let start = null;
     const step = (ts) => {
       if (!start) start = ts;
       const p = Math.min((ts - start) / duration, 1);
-      setVal(Math.round((1 - Math.pow(1 - p, 3)) * target));
+      setVal(Math.round((1 - (1 - p) ** 3) * target));
       if (p < 1) raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
@@ -34,13 +40,22 @@ function useCountUp(target, active, duration = 1200) {
   return val;
 }
 
-const StatCard = memo(function StatCard({ icon, bg, color, label, value, sub, index, active }) {
+// Named function: keeps "StatCard" as the component name in React DevTools and error stacks.
+// eslint-disable-next-line prefer-arrow-callback -- see comment above
+const StatCard = memo(function StatCard({
+  icon, bg, color, label, value, sub, index, active,
+}) {
   const count = useCountUp(value, active);
   return (
     <div className="stat-card dash-anim-card" style={{ "--card-delay": `${index * 0.08}s` }}>
       <div className="stat-card-top">
         <div className="stat-icon" style={{ background: bg }}>
-          <span className="material-symbols-outlined" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+          <span
+            className="material-symbols-outlined"
+            style={{ color, fontVariationSettings: "'FILL' 1" }}
+          >
+            {icon}
+          </span>
         </div>
       </div>
       <p className="stat-label">{label}</p>
@@ -51,8 +66,15 @@ const StatCard = memo(function StatCard({ icon, bg, color, label, value, sub, in
 });
 
 const EMPTY_FORM = {
-  name: "", key: "", contactEmail: "", contactPhone: "",
-  address: "", city: "", country: "", plan: "STARTUP", isActive: 1,
+  name: "",
+  key: "",
+  contactEmail: "",
+  contactPhone: "",
+  address: "",
+  city: "",
+  country: "",
+  plan: "STARTUP",
+  isActive: 1,
 };
 
 export default function CompaniesPage() {
@@ -80,20 +102,27 @@ export default function CompaniesPage() {
       const json = res.data;
       if (json.success) setCompanies(json.data);
       else setError("Failed to load companies.");
-    } catch (err) { setError(err.response ? "Failed to load companies." : "Cannot connect to server."); }
-    finally { setLoading(false); setTimeout(() => setActive(true), 50); }
+    } catch (err) {
+      setError(err.response ? "Failed to load companies." : "Cannot connect to server.");
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActive(true), 50);
+    }
   }, []);
 
-  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
+    fetchCompanies();
+  }, [fetchCompanies]);
 
   // ── Stats ──
   const total = companies.length;
-  const activeC = companies.filter(c => c.IsActive).length;
-  const inactiveC = companies.filter(c => !c.IsActive).length;
+  const activeC = companies.filter((c) => c.IsActive).length;
+  const inactiveC = companies.filter((c) => !c.IsActive).length;
   const totalEmps = companies.reduce((s, c) => s + (c.EmployeeCount || 0), 0);
 
   // ── Filter ──
-  const filtered = companies.filter(c => {
+  const filtered = companies.filter((c) => {
     const nm = `${c.Name || ""} ${c.City || ""} ${c.Country || ""}`.toLowerCase();
     const ms = nm.includes(search.toLowerCase());
     const mp = planFilter === "All" || c.Plan === planFilter;
@@ -103,7 +132,10 @@ export default function CompaniesPage() {
 
   // ── Modals ──
   function openAdd() {
-    setEditComp(null); setForm(EMPTY_FORM); setFormError(""); setShowModal(true);
+    setEditComp(null);
+    setForm(EMPTY_FORM);
+    setFormError("");
+    setShowModal(true);
   }
   function openEdit(c) {
     setEditComp(c);
@@ -118,38 +150,62 @@ export default function CompaniesPage() {
       plan: c.Plan || "STARTUP",
       isActive: c.IsActive ? 1 : 0,
     });
-    setFormError(""); setShowModal(true);
+    setFormError("");
+    setShowModal(true);
   }
-  function openView(c) { setViewComp(c); setViewModal(true); }
-  function closeModal() { setShowModal(false); setEditComp(null); }
-  function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
+  function openView(c) {
+    setViewComp(c);
+    setViewModal(true);
+  }
+  function closeModal() {
+    setShowModal(false);
+    setEditComp(null);
+  }
+  function setF(k, v) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
 
   // ── Save ──
   async function handleSave() {
     setFormError("");
-    if (!form.name) return setFormError("Company name is required.");
+    if (!form.name) {
+      setFormError("Company name is required.");
+      return;
+    }
     setSaving(true);
     try {
-      const res = editComp ? await api.put(`/companies/${editComp.Id}`, form) : await api.post("/companies", form);
+      const res = editComp
+        ? await api.put(`/companies/${editComp.Id}`, form)
+        : await api.post("/companies", form);
       const json = res.data;
-      if (!json.success) { setFormError(json.message || "Failed to save."); return; }
+      if (!json.success) {
+        setFormError(json.message || "Failed to save.");
+        return;
+      }
       showToast(editComp ? "Company updated successfully!" : "Company created successfully!");
-      closeModal(); fetchCompanies();
+      closeModal();
+      fetchCompanies();
     } catch (err) {
       const msg = getErrorMessage(err, "Failed to save.");
       setFormError(msg);
       if (!err.response) showToast(msg, "error");
+    } finally {
+      setSaving(false);
     }
-    finally { setSaving(false); }
   }
 
   // ── Toggle active ──
   async function toggleActive(c) {
     try {
       await api.patch(`/companies/${c.Id}/status`, { isActive: c.IsActive ? 0 : 1 });
-      showToast(c.IsActive ? "Company deactivated." : "Company activated.", c.IsActive ? "warning" : "success");
+      showToast(
+        c.IsActive ? "Company deactivated." : "Company activated.",
+        c.IsActive ? "warning" : "success",
+      );
       fetchCompanies();
-    } catch { showToast("Failed to update status.", "error"); }
+    } catch {
+      showToast("Failed to update status.", "error");
+    }
   }
 
   // ── Delete ──
@@ -162,9 +218,14 @@ export default function CompaniesPage() {
       await api.delete(`/companies/${deleteTarget}`);
       showToast("Company deleted successfully!", "success");
       fetchCompanies();
-    } catch { showToast("Failed to delete company.", "error"); }
-    finally { setDeleteTarget(null); }
+    } catch {
+      showToast("Failed to delete company.", "error");
+    } finally {
+      setDeleteTarget(null);
+    }
   }
+
+  const saveLabel = editComp ? "Update Company" : "Add Company";
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -181,10 +242,10 @@ export default function CompaniesPage() {
           <p className="page-hd-sub">Manage organizations on the WorKiya platform</p>
         </div>
         <div className="page-hd-actions">
-          <button className="btn btn-outline btn-sm" onClick={fetchCompanies}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={fetchCompanies}>
             <span className="material-symbols-outlined">refresh</span>Refresh
           </button>
-          <button className="btn btn-primary btn-sm" onClick={openAdd}>
+          <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
             <span className="material-symbols-outlined">add</span>Add Company
           </button>
         </div>
@@ -192,23 +253,72 @@ export default function CompaniesPage() {
 
       {/* Stat Cards */}
       <div className="stat-cards">
-        <StatCard index={0} icon="corporate_fare" bg="#EEF2FF" color="#1E3A8A" label="Total Companies" value={total} sub="All organizations" active={active} />
-        <StatCard index={1} icon="check_circle" bg="#D1FAE5" color="#10B981" label="Active" value={activeC} sub="Currently active" active={active} />
-        <StatCard index={2} icon="cancel" bg="#FEE2E2" color="#EF4444" label="Inactive" value={inactiveC} sub="Deactivated" active={active} />
-        <StatCard index={3} icon="badge" bg="#EDE9FE" color="#8B5CF6" label="Total Employees" value={totalEmps} sub="Across all companies" active={active} />
+        <StatCard
+          index={0}
+          icon="corporate_fare"
+          bg="#EEF2FF"
+          color="#1E3A8A"
+          label="Total Companies"
+          value={total}
+          sub="All organizations"
+          active={active}
+        />
+        <StatCard
+          index={1}
+          icon="check_circle"
+          bg="#D1FAE5"
+          color="#10B981"
+          label="Active"
+          value={activeC}
+          sub="Currently active"
+          active={active}
+        />
+        <StatCard
+          index={2}
+          icon="cancel"
+          bg="#FEE2E2"
+          color="#EF4444"
+          label="Inactive"
+          value={inactiveC}
+          sub="Deactivated"
+          active={active}
+        />
+        <StatCard
+          index={3}
+          icon="badge"
+          bg="#EDE9FE"
+          color="#8B5CF6"
+          label="Total Employees"
+          value={totalEmps}
+          sub="Across all companies"
+          active={active}
+        />
       </div>
 
       {/* Toolbar */}
       <div className="co-toolbar">
         <div className="co-search">
           <span className="material-symbols-outlined">search</span>
-          <input type="text" placeholder="Search companies..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Search companies..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <select className="co-filter-select" value={planFilter} onChange={e => setPlanFilter(e.target.value)}>
+        <select
+          className="co-filter-select"
+          value={planFilter}
+          onChange={(e) => setPlanFilter(e.target.value)}
+        >
           <option value="All">All Plans</option>
-          {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+          {PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <select className="co-filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select
+          className="co-filter-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
           <option value="All">All Status</option>
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
@@ -218,17 +328,29 @@ export default function CompaniesPage() {
       {/* Table */}
       <div style={{ margin: "0 20px 20px" }}>
         <div className="table-card" style={{ margin: 0 }}>
-          {loading ? (
+          {loading && (
             <div className="page-placeholder" style={{ minHeight: 200 }}>
-              <span className="material-symbols-outlined page-placeholder-icon" style={{ animation: "spin 1s linear infinite" }}>progress_activity</span>
+              <span
+                className="material-symbols-outlined page-placeholder-icon"
+                style={{ animation: "spin 1s linear infinite" }}
+              >
+                progress_activity
+              </span>
               <p>Loading companies...</p>
             </div>
-          ) : error ? (
+          )}
+          {!loading && error && (
             <div className="page-placeholder" style={{ minHeight: 200 }}>
-              <span className="material-symbols-outlined page-placeholder-icon" style={{ color: "#EF4444" }}>error</span>
+              <span
+                className="material-symbols-outlined page-placeholder-icon"
+                style={{ color: "#EF4444" }}
+              >
+                error
+              </span>
               <p style={{ color: "#EF4444" }}>{error}</p>
             </div>
-          ) : (
+          )}
+          {!loading && !error && (
             <table>
               <thead>
                 <tr>
@@ -249,7 +371,12 @@ export default function CompaniesPage() {
                     <tr key={c.Id} style={{ animation: `dashRowIn 0.35s ease ${i * 0.04}s both` }}>
                       <td>
                         <div className="avatar-cell">
-                          <div className="avatar avatar-circle" style={{ background: avatarColor(c.Id) }}>{initials(c.Name)}</div>
+                          <div
+                            className="avatar avatar-circle"
+                            style={{ background: avatarColor(c.Id) }}
+                          >
+                            {initials(c.Name)}
+                          </div>
                           <div>
                             <div className="cell-name">{c.Name}</div>
                             <div className="cell-sub">{c.Key}</div>
@@ -257,7 +384,9 @@ export default function CompaniesPage() {
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontSize: 13 }}>{c.ContactEmail || <span style={{ color: "#94A3B8" }}>—</span>}</div>
+                        <div style={{ fontSize: 13 }}>
+                          {c.ContactEmail || <span style={{ color: "#94A3B8" }}>—</span>}
+                        </div>
                         <div style={{ fontSize: 12, color: "#94A3B8" }}>{c.ContactPhone || ""}</div>
                       </td>
                       <td style={{ fontSize: 13 }}>
@@ -266,12 +395,33 @@ export default function CompaniesPage() {
                           : <span style={{ color: "#94A3B8" }}>—</span>}
                       </td>
                       <td>
-                        <span className="badge" style={{ background: ps.bg, color: ps.color, border: `1px solid ${ps.color}22` }}>
+                        <span
+                          className="badge"
+                          style={{
+                            background: ps.bg,
+                            color: ps.color,
+                            border: `1px solid ${ps.color}22`,
+                          }}
+                        >
                           {c.Plan || "—"}
                         </span>
                       </td>
-                      <td style={{ fontSize: 13, fontWeight: 600, color: "#1E3A8A" }}>{c.EmployeeCount || 0}</td>
-                      <td style={{ fontSize: 13, fontWeight: 600, color: "#8B5CF6" }}>{c.ManagerCount || 0}</td>
+                      <td style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#1E3A8A",
+                      }}
+                      >
+                        {c.EmployeeCount || 0}
+                      </td>
+                      <td style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#8B5CF6",
+                      }}
+                      >
+                        {c.ManagerCount || 0}
+                      </td>
                       <td>
                         <span className={`badge ${c.IsActive ? "badge-success" : "badge-danger"}`}>
                           {c.IsActive ? "Active" : "Inactive"}
@@ -279,20 +429,48 @@ export default function CompaniesPage() {
                       </td>
                       <td>
                         <div className="action-btns">
-                          <div className="icon-btn" title="View" onClick={() => openView(c)}>
+                          <div
+                            className="icon-btn"
+                            title="View"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openView(c)}
+                            onKeyDown={activateOnKey}
+                          >
                             <span className="material-symbols-outlined">visibility</span>
                           </div>
-                          <div className="icon-btn" title="Edit" onClick={() => openEdit(c)}>
+                          <div
+                            className="icon-btn"
+                            title="Edit"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openEdit(c)}
+                            onKeyDown={activateOnKey}
+                          >
                             <span className="material-symbols-outlined">edit</span>
                           </div>
                           <div
-                            className={`icon-btn ${c.IsActive ? "icon-btn-warning" : "icon-btn-success"}`}
+                            className={`icon-btn ${
+                              c.IsActive ? "icon-btn-warning" : "icon-btn-success"
+                            }`}
                             title={c.IsActive ? "Deactivate" : "Activate"}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => toggleActive(c)}
+                            onKeyDown={activateOnKey}
                           >
-                            <span className="material-symbols-outlined">{c.IsActive ? "block" : "check_circle"}</span>
+                            <span className="material-symbols-outlined">
+                              {c.IsActive ? "block" : "check_circle"}
+                            </span>
                           </div>
-                          <div className="icon-btn icon-btn-danger" title="Delete" onClick={() => handleDelete(c.Id)}>
+                          <div
+                            className="icon-btn icon-btn-danger"
+                            title="Delete"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleDelete(c.Id)}
+                            onKeyDown={activateOnKey}
+                          >
                             <span className="material-symbols-outlined">delete</span>
                           </div>
                         </div>
@@ -315,9 +493,9 @@ export default function CompaniesPage() {
             <div className="co-pagination">
               <span>Showing {filtered.length} of {companies.length} companies</span>
               <div className="co-page-btns">
-                <button className="co-page-btn" disabled>‹</button>
-                <button className="co-page-btn active">1</button>
-                <button className="co-page-btn" disabled>›</button>
+                <button type="button" className="co-page-btn" disabled>‹</button>
+                <button type="button" className="co-page-btn active">1</button>
+                <button type="button" className="co-page-btn" disabled>›</button>
               </div>
             </div>
           )}
@@ -326,78 +504,154 @@ export default function CompaniesPage() {
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
           <div className="modal" style={{ maxWidth: 580 }}>
             <div className="modal-header">
               <div className="modal-header-icon" style={{ background: "#EEF2FF" }}>
-                <span className="material-symbols-outlined" style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}
+                >
                   {editComp ? "edit" : "corporate_fare"}
                 </span>
               </div>
               <div>
                 <div className="modal-title">{editComp ? "Edit Company" : "Add New Company"}</div>
-                <div className="modal-sub">{editComp ? `Editing ${editComp.Name}` : "Register a new organization"}</div>
+                <div className="modal-sub">
+                  {editComp ? `Editing ${editComp.Name}` : "Register a new organization"}
+                </div>
               </div>
-              <button className="modal-close" onClick={closeModal}>
+              <button type="button" className="modal-close" onClick={closeModal}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <div className="modal-body">
               {formError && (
-                <div style={{ background: "#FEE2E2", color: "#DC2626", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>
+                <div style={{
+                  background: "#FEE2E2",
+                  color: "#DC2626",
+                  borderRadius: 8,
+                  padding: "10px 14px",
+                  fontSize: 13,
+                  marginBottom: 12,
+                }}
+                >
                   {formError}
                 </div>
               )}
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">Company Name <span style={{ color: "#EF4444" }}>*</span></label>
-                  <input className="form-input" placeholder="Acme Corp" value={form.name} onChange={e => setF("name", e.target.value)} />
+                  <label htmlFor="company-company-name" className="form-label">
+                    Company Name <span style={{ color: "#EF4444" }}>*</span>
+                  </label>
+                  <input
+                    id="company-company-name"
+                    className="form-input"
+                    placeholder="Acme Corp"
+                    value={form.name}
+                    onChange={(e) => setF("name", e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Key / Slug</label>
-                  <input className="form-input" placeholder="acme-corp (auto-generated)" value={form.key} onChange={e => setF("key", e.target.value)} />
+                  <label htmlFor="company-key-slug" className="form-label">Key / Slug</label>
+                  <input
+                    id="company-key-slug"
+                    className="form-input"
+                    placeholder="acme-corp (auto-generated)"
+                    value={form.key}
+                    onChange={(e) => setF("key", e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">Contact Email</label>
-                  <input className="form-input" type="email" placeholder="contact@company.com" value={form.contactEmail} onChange={e => setF("contactEmail", e.target.value)} />
+                  <label htmlFor="company-contact-email" className="form-label">
+                    Contact Email
+                  </label>
+                  <input
+                    id="company-contact-email"
+                    className="form-input"
+                    type="email"
+                    placeholder="contact@company.com"
+                    value={form.contactEmail}
+                    onChange={(e) => setF("contactEmail", e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Contact Phone</label>
-                  <input className="form-input" placeholder="+91 9999999999" value={form.contactPhone} onChange={e => setF("contactPhone", e.target.value)} />
+                  <label htmlFor="company-contact-phone" className="form-label">
+                    Contact Phone
+                  </label>
+                  <input
+                    id="company-contact-phone"
+                    className="form-input"
+                    placeholder="+91 9999999999"
+                    value={form.contactPhone}
+                    onChange={(e) => setF("contactPhone", e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Address</label>
-                <input className="form-input" placeholder="123 Main Street" value={form.address} onChange={e => setF("address", e.target.value)} />
+                <label htmlFor="company-address" className="form-label">Address</label>
+                <input
+                  id="company-address"
+                  className="form-input"
+                  placeholder="123 Main Street"
+                  value={form.address}
+                  onChange={(e) => setF("address", e.target.value)}
+                />
               </div>
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">City</label>
-                  <input className="form-input" placeholder="Mumbai" value={form.city} onChange={e => setF("city", e.target.value)} />
+                  <label htmlFor="company-city" className="form-label">City</label>
+                  <input
+                    id="company-city"
+                    className="form-input"
+                    placeholder="Mumbai"
+                    value={form.city}
+                    onChange={(e) => setF("city", e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Country</label>
-                  <input className="form-input" placeholder="India" value={form.country} onChange={e => setF("country", e.target.value)} />
+                  <label htmlFor="company-country" className="form-label">Country</label>
+                  <input
+                    id="company-country"
+                    className="form-input"
+                    placeholder="India"
+                    value={form.country}
+                    onChange={(e) => setF("country", e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label className="form-label">Plan</label>
-                  <select className="form-select" value={form.plan} onChange={e => setF("plan", e.target.value)}>
-                    {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+                  <label htmlFor="company-plan" className="form-label">Plan</label>
+                  <select
+                    id="company-plan"
+                    className="form-select"
+                    value={form.plan}
+                    onChange={(e) => setF("plan", e.target.value)}
+                  >
+                    {PLANS.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select className="form-select" value={form.isActive} onChange={e => setF("isActive", Number(e.target.value))}>
+                  <label htmlFor="company-status" className="form-label">Status</label>
+                  <select
+                    id="company-status"
+                    className="form-select"
+                    value={form.isActive}
+                    onChange={(e) => setF("isActive", Number(e.target.value))}
+                  >
                     <option value={1}>Active</option>
                     <option value={0}>Inactive</option>
                   </select>
@@ -406,10 +660,24 @@ export default function CompaniesPage() {
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={closeModal} disabled={saving}>Cancel</button>
-              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                <span className="material-symbols-outlined">{saving ? "progress_activity" : "save"}</span>
-                {saving ? "Saving..." : (editComp ? "Update Company" : "Add Company")}
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={closeModal}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                <span className="material-symbols-outlined">
+                  {saving ? "progress_activity" : "save"}
+                </span>
+                {saving ? "Saving..." : saveLabel}
               </button>
             </div>
           </div>
@@ -418,29 +686,63 @@ export default function CompaniesPage() {
 
       {/* ── View Modal ── */}
       {viewModal && viewComp && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setViewModal(false)}>
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && setViewModal(false)}
+        >
           <div className="modal" style={{ maxWidth: 460 }}>
             <div className="modal-header">
               <div className="modal-header-icon" style={{ background: "#EEF2FF" }}>
-                <span className="material-symbols-outlined" style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}>corporate_fare</span>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ color: "#1E3A8A", fontVariationSettings: "'FILL' 1" }}
+                >
+                  corporate_fare
+                </span>
               </div>
               <div>
                 <div className="modal-title">Company Details</div>
                 <div className="modal-sub">Full organization information</div>
               </div>
-              <button className="modal-close" onClick={() => setViewModal(false)}>
+              <button type="button" className="modal-close" onClick={() => setViewModal(false)}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="modal-body">
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-                <div style={{ width: 56, height: 56, borderRadius: "50%", background: avatarColor(viewComp.Id), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 20, fontWeight: 700 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 16, marginBottom: 20,
+              }}
+              >
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: avatarColor(viewComp.Id),
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontSize: 20,
+                  fontWeight: 700,
+                }}
+                >
                   {initials(viewComp.Name)}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: "#0F172A" }}>{viewComp.Name}</div>
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: 16,
+                    color: "#0F172A",
+                  }}
+                  >
+                    {viewComp.Name}
+                  </div>
                   <div style={{ fontSize: 12, color: "#64748B" }}>{viewComp.Key}</div>
-                  <span className={`badge ${viewComp.IsActive ? "badge-success" : "badge-danger"}`} style={{ marginTop: 4 }}>
+                  <span
+                    className={`badge ${viewComp.IsActive ? "badge-success" : "badge-danger"}`}
+                    style={{ marginTop: 4 }}
+                  >
                     {viewComp.IsActive ? "Active" : "Inactive"}
                   </span>
                 </div>
@@ -455,17 +757,44 @@ export default function CompaniesPage() {
                 { label: "Country", value: viewComp.Country || "—" },
                 { label: "Employees", value: viewComp.EmployeeCount || 0 },
                 { label: "Managers", value: viewComp.ManagerCount || 0 },
-                { label: "Created", value: viewComp.CreatedAtUtc ? new Date(viewComp.CreatedAtUtc).toLocaleDateString() : "—" },
+                {
+                  label: "Created",
+                  value: viewComp.CreatedAtUtc
+                    ? new Date(viewComp.CreatedAtUtc).toLocaleDateString()
+                    : "—",
+                },
               ].map(({ label, value }) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: "1px solid #F1F5F9", fontSize: 13 }}>
+                <div
+                  key={label}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "9px 0",
+                    borderBottom: "1px solid #F1F5F9",
+                    fontSize: 13,
+                  }}
+                >
                   <span style={{ color: "#94A3B8", fontWeight: 600 }}>{label}</span>
                   <span style={{ color: "#0F172A", fontWeight: 500 }}>{value}</span>
                 </div>
               ))}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={() => setViewModal(false)}>Close</button>
-              <button className="btn btn-primary btn-sm" onClick={() => { setViewModal(false); openEdit(viewComp); }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setViewModal(false)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  setViewModal(false);
+                  openEdit(viewComp);
+                }}
+              >
                 <span className="material-symbols-outlined">edit</span>Edit Company
               </button>
             </div>
@@ -477,7 +806,7 @@ export default function CompaniesPage() {
         open={!!deleteTarget}
         title="Delete Company?"
         message="This will permanently remove this company. This action cannot be undone."
-        onConfirm={confirmDelete}
+        onConfirm={() => confirmDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
       <ToastContainer toasts={toasts} />

@@ -3,14 +3,21 @@ import { api } from "@/lib/apiClient";
 import DoctorsPage from "./page";
 
 jest.mock("@/lib/apiClient", () => ({
-  api: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+  api: {
+    get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn(),
+  },
   getErrorMessage: (_err, fallback) => fallback,
 }));
 
-const DOCTOR = { Id: 1, Name: "Dr Meera Shah", Specialization: "Cardiologist", IsActive: true };
+const DOCTOR = {
+  Id: 1, Name: "Dr Meera Shah", Specialization: "Cardiologist", IsActive: true,
+};
 
 function forbidden() {
-  return Promise.reject({ response: { status: 403, data: { errorCode: "FORBIDDEN" } } });
+  const err = Object.assign(new Error("Request failed with status code 403"), {
+    response: { status: 403, data: { errorCode: "FORBIDDEN" } },
+  });
+  return Promise.reject(err);
 }
 
 describe("DoctorsPage", () => {
@@ -21,7 +28,12 @@ describe("DoctorsPage", () => {
   it("shows the doctors even when the role may not list companies", async () => {
     // Arrange
     api.get.mockImplementation((url) => (
-      url === "/doctors" ? Promise.resolve({ data: { success: true, data: [DOCTOR] } }) : forbidden()
+      url === "/doctors" ? Promise.resolve({
+        data: {
+          success: true,
+          data: [DOCTOR],
+        },
+      }) : forbidden()
     ));
 
     // Act

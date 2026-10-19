@@ -6,7 +6,8 @@ function request(method, header) {
 }
 
 describe("csrfProtection middleware", () => {
-  it.each(["GET", "HEAD", "OPTIONS"])("lets safe method %s through without the header", (method) => {
+  it.each(["GET", "HEAD", "OPTIONS"])("lets safe method %s through "
+    + "without the header", (method) => {
     // Arrange
     const next = jest.fn();
 

@@ -23,7 +23,7 @@ async function log(entry) {
       oldValue: serialize(entry.oldValue),
       newValue: serialize(entry.newValue),
       ipAddress: entry.ipAddress ? String(entry.ipAddress).slice(0, 45) : null,
-      userAgent: entry.userAgent ? String(entry.userAgent).slice(0, 500) : null
+      userAgent: entry.userAgent ? String(entry.userAgent).slice(0, 500) : null,
     });
   } catch (err) {
     logger.error({ err, eventType: entry.eventType }, "Failed to write audit log");

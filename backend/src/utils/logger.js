@@ -11,10 +11,10 @@ const logger = pino({
       "*.password",
       "*.token",
       "*.refreshToken",
-      "*.accessToken"
+      "*.accessToken",
     ],
-    censor: "[REDACTED]"
-  }
+    censor: "[REDACTED]",
+  },
 });
 
 module.exports = logger;

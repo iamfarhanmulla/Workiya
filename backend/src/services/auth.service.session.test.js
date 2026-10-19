@@ -44,7 +44,8 @@ describe("auth.service.refresh", () => {
 
   it("rejects an expired token", async () => {
     // Arrange
-    refreshTokenRepository.findByHash.mockResolvedValue(tokenRecord({ ExpiresAtUtc: new Date(Date.now() - 1) }));
+    refreshTokenRepository.findByHash
+      .mockResolvedValue(tokenRecord({ ExpiresAtUtc: new Date(Date.now() - 1) }));
 
     // Act
     const promise = authService.refresh({ refreshToken: "old", ...CTX });
@@ -57,7 +58,7 @@ describe("auth.service.refresh", () => {
   it.each([
     ["revoked", { RevokedAtUtc: new Date(), RevokedReason: "LOGOUT" }],
     ["replaced", { ReplacedByTokenHash: "a".repeat(64) }],
-    ["long-rotated", { RevokedAtUtc: new Date(Date.now() - 31 * 1000), RevokedReason: "ROTATED" }]
+    ["long-rotated", { RevokedAtUtc: new Date(Date.now() - 31 * 1000), RevokedReason: "ROTATED" }],
   ])("revokes the whole family when a %s token is reused", async (_label, overrides) => {
     // Arrange
     refreshTokenRepository.findByHash.mockResolvedValue(tokenRecord(overrides));
@@ -71,9 +72,14 @@ describe("auth.service.refresh", () => {
     expect(auditedEvents()).toEqual([AUDIT_EVENTS.AUTH_REFRESH_REUSE_DETECTED]);
   });
 
-  it("answers a token rotated by another tab moments ago without new tokens or a family revoke", async () => {
+  it("answers a token rotated by another tab moments ago "
+    + "without new tokens or a family revoke", async () => {
     // Arrange
-    const record = tokenRecord({ RevokedAtUtc: new Date(Date.now() - 2000), RevokedReason: "ROTATED", ReplacedByTokenHash: "b".repeat(64) });
+    const record = tokenRecord({
+      RevokedAtUtc: new Date(Date.now() - 2000),
+      RevokedReason: "ROTATED",
+      ReplacedByTokenHash: "b".repeat(64),
+    });
     refreshTokenRepository.findByHash.mockResolvedValue(record);
     userRepository.findActiveById.mockResolvedValue(userRow());
 
@@ -81,14 +87,16 @@ describe("auth.service.refresh", () => {
     const session = await authService.refresh({ refreshToken: "just-rotated", ...CTX });
 
     // Assert
-    expect(session).toEqual({ user: expect.objectContaining({ id: 11 }), rotatedConcurrently: true });
+    expect(session)
+      .toEqual({ user: expect.objectContaining({ id: 11 }), rotatedConcurrently: true });
     expect(refreshTokenRepository.revokeFamily).not.toHaveBeenCalled();
     expect(refreshTokenRepository.insert).not.toHaveBeenCalled();
   });
 
   it("rejects a just-rotated token when the user is no longer active", async () => {
     // Arrange
-    refreshTokenRepository.findByHash.mockResolvedValue(tokenRecord({ RevokedAtUtc: new Date(), RevokedReason: "ROTATED" }));
+    refreshTokenRepository.findByHash
+      .mockResolvedValue(tokenRecord({ RevokedAtUtc: new Date(), RevokedReason: "ROTATED" }));
     userRepository.findActiveById.mockResolvedValue(null);
 
     // Act
@@ -98,7 +106,8 @@ describe("auth.service.refresh", () => {
     await expect(promise).rejects.toMatchObject({ status: 401, errorCode: "AUTH_REFRESH_INVALID" });
   });
 
-  it("revokes its own new token and answers like a concurrent tab when it loses the rotation race", async () => {
+  it("revokes its own new token and answers like a concurrent tab "
+    + "when it loses the rotation race", async () => {
     // Arrange
     refreshTokenRepository.findByHash.mockResolvedValue(tokenRecord());
     userRepository.findActiveById.mockResolvedValue(userRow());
@@ -115,13 +124,20 @@ describe("auth.service.refresh", () => {
     expect(refreshTokenRepository.revokeFamily).not.toHaveBeenCalled();
   });
 
-  it("stores the new token before revoking the old one, so a family revoke always covers it", async () => {
+  it("stores the new token before revoking the old one, "
+    + "so a family revoke always covers it", async () => {
     // Arrange
     const order = [];
     refreshTokenRepository.findByHash.mockResolvedValue(tokenRecord());
     userRepository.findActiveById.mockResolvedValue(userRow());
-    refreshTokenRepository.insert.mockImplementation(async () => { order.push("insert"); return 7; });
-    refreshTokenRepository.revoke.mockImplementation(async () => { order.push("revoke"); return true; });
+    refreshTokenRepository.insert.mockImplementation(async () => {
+      order.push("insert");
+      return 7;
+    });
+    refreshTokenRepository.revoke.mockImplementation(async () => {
+      order.push("revoke");
+      return true;
+    });
 
     // Act
     await authService.refresh({ refreshToken: "valid", ...CTX });
@@ -174,15 +190,16 @@ describe("auth.service.refresh", () => {
 
     // Assert
     const newHash = tokenService.hashRefreshToken(session.refreshToken);
-    expect(refreshTokenRepository.findByHash).toHaveBeenCalledWith(tokenService.hashRefreshToken("valid"));
+    expect(refreshTokenRepository.findByHash)
+      .toHaveBeenCalledWith(tokenService.hashRefreshToken("valid"));
     expect(refreshTokenRepository.revoke).toHaveBeenCalledWith(100, "ROTATED", newHash);
     expect(refreshTokenRepository.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         familyId: "fam-1",
         isPersistent: false,
         tokenHash: newHash,
-        expiresAtUtc: record.ExpiresAtUtc
-      })
+        expiresAtUtc: record.ExpiresAtUtc,
+      }),
     );
     expect(session.user.id).toBe(11);
     expect(session.refreshToken).not.toBe("valid");
@@ -219,7 +236,9 @@ describe("auth.service.logout", () => {
     // Assert
     expect(refreshTokenRepository.revokeFamily).toHaveBeenCalledWith("fam-1", "LOGOUT");
     expect(auditService.log).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: AUDIT_EVENTS.AUTH_LOGOUT, performedBy: 11, ipAddress: "10.0.0.1" })
+      expect.objectContaining({
+        eventType: AUDIT_EVENTS.AUTH_LOGOUT, performedBy: 11, ipAddress: "10.0.0.1",
+      }),
     );
   });
 });

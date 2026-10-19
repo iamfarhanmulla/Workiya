@@ -4,14 +4,17 @@ jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: 
 
 const request = require("supertest");
 const app = require("../app");
-const { XHR, USERS, authCookie, mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const {
+  XHR, USERS, authCookie, mockPool, rows, affected,
+} = require("../../test/helpers/apiHarness");
 
 function call(method, url, user = USERS.admin) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
 }
 
 const NEW_MANAGER = { email: "mgr@example.com", password: "Str0ng!Pass" };
-const MANAGER_AND_COMPANY = "RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode) AND CompanyId = @scopeCompanyId";
+const MANAGER_AND_COMPANY = "RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode)"
+  + " AND CompanyId = @scopeCompanyId";
 
 beforeEach(() => {
   mockConnectDb.mockReset();
@@ -33,7 +36,7 @@ describe("manager.controller tenant and role scoping", () => {
 
   it.each([
     [[rows()], 404],
-    [[rows({ Id: 20 })], 200]
+    [[rows({ Id: 20 })], 200],
   ])("reads one manager within scope", async (responses, status) => {
     // Arrange
     mockPool(mockConnectDb, responses);
@@ -61,7 +64,7 @@ describe("manager.controller tenant and role scoping", () => {
   it.each([
     ["no email", { password: "Str0ng!Pass" }, 400],
     ["no password", { email: "mgr@example.com" }, 400],
-    ["another company", { ...NEW_MANAGER, companyId: 3 }, 403]
+    ["another company", { ...NEW_MANAGER, companyId: 3 }, 403],
   ])("rejects a create with %s", async (_label, body, status) => {
     // Arrange
     const db = mockPool(mockConnectDb, []);
@@ -85,7 +88,8 @@ describe("manager.controller tenant and role scoping", () => {
     expect(res.status).toBe(409);
   });
 
-  it("returns 404 when an ADMIN rewrites a non-manager or another company's user through /managers", async () => {
+  it("returns 404 when an ADMIN rewrites a non-manager or another company's user "
+    + "through /managers", async () => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(0)]);
 
@@ -94,7 +98,8 @@ describe("manager.controller tenant and role scoping", () => {
 
     // Assert
     expect(res.status).toBe(404);
-    expect(db.queries[0].text).toContain(`WHERE Id = @id AND IsDeleted = 0 AND ${MANAGER_AND_COMPANY}`);
+    expect(db.queries[0].text)
+      .toContain(`WHERE Id = @id AND IsDeleted = 0 AND ${MANAGER_AND_COMPANY}`);
   });
 
   it("updates a manager in scope", async () => {
@@ -122,7 +127,7 @@ describe("manager.controller tenant and role scoping", () => {
   it.each([
     [{ isActive: true }, 1, "Manager activated."],
     [{ isActive: false }, 1, "Manager deactivated."],
-    [{ isActive: false }, 0, "Manager not found."]
+    [{ isActive: false }, 0, "Manager not found."],
   ])("toggles status %p within scope", async (body, count, message) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
@@ -148,7 +153,7 @@ describe("manager.controller tenant and role scoping", () => {
 
   it.each([
     [1, 200],
-    [0, 404]
+    [0, 404],
   ])("deletes a manager within scope (rows affected %i)", async (count, status) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
@@ -180,7 +185,7 @@ describe("manager.controller database errors", () => {
     ["post", "/managers"],
     ["put", "/managers/20"],
     ["patch", "/managers/20/status"],
-    ["delete", "/managers/20"]
+    ["delete", "/managers/20"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
     mockPool(mockConnectDb, [new Error("db down")]);

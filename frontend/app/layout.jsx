@@ -1,15 +1,16 @@
-﻿import { Plus_Jakarta_Sans } from "next/font/google";
+// eslint-disable-next-line camelcase -- next/font/google names each export after the font family
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import ReduxProvider from "@/components/ReduxProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-jakarta"
+  variable: "--font-jakarta",
 });
 
 export const metadata = {
   title: "Workiya",
-  description: "Workiya workforce platform"
+  description: "Workiya workforce platform",
 };
 
 export default function RootLayout({ children }) {
@@ -18,6 +19,7 @@ export default function RootLayout({ children }) {
       <head>
         <link
           rel="stylesheet"
+          // eslint-disable-next-line @stylistic/max-len -- one Google Fonts URL, kept unsplit
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
         />
       </head>

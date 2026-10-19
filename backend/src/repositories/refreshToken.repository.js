@@ -71,4 +71,6 @@ async function revokeFamily(familyId, reason) {
     `);
 }
 
-module.exports = { insert, findByHash, revoke, revokeFamily };
+module.exports = {
+  insert, findByHash, revoke, revokeFamily,
+};

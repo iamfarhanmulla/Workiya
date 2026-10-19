@@ -20,12 +20,14 @@ describe("audit.service.log", () => {
       oldValue: "plain",
       newValue: { rememberMe: true },
       ipAddress: "1".repeat(60),
-      userAgent: "u".repeat(600)
+      userAgent: "u".repeat(600),
     });
 
     // Assert
     const entry = auditLogRepository.insert.mock.calls[0][0];
-    expect(entry).toMatchObject({ entityId: "9", oldValue: "plain", newValue: "{\"rememberMe\":true}" });
+    expect(entry).toMatchObject({
+      entityId: "9", oldValue: "plain", newValue: "{\"rememberMe\":true}",
+    });
     expect(entry.ipAddress).toHaveLength(45);
     expect(entry.userAgent).toHaveLength(500);
   });
@@ -45,7 +47,7 @@ describe("audit.service.log", () => {
       oldValue: null,
       newValue: null,
       ipAddress: null,
-      userAgent: null
+      userAgent: null,
     });
   });
 
@@ -58,6 +60,9 @@ describe("audit.service.log", () => {
 
     // Assert
     await expect(promise).resolves.toBeUndefined();
-    expect(logger.error).toHaveBeenCalledWith(expect.objectContaining({ eventType: "AUTH_LOGOUT" }), "Failed to write audit log");
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "AUTH_LOGOUT" }),
+      "Failed to write audit log",
+    );
   });
 });

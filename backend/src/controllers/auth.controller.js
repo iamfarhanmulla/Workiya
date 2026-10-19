@@ -5,7 +5,7 @@ const { COOKIE_NAMES, setAuthCookies, clearAuthCookies } = require("../utils/aut
 function requestContext(req) {
   return {
     ip: req.ip,
-    userAgent: (req.get("user-agent") || "").slice(0, 500)
+    userAgent: (req.get("user-agent") || "").slice(0, 500),
   };
 }
 
@@ -15,21 +15,26 @@ function readRefreshCookie(req) {
 
 async function login(req, res) {
   const { email, password, rememberMe } = req.body;
-  const session = await authService.login({ email, password, rememberMe, ...requestContext(req) });
+  const session = await authService.login({
+    email, password, rememberMe, ...requestContext(req),
+  });
   setAuthCookies(res, session);
   return ok(res, { user: session.user }, "Login successful.");
 }
 
 async function refresh(req, res) {
   try {
-    const session = await authService.refresh({ refreshToken: readRefreshCookie(req), ...requestContext(req) });
+    const session = await authService.refresh({
+      refreshToken: readRefreshCookie(req), ...requestContext(req),
+    });
     // A concurrent rotation already sent this browser new cookies; keep them.
     if (!session.rotatedConcurrently) {
       setAuthCookies(res, session);
     }
     return ok(res, { user: session.user }, "Session refreshed.");
   } catch (err) {
-    // Only a rejected session ends it; a transient failure (e.g. DB down) keeps the cookies for a retry.
+    // Only a rejected session ends it; a transient failure (e.g. DB down) keeps the cookies
+    // for a retry.
     if (err.status === 401) {
       clearAuthCookies(res);
     }
@@ -51,4 +56,6 @@ async function me(req, res) {
   return ok(res, { user });
 }
 
-module.exports = { login, refresh, logout, me };
+module.exports = {
+  login, refresh, logout, me,
+};

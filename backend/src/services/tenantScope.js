@@ -51,4 +51,6 @@ function roleFilter(request, roleCode, prefix = "") {
   return `${prefix}RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode)`;
 }
 
-module.exports = { toId, isSuperAdmin, resolveCompanyId, companyFilter, manageableUserFilter, roleFilter };
+module.exports = {
+  toId, isSuperAdmin, resolveCompanyId, companyFilter, manageableUserFilter, roleFilter,
+};

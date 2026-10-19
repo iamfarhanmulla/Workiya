@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   AreaChart, Area, CartesianGrid,
 } from "recharts";
+import activateOnKey from "@/app/dashboard/_utils/activateOnKey";
 
 /* ── Data ─────────────────────────────────────── */
 const attendanceData = [
@@ -39,38 +40,90 @@ const taskTrendData = [
 ];
 
 const leaveTypes = [
-  { label: "Sick Leave",  pct: 52, color: "#24339a", days: 64 },
-  { label: "Vacation",    pct: 34, color: "#22c55e", days: 42 },
-  { label: "Personal",    pct: 14, color: "#ef4444", days: 18 },
+  {
+    label: "Sick Leave", pct: 52, color: "#24339a", days: 64,
+  },
+  {
+    label: "Vacation", pct: 34, color: "#22c55e", days: 42,
+  },
+  {
+    label: "Personal", pct: 14, color: "#ef4444", days: 18,
+  },
 ];
 
 const employees = [
-  { initials: "JD", name: "Jameson Dunn",   role: "Frontend Dev",    checkin: "08:54 AM", tasks: 142, attendance: 98, perf: "EXCEPTIONAL", perfClass: "perf-exceptional" },
-  { initials: "SM", name: "Sarah Mitchell", role: "Project Manager",  checkin: "09:12 AM", tasks: 118, attendance: 92, perf: "ON TRACK",    perfClass: "perf-ontrack" },
-  { initials: "AK", name: "Arjun Kapoor",   role: "QA Engineer",     checkin: "09:05 AM", tasks: 96,  attendance: 85, perf: "ON TRACK",    perfClass: "perf-ontrack" },
-  { initials: "LR", name: "Leo Richards",   role: "System Admin",    checkin: "09:45 AM", tasks: 64,  attendance: 76, perf: "NEEDS REVIEW", perfClass: "perf-review" },
+  {
+    initials: "JD",
+    name: "Jameson Dunn",
+    role: "Frontend Dev",
+    checkin: "08:54 AM",
+    tasks: 142,
+    attendance: 98,
+    perf: "EXCEPTIONAL",
+    perfClass: "perf-exceptional",
+  },
+  {
+    initials: "SM",
+    name: "Sarah Mitchell",
+    role: "Project Manager",
+    checkin: "09:12 AM",
+    tasks: 118,
+    attendance: 92,
+    perf: "ON TRACK",
+    perfClass: "perf-ontrack",
+  },
+  {
+    initials: "AK",
+    name: "Arjun Kapoor",
+    role: "QA Engineer",
+    checkin: "09:05 AM",
+    tasks: 96,
+    attendance: 85,
+    perf: "ON TRACK",
+    perfClass: "perf-ontrack",
+  },
+  {
+    initials: "LR",
+    name: "Leo Richards",
+    role: "System Admin",
+    checkin: "09:45 AM",
+    tasks: 64,
+    attendance: 76,
+    perf: "NEEDS REVIEW",
+    perfClass: "perf-review",
+  },
 ];
 
 const RANGES = ["Last 7 Days", "Last 30 Days", "Last 90 Days", "This Year"];
 
+function attendanceColor(pct) {
+  if (pct >= 90) return "#22c55e";
+  if (pct >= 80) return "#f59e0b";
+  return "#ef4444";
+}
+
 /* ── Donut chart (pure SVG) ───────────────────── */
 function DonutChart({ segments, total, animate }) {
-  const r = 70, cx = 90, cy = 90;
+  const r = 70;
+  const cx = 90;
+  const cy = 90;
   const circ = 2 * Math.PI * r;
-  let offset = 0;
+  // Start of each segment, in percent: the sum of the segments before it.
+  const offsets = segments.map((_, i) => segments.slice(0, i).reduce((sum, s) => sum + s.pct, 0));
 
   return (
     <svg width={180} height={180} viewBox="0 0 180 180">
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f0f2f8" strokeWidth={22} />
-      {segments.map(({ pct, color }, i) => {
+      {segments.map(({ label, pct, color }, i) => {
         const dash = (pct / 100) * circ;
-        const gap  = circ - dash;
-        const rot  = offset * 3.6 - 90;
-        offset += pct;
+        const gap = circ - dash;
+        const rot = offsets[i] * 3.6 - 90;
         return (
           <circle
-            key={i}
-            cx={cx} cy={cy} r={r}
+            key={label}
+            cx={cx}
+            cy={cy}
+            r={r}
             fill="none"
             stroke={color}
             strokeWidth={22}
@@ -82,8 +135,27 @@ function DonutChart({ segments, total, animate }) {
           />
         );
       })}
-      <text x={cx} y={cy - 6} textAnchor="middle" fontSize={26} fontWeight={800} fill="#17233f">{total}</text>
-      <text x={cx} y={cy + 14} textAnchor="middle" fontSize={10} fontWeight={700} fill="#8a91a7" letterSpacing="1">TOTAL DAYS</text>
+      <text
+        x={cx}
+        y={cy - 6}
+        textAnchor="middle"
+        fontSize={26}
+        fontWeight={800}
+        fill="#17233f"
+      >
+        {total}
+      </text>
+      <text
+        x={cx}
+        y={cy + 14}
+        textAnchor="middle"
+        fontSize={10}
+        fontWeight={700}
+        fill="#8a91a7"
+        letterSpacing="1"
+      >
+        TOTAL DAYS
+      </text>
     </svg>
   );
 }
@@ -135,7 +207,7 @@ const HIGHLIGHT_DAYS = [2, 9]; // WED, THU (indices)
 
 /* ── Page ─────────────────────────────────────── */
 export default function ReportsPage() {
-  const [range, setRange]       = useState("Last 30 Days");
+  const [range, setRange] = useState("Last 30 Days");
   const [dropdown, setDropdown] = useState(false);
   const [animated, setAnimated] = useState(false);
 
@@ -153,33 +225,56 @@ export default function ReportsPage() {
         <div className="rpt-header-actions">
           {/* Date range */}
           <div className="rpt-range-wrap">
-            <button className="rpt-range-btn" onClick={() => setDropdown(d => !d)}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>calendar_month</span>
+            <button type="button" className="rpt-range-btn" onClick={() => setDropdown((d) => !d)}>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 16 }}
+              >
+                calendar_month
+              </span>
               {range}
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>expand_more</span>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 16 }}
+              >
+                expand_more
+              </span>
             </button>
             {dropdown && (
-              <ul className="rpt-dropdown">
-                {RANGES.map(r => (
-                  <li key={r} className={r === range ? "active" : ""} onClick={() => { setRange(r); setDropdown(false); }}>{r}</li>
+              <ul className="rpt-dropdown" role="listbox">
+                {RANGES.map((r) => (
+                  <li
+                    key={r}
+                    className={r === range ? "active" : ""}
+                    role="option"
+                    aria-selected={r === range}
+                    tabIndex={0}
+                    onClick={() => {
+                      setRange(r);
+                      setDropdown(false);
+                    }}
+                    onKeyDown={activateOnKey}
+                  >
+                    {r}
+                  </li>
                 ))}
               </ul>
             )}
           </div>
 
           {/* Download */}
-          <button className="rpt-download-btn">
+          <button type="button" className="rpt-download-btn">
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
             Download PDF/CSV
           </button>
 
-          <button className="dash-icon-btn" aria-label="Notifications">
+          <button type="button" className="dash-icon-btn" aria-label="Notifications">
             <span className="material-symbols-outlined">notifications</span>
           </button>
-          <button className="dash-icon-btn" aria-label="Apps">
+          <button type="button" className="dash-icon-btn" aria-label="Apps">
             <span className="material-symbols-outlined">apps</span>
           </button>
-          <button className="dash-icon-btn" aria-label="Help">
+          <button type="button" className="dash-icon-btn" aria-label="Help">
             <span className="material-symbols-outlined">help</span>
           </button>
         </div>
@@ -202,11 +297,22 @@ export default function ReportsPage() {
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={attendanceData} barCategoryGap="30%">
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#8a91a7", fontSize: 12 }} />
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#8a91a7", fontSize: 12 }}
+              />
               <YAxis hide />
               <Tooltip content={<AttTooltip />} cursor={{ fill: "rgba(36,51,154,0.05)" }} />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={animated} animationDuration={1200}>
+              <Bar
+                dataKey="value"
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={animated}
+                animationDuration={1200}
+              >
                 {attendanceData.map((_, i) => (
+                  // eslint-disable-next-line react/no-array-index-key -- day names repeat
                   <Cell key={i} fill={HIGHLIGHT_DAYS.includes(i) ? "#24339a" : "#d4d9f0"} />
                 ))}
               </Bar>
@@ -237,7 +343,11 @@ export default function ReportsPage() {
         <div className="rpt-area-header">
           <div>
             <h2 className="rpt-card-title">Task Completion Rate</h2>
-            <p className="rpt-card-sub">Over time performance analysis against established<br />quarterly KPIs and operational goals.</p>
+            <p className="rpt-card-sub">
+              Over time performance analysis against established
+              <br />
+              quarterly KPIs and operational goals.
+            </p>
           </div>
           <div className="rpt-area-stat">
             <span className="rpt-area-pct"><Counter target={94.2} suffix="%" /></span>
@@ -245,15 +355,25 @@ export default function ReportsPage() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={taskTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart
+            data={taskTrendData}
+            margin={{
+              top: 10, right: 10, left: 0, bottom: 0,
+            }}
+          >
             <defs>
               <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#24339a" stopOpacity={0.25} />
+                <stop offset="0%" stopColor="#24339a" stopOpacity={0.25} />
                 <stop offset="100%" stopColor="#24339a" stopOpacity={0.01} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f2f8" vertical={false} />
-            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "#8a91a7", fontSize: 12 }} />
+            <XAxis
+              dataKey="month"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "#8a91a7", fontSize: 12 }}
+            />
             <YAxis hide domain={[60, 100]} />
             <Tooltip content={<TaskTooltip />} />
             <Area
@@ -273,7 +393,12 @@ export default function ReportsPage() {
 
       {/* Employee performance table */}
       <div className={`rpt-card rpt-card--table ${animated ? "rpt-card--in" : ""}`}>
-        <h2 className="rpt-card-title" style={{ marginBottom: 20 }}>Employee Performance Summary</h2>
+        <h2
+          className="rpt-card-title"
+          style={{ marginBottom: 20 }}
+        >
+          Employee Performance Summary
+        </h2>
         <div className="rpt-table-wrap">
           <table className="rpt-table">
             <thead>
@@ -287,7 +412,11 @@ export default function ReportsPage() {
             </thead>
             <tbody>
               {employees.map((e, i) => (
-                <tr key={i} className={animated ? "rpt-row-in" : ""} style={{ animationDelay: `${i * 0.1}s` }}>
+                <tr
+                  key={e.name}
+                  className={animated ? "rpt-row-in" : ""}
+                  style={{ animationDelay: `${i * 0.1}s` }}
+                >
                   <td>
                     <div className="rpt-emp">
                       <div className="rpt-emp-avatar">{e.initials}</div>
@@ -307,7 +436,7 @@ export default function ReportsPage() {
                           className="rpt-att-fill"
                           style={{
                             width: animated ? `${e.attendance}%` : "0%",
-                            background: e.attendance >= 90 ? "#22c55e" : e.attendance >= 80 ? "#f59e0b" : "#ef4444",
+                            background: attendanceColor(e.attendance),
                           }}
                         />
                       </div>
