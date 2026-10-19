@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { api, getErrorMessage } from "@/lib/apiClient";
 
 const AVATAR_COLORS = ["#8B5CF6","#10B981","#1E3A8A","#F59E0B","#EF4444","#06B6D4","#D946EF","#3B5FCF"];
 const avatarColor = (id) => AVATAR_COLORS[id % AVATAR_COLORS.length];
@@ -73,22 +72,22 @@ export default function EmployeesPage() {
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${API}/api/employees`);
-      const json = await res.json();
+      const res  = await api.get("/employees");
+      const json = res.data;
       if (json.success) setEmployees(json.data);
       else setError("Failed to load employees.");
-    } catch { setError("Cannot connect to server."); }
+    } catch (err) { setError(err.response ? "Failed to load employees." : "Cannot connect to server."); }
     finally { setLoading(false); setTimeout(() => setActive(true), 50); }
   }, []);
 
   const fetchDropdowns = useCallback(async () => {
     const [cRes, mRes] = await Promise.all([
-      fetch(`${API}/api/users/companies`),
-      fetch(`${API}/api/employees/managers-list`),
+      api.get("/users/companies").catch(() => null),
+      api.get("/employees/managers-list").catch(() => null),
     ]);
-    const [cJson, mJson] = await Promise.all([cRes.json(), mRes.json()]);
-    if (cJson.success) setCompanies(cJson.data);
-    if (mJson.success) setManagers(mJson.data);
+    const [cJson, mJson] = [cRes?.data, mRes?.data];
+    if (cJson?.success) setCompanies(cJson.data);
+    if (mJson?.success) setManagers(mJson.data);
   }, []);
 
   useEffect(() => { fetchEmployees(); fetchDropdowns(); }, [fetchEmployees, fetchDropdowns]);
@@ -139,27 +138,25 @@ export default function EmployeesPage() {
     if (!editEmp && !form.password) return setFormError("Password is required for new employee.");
     setSaving(true);
     try {
-      const url    = editEmp ? `${API}/api/employees/${editEmp.Id}` : `${API}/api/employees`;
-      const method = editEmp ? "PUT" : "POST";
       const body   = { ...form };
       if (editEmp && !body.password) delete body.password;
-      const res  = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const json = await res.json();
+      const res  = editEmp ? await api.put(`/employees/${editEmp.Id}`, body) : await api.post("/employees", body);
+      const json = res.data;
       if (!json.success) { setFormError(json.message || "Failed to save."); return; }
       showToast(editEmp ? "Employee updated successfully!" : "Employee created successfully!");
       closeModal(); fetchEmployees();
-    } catch { setFormError("Cannot connect to server."); showToast("Cannot connect to server.", "error"); }
+    } catch (err) {
+      const msg = getErrorMessage(err, "Failed to save.");
+      setFormError(msg);
+      if (!err.response) showToast(msg, "error");
+    }
     finally  { setSaving(false); }
   }
 
   // ── Toggle active ──
   async function toggleActive(e) {
     try {
-      await fetch(`${API}/api/employees/${e.Id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: e.IsActive ? 0 : 1 }),
-      });
+      await api.patch(`/employees/${e.Id}/status`, { isActive: e.IsActive ? 0 : 1 });
       showToast(e.IsActive ? "Employee deactivated." : "Employee activated.", e.IsActive ? "warning" : "success");
       fetchEmployees();
     } catch { showToast("Failed to update status.", "error"); }
@@ -172,7 +169,7 @@ export default function EmployeesPage() {
 
   async function confirmDelete() {
     try {
-      await fetch(`${API}/api/employees/${deleteTarget}`, { method: "DELETE" });
+      await api.delete(`/employees/${deleteTarget}`);
       showToast("Employee deleted successfully!", "success");
       fetchEmployees();
     } catch { showToast("Failed to delete employee.", "error"); }

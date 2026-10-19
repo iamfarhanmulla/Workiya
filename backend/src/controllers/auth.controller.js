@@ -1,72 +1,54 @@
-const crypto = require("crypto");
-const { connectDb, sql } = require("../config/db");
+const authService = require("../services/auth.service");
+const { ok } = require("../utils/apiResponse");
+const { COOKIE_NAMES, setAuthCookies, clearAuthCookies } = require("../utils/authCookies");
 
-function hashPassword(password, saltBase64, iterations) {
-  const salt = Buffer.from(saltBase64, "base64");
-  const hash = crypto.pbkdf2Sync(password, salt, iterations, 32, "sha256");
-  return hash.toString("base64");
+function requestContext(req) {
+  return {
+    ip: req.ip,
+    userAgent: (req.get("user-agent") || "").slice(0, 500)
+  };
+}
+
+function readRefreshCookie(req) {
+  return req.cookies ? req.cookies[COOKIE_NAMES.REFRESH] : undefined;
 }
 
 async function login(req, res) {
-  const { email, password } = req.body || {};
+  const { email, password, rememberMe } = req.body;
+  const session = await authService.login({ email, password, rememberMe, ...requestContext(req) });
+  setAuthCookies(res, session);
+  return ok(res, { user: session.user }, "Login successful.");
+}
 
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Email and password are required." });
-  }
-
+async function refresh(req, res) {
   try {
-    const pool = await connectDb();
-
-    const result = await pool
-      .request()
-      .input("email", sql.NVarChar, email)
-      .query(`
-        SELECT
-          u.Id, u.CompanyId, u.RoleId, r.Name AS RoleName,
-          u.Username, u.Email, u.DisplayName,
-          u.PasswordHash, u.PasswordSalt, u.PasswordIterations,
-          u.FirstName, u.MiddleName, u.LastName, u.Status,
-          u.PhoneNumber, u.IsActive, u.IsDeleted
-        FROM Users u
-        LEFT JOIN Roles r ON r.Id = u.RoleId
-        WHERE u.Email = @email
-          AND u.IsActive = 1
-          AND u.IsDeleted = 0
-      `);
-
-    if (result.recordset.length === 0) {
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    const session = await authService.refresh({ refreshToken: readRefreshCookie(req), ...requestContext(req) });
+    // A concurrent rotation already sent this browser new cookies; keep them.
+    if (!session.rotatedConcurrently) {
+      setAuthCookies(res, session);
     }
-
-    const user = result.recordset[0];
-
-    const computedHash = hashPassword(password, user.PasswordSalt, user.PasswordIterations);
-    if (computedHash !== user.PasswordHash) {
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Login successful.",
-      user: {
-        id: user.Id,
-        companyId: user.CompanyId,
-        roleId: user.RoleId,
-        roleName: user.RoleName,
-        username: user.Username,
-        email: user.Email,
-        displayName: user.DisplayName,
-        firstName: user.FirstName,
-        middleName: user.MiddleName,
-        lastName: user.LastName,
-        status: user.Status,
-        phoneNumber: user.PhoneNumber
-      }
-    });
+    return ok(res, { user: session.user }, "Session refreshed.");
   } catch (err) {
-    console.error("Login error:", err.message);
-    return res.status(500).json({ success: false, message: "Database error. Please try again." });
+    // Only a rejected session ends it; a transient failure (e.g. DB down) keeps the cookies for a retry.
+    if (err.status === 401) {
+      clearAuthCookies(res);
+    }
+    throw err;
   }
 }
 
-module.exports = { login };
+async function logout(req, res) {
+  try {
+    await authService.logout({ refreshToken: readRefreshCookie(req), ...requestContext(req) });
+  } finally {
+    clearAuthCookies(res);
+  }
+  return ok(res, null, "Logged out.");
+}
+
+async function me(req, res) {
+  const user = await authService.me(req.user.id);
+  return ok(res, { user });
+}
+
+module.exports = { login, refresh, logout, me };

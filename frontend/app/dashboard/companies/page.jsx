@@ -3,8 +3,7 @@
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { api, getErrorMessage } from "@/lib/apiClient";
 
 const PLAN_STYLES = {
   ENTERPRISE: { bg: "#EDE9FE", color: "#8B5CF6" },
@@ -77,11 +76,11 @@ export default function CompaniesPage() {
   const fetchCompanies = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API}/api/companies`);
-      const json = await res.json();
+      const res = await api.get("/companies");
+      const json = res.data;
       if (json.success) setCompanies(json.data);
       else setError("Failed to load companies.");
-    } catch { setError("Cannot connect to server."); }
+    } catch (err) { setError(err.response ? "Failed to load companies." : "Cannot connect to server."); }
     finally { setLoading(false); setTimeout(() => setActive(true), 50); }
   }, []);
 
@@ -131,25 +130,23 @@ export default function CompaniesPage() {
     if (!form.name) return setFormError("Company name is required.");
     setSaving(true);
     try {
-      const url = editComp ? `${API}/api/companies/${editComp.Id}` : `${API}/api/companies`;
-      const method = editComp ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      const json = await res.json();
+      const res = editComp ? await api.put(`/companies/${editComp.Id}`, form) : await api.post("/companies", form);
+      const json = res.data;
       if (!json.success) { setFormError(json.message || "Failed to save."); return; }
       showToast(editComp ? "Company updated successfully!" : "Company created successfully!");
       closeModal(); fetchCompanies();
-    } catch { setFormError("Cannot connect to server."); showToast("Cannot connect to server.", "error"); }
+    } catch (err) {
+      const msg = getErrorMessage(err, "Failed to save.");
+      setFormError(msg);
+      if (!err.response) showToast(msg, "error");
+    }
     finally { setSaving(false); }
   }
 
   // ── Toggle active ──
   async function toggleActive(c) {
     try {
-      await fetch(`${API}/api/companies/${c.Id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: c.IsActive ? 0 : 1 }),
-      });
+      await api.patch(`/companies/${c.Id}/status`, { isActive: c.IsActive ? 0 : 1 });
       showToast(c.IsActive ? "Company deactivated." : "Company activated.", c.IsActive ? "warning" : "success");
       fetchCompanies();
     } catch { showToast("Failed to update status.", "error"); }
@@ -162,7 +159,7 @@ export default function CompaniesPage() {
 
   async function confirmDelete() {
     try {
-      await fetch(`${API}/api/companies/${deleteTarget}`, { method: "DELETE" });
+      await api.delete(`/companies/${deleteTarget}`);
       showToast("Company deleted successfully!", "success");
       fetchCompanies();
     } catch { showToast("Failed to delete company.", "error"); }

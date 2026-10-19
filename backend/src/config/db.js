@@ -1,21 +1,31 @@
 const sql = require("mssql");
+const config = require("./env");
+
+let poolPromise = null;
 
 function getMssqlConfig() {
   return {
-    server: process.env.MSSQL_SERVER || "",
-    database: process.env.MSSQL_DATABASE || "",
-    user: process.env.MSSQL_USER || "",
-    password: process.env.MSSQL_PASSWORD || "",
+    server: config.mssql.server,
+    database: config.mssql.database,
+    user: config.mssql.user,
+    password: config.mssql.password,
     options: {
       encrypt: true,
-      trustServerCertificate: true
+      trustServerCertificate: config.mssql.trustServerCertificate
     }
   };
 }
 
-async function connectDb() {
-  const config = getMssqlConfig();
-  return sql.connect(config);
+function connectDb() {
+  if (!poolPromise) {
+    poolPromise = new sql.ConnectionPool(getMssqlConfig())
+      .connect()
+      .catch((err) => {
+        poolPromise = null;
+        throw err;
+      });
+  }
+  return poolPromise;
 }
 
 module.exports = {

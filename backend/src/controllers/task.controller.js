@@ -1,4 +1,10 @@
 const { connectDb, sql } = require("../config/db");
+const { ROLES } = require("../constants/roles");
+const { isSuperAdmin, toId, companyFilter } = require("../services/tenantScope");
+const logger = require("../utils/logger");
+
+const NOT_FOUND = { success: false, message: "Task not found." };
+const FOREIGN_REFERENCE = { success: false, message: "Doctor and assignee must belong to your company." };
 
 const BASE_SELECT = `
   SELECT
@@ -19,52 +25,72 @@ const BASE_SELECT = `
   LEFT JOIN Companies c   ON c.Id  = t.CompanyId
 `;
 
-// GET /api/tasks
+// A task may only point at a doctor and an assignee from the caller's own company.
+async function referencesInCompany(pool, user, doctorId, assignedTo) {
+  if (isSuperAdmin(user)) return true;
+  const result = await pool.request()
+    .input("doctorId",   sql.Int, toId(doctorId))
+    .input("assignedTo", sql.Int, toId(assignedTo))
+    .input("companyId",  sql.Int, toId(user.companyId))
+    .query(`
+      SELECT
+        CASE WHEN @doctorId IS NULL OR EXISTS (
+          SELECT 1 FROM Doctors WHERE Id = @doctorId AND CompanyId = @companyId AND IsDeleted = 0
+        ) THEN 1 ELSE 0 END AS DoctorOk,
+        CASE WHEN @assignedTo IS NULL OR EXISTS (
+          SELECT 1 FROM Users WHERE Id = @assignedTo AND CompanyId = @companyId AND IsDeleted = 0
+        ) THEN 1 ELSE 0 END AS AssigneeOk
+    `);
+  const row = result.recordset[0];
+  return Boolean(row && row.DoctorOk && row.AssigneeOk);
+}
+
+// GET /api/v1/tasks
 async function getAll(req, res) {
   try {
     const pool = await connectDb();
-    const result = await pool.request().query(
-      BASE_SELECT + " WHERE t.IsDeleted = 0 ORDER BY t.CreatedAtUtc DESC"
-    );
+    const request = pool.request();
+    const scope = companyFilter(request, req.user, "t.CompanyId");
+    const result = await request.query(`${BASE_SELECT} WHERE t.IsDeleted = 0 AND ${scope} ORDER BY t.CreatedAtUtc DESC`);
     return res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error("tasks getAll error:", err.message);
+    logger.error({ err }, "tasks getAll error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// GET /api/tasks/:id
+// GET /api/v1/tasks/:id
 async function getById(req, res) {
   try {
     const pool = await connectDb();
-    const result = await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query(BASE_SELECT + " WHERE t.Id = @id AND t.IsDeleted = 0");
-    if (!result.recordset.length)
-      return res.status(404).json({ success: false, message: "Task not found." });
+    const request = pool.request().input("id", sql.Int, req.params.id);
+    const scope = companyFilter(request, req.user, "t.CompanyId");
+    const result = await request.query(`${BASE_SELECT} WHERE t.Id = @id AND t.IsDeleted = 0 AND ${scope}`);
+    if (!result.recordset.length) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    console.error("tasks getById error:", err.message);
+    logger.error({ err }, "tasks getById error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// POST /api/tasks
+// POST /api/v1/tasks
 async function create(req, res) {
-  const { companyId, doctorId, assignedTo, assignedBy, title, description, priority, dueDate } = req.body;
+  const { doctorId, assignedTo, title, description, priority, dueDate } = req.body;
 
   if (!title)      return res.status(400).json({ success: false, message: "Title is required." });
   if (!doctorId)   return res.status(400).json({ success: false, message: "Doctor is required." });
   if (!assignedTo) return res.status(400).json({ success: false, message: "Assignee is required." });
-  if (!assignedBy) return res.status(400).json({ success: false, message: "AssignedBy is required." });
 
   try {
     const pool = await connectDb();
+    if (!(await referencesInCompany(pool, req.user, doctorId, assignedTo)))
+      return res.status(400).json(FOREIGN_REFERENCE);
     const result = await pool.request()
-      .input("companyId",   sql.Int,           companyId   || null)
+      .input("companyId",   sql.Int,           req.user.companyId ?? null)
       .input("doctorId",    sql.Int,           doctorId)
       .input("assignedTo",  sql.Int,           assignedTo)
-      .input("assignedBy",  sql.Int,           assignedBy)
+      .input("assignedBy",  sql.Int,           req.user.id)
       .input("title",       sql.NVarChar,      title)
       .input("description", sql.NVarChar,      description || null)
       .input("priority",    sql.NVarChar,      priority    || "Medium")
@@ -80,50 +106,56 @@ async function create(req, res) {
       `);
     return res.status(201).json({ success: true, message: "Task created.", id: result.recordset[0].Id });
   } catch (err) {
-    console.error("tasks create error:", err.message);
+    logger.error({ err }, "tasks create error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// PUT /api/tasks/:id
+// PUT /api/v1/tasks/:id
 async function update(req, res) {
   const { doctorId, assignedTo, title, description, priority, dueDate } = req.body;
 
   try {
     const pool = await connectDb();
-    const exists = await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query("SELECT Id FROM Tasks WHERE Id = @id AND IsDeleted = 0");
-    if (!exists.recordset.length)
-      return res.status(404).json({ success: false, message: "Task not found." });
-
-    await pool.request()
+    if (!(await referencesInCompany(pool, req.user, doctorId, assignedTo)))
+      return res.status(400).json(FOREIGN_REFERENCE);
+    const request = pool.request()
       .input("id",          sql.Int,           req.params.id)
       .input("doctorId",    sql.Int,           doctorId    ?? null)
       .input("assignedTo",  sql.Int,           assignedTo  ?? null)
       .input("title",       sql.NVarChar,      title       ?? null)
       .input("description", sql.NVarChar,      description ?? null)
       .input("priority",    sql.NVarChar,      priority    ?? null)
-      .input("dueDate",     sql.DateTimeOffset, dueDate    || null)
-      .query(`
-        UPDATE Tasks SET
-          DoctorId    = @doctorId,
-          AssignedTo  = @assignedTo,
-          Title       = @title,
-          Description = @description,
-          Priority    = @priority,
-          DueDate     = @dueDate,
-          UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id
-      `);
+      .input("dueDate",     sql.DateTimeOffset, dueDate    || null);
+    const scope = companyFilter(request, req.user, "CompanyId");
+    const result = await request.query(`
+      UPDATE Tasks SET
+        DoctorId    = @doctorId,
+        AssignedTo  = @assignedTo,
+        Title       = @title,
+        Description = @description,
+        Priority    = @priority,
+        DueDate     = @dueDate,
+        UpdatedAtUtc = SYSDATETIMEOFFSET()
+      WHERE Id = @id AND IsDeleted = 0 AND ${scope}
+    `);
+    if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, message: "Task updated." });
   } catch (err) {
-    console.error("tasks update error:", err.message);
+    logger.error({ err }, "tasks update error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// PATCH /api/tasks/:id/status
+// Employees may only move tasks assigned to them; everyone else is limited to their company.
+function statusScope(request, user) {
+  const company = companyFilter(request, user, "CompanyId");
+  if (user.roleCode !== ROLES.EMPLOYEE) return company;
+  request.input("userId", sql.Int, user.id);
+  return `${company} AND AssignedTo = @userId`;
+}
+
+// PATCH /api/v1/tasks/:id/status
 async function updateStatus(req, res) {
   const { status } = req.body;
   const allowed = ["Pending", "InProgress", "Completed", "Cancelled"];
@@ -132,33 +164,38 @@ async function updateStatus(req, res) {
 
   try {
     const pool = await connectDb();
-    await pool.request()
+    const request = pool.request()
       .input("id",     sql.Int,      req.params.id)
-      .input("status", sql.NVarChar, status)
-      .query(`
-        UPDATE Tasks SET
-          Status       = @status,
-          CompletedAt  = CASE WHEN @status = 'Completed' THEN SYSDATETIMEOFFSET() ELSE CompletedAt END,
-          UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id AND IsDeleted = 0
-      `);
+      .input("status", sql.NVarChar, status);
+    const scope = statusScope(request, req.user);
+    const result = await request.query(`
+      UPDATE Tasks SET
+        Status       = @status,
+        CompletedAt  = CASE WHEN @status = 'Completed' THEN SYSDATETIMEOFFSET() ELSE CompletedAt END,
+        UpdatedAtUtc = SYSDATETIMEOFFSET()
+      WHERE Id = @id AND IsDeleted = 0 AND ${scope}
+    `);
+    if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, message: `Task moved to ${status}.` });
   } catch (err) {
-    console.error("tasks updateStatus error:", err.message);
+    logger.error({ err }, "tasks updateStatus error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// DELETE /api/tasks/:id  (soft delete)
+// DELETE /api/v1/tasks/:id  (soft delete)
 async function remove(req, res) {
   try {
     const pool = await connectDb();
-    await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query("UPDATE Tasks SET IsDeleted = 1, UpdatedAtUtc = SYSDATETIMEOFFSET() WHERE Id = @id");
+    const request = pool.request().input("id", sql.Int, req.params.id);
+    const scope = companyFilter(request, req.user, "CompanyId");
+    const result = await request.query(
+      `UPDATE Tasks SET IsDeleted = 1, UpdatedAtUtc = SYSDATETIMEOFFSET() WHERE Id = @id AND IsDeleted = 0 AND ${scope}`
+    );
+    if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, message: "Task deleted." });
   } catch (err) {
-    console.error("tasks remove error:", err.message);
+    logger.error({ err }, "tasks remove error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }

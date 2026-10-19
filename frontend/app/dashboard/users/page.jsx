@@ -3,8 +3,7 @@
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { api, getErrorMessage } from "@/lib/apiClient";
 
 const ROLE_COLORS = {
   SuperAdmin: { bg: "#EDE9FE", color: "#8B5CF6" },
@@ -74,12 +73,12 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API}/api/users`);
-      const json = await res.json();
+      const res = await api.get("/users");
+      const json = res.data;
       if (json.success) setUsers(json.data);
       else setError("Failed to load users.");
-    } catch {
-      setError("Cannot connect to server.");
+    } catch (err) {
+      setError(err.response ? "Failed to load users." : "Cannot connect to server.");
     } finally {
       setLoading(false);
       setTimeout(() => setActive(true), 50);
@@ -88,16 +87,16 @@ export default function UsersPage() {
 
   const fetchRoles = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/users/roles`);
-      const json = await res.json();
+      const res = await api.get("/users/roles");
+      const json = res.data;
       if (json.success) setRoles(json.data);
     } catch {}
   }, []);
 
   const fetchCompanies = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/users/companies`);
-      const json = await res.json();
+      const res = await api.get("/users/companies");
+      const json = res.data;
       if (json.success) setCompanies(json.data);
     } catch {}
   }, []);
@@ -169,22 +168,20 @@ export default function UsersPage() {
 
     setSaving(true);
     try {
-      const url    = editUser ? `${API}/api/users/${editUser.Id}` : `${API}/api/users`;
-      const method = editUser ? "PUT" : "POST";
       const body   = { ...form };
       if (editUser && !body.password) delete body.password;
 
-      const res  = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
+      const res  = editUser ? await api.put(`/users/${editUser.Id}`, body) : await api.post("/users", body);
+      const json = res.data;
       if (!json.success) { setFormError(json.message || "Failed to save."); return; }
       showToast(editUser ? "User updated successfully!" : "User created successfully!");
       closeModal();
       fetchUsers();
-    } catch { setFormError("Cannot connect to server."); showToast("Cannot connect to server.", "error"); } finally {
+    } catch (err) {
+      const msg = getErrorMessage(err, "Failed to save.");
+      setFormError(msg);
+      if (!err.response) showToast(msg, "error");
+    } finally {
       setSaving(false);
     }
   }
@@ -195,7 +192,7 @@ export default function UsersPage() {
 
   async function confirmDelete() {
     try {
-      await fetch(`${API}/api/users/${deleteTarget}`, { method: "DELETE" });
+      await api.delete(`/users/${deleteTarget}`);
       showToast("User deleted successfully!", "success");
       fetchUsers();
     } catch { showToast("Failed to delete user.", "error"); }

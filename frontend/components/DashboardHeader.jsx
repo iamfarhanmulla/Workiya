@@ -3,16 +3,63 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import { clearUser, selectUser } from "@/store/authSlice";
+import { logoutUser, selectUser } from "@/store/authSlice";
 import { getInitials, getDisplayName } from "@/hooks/useCurrentUser";
 import { useTheme } from "@/components/ThemeProvider";
 
-export default function DashboardHeader() {
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+
+  return (
+    <button className="dash-theme-toggle" onClick={toggle} aria-label="Toggle theme">
+      <div className="dash-theme-pill">
+        <div className="dash-theme-thumb">
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+            {theme === "dark" ? "dark_mode" : "light_mode"}
+          </span>
+        </div>
+      </div>
+      <span className="dash-theme-label">{theme === "dark" ? "Dark" : "Light"}</span>
+    </button>
+  );
+}
+
+function UserMenuItems({ user, onLogout, logoutError }) {
+  return (
+    <div className="dash-user-menu">
+      <div className="dash-user-menu-header">
+        <p className="dash-user-menu-name">{getDisplayName(user)}</p>
+        <p className="dash-user-menu-role">{user?.email || ""}</p>
+      </div>
+      {logoutError && (
+        <p className="dash-user-menu-role" role="alert" style={{ color: "var(--ds-danger)", padding: "0 10px" }}>
+          {logoutError}
+        </p>
+      )}
+      <hr className="dash-user-menu-divider" />
+      <button className="dash-user-menu-item">
+        <span className="material-symbols-outlined">person</span>
+        My Profile
+      </button>
+      <button className="dash-user-menu-item">
+        <span className="material-symbols-outlined">settings</span>
+        Account Settings
+      </button>
+      <hr className="dash-user-menu-divider" />
+      <button className="dash-user-menu-item dash-user-menu-item--danger" onClick={onLogout}>
+        <span className="material-symbols-outlined">logout</span>
+        Logout
+      </button>
+    </div>
+  );
+}
+
+function UserMenu() {
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const { theme, toggle } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -23,44 +70,52 @@ export default function DashboardHeader() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // If the API never revoked the session, the cookies are still set and the proxy would
+  // bounce "/" back to the dashboard, so stay here and say so instead.
   async function handleLogout() {
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, { method: "POST" });
-    } catch (_) { }
-    dispatch(clearUser());
+    setLogoutError("");
+    const result = await dispatch(logoutUser());
+    if (logoutUser.rejected.match(result)) {
+      setLogoutError("Could not sign out. Check your connection and try again.");
+      return;
+    }
     router.push("/");
   }
 
   return (
-    <header className="dash-header">
-      {/* Logo */}
-      {/* <div className="dash-logo ">
-        <div className="dash-logo-mark">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1", fontSize: 16 }}>work</span>
+    <div className="dash-user-wrap" ref={menuRef}>
+      <button className="dash-user-btn" onClick={() => setMenuOpen((o) => !o)}>
+        <div className="dash-user-avatar-pill">{getInitials(user)}</div>
+        <div className="dash-user-info">
+          <span className="dash-user-name">{getDisplayName(user)}</span>
+          <span className="dash-user-role">{user?.roleName || "—"}</span>
         </div>
-        <div>
-          <div className="dash-logo-name">WorKiya</div>
-          <div className="dash-logo-sub">Super Admin Console</div>
-        </div>
-      </div> */}
+        <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#94A3B8" }}>
+          {menuOpen ? "expand_less" : "expand_more"}
+        </span>
+      </button>
 
+      {menuOpen && <UserMenuItems user={user} onLogout={handleLogout} logoutError={logoutError} />}
+    </div>
+  );
+}
+
+export default function DashboardHeader() {
+  return (
+    <header className="dash-header">
       <div className="dash-sep" />
 
-      {/* Search */}
       <div className="dash-search">
         <span className="material-symbols-outlined">search</span>
         <input type="text" placeholder="Global search — companies, managers, tasks..." />
       </div>
 
-      {/* Right actions */}
       <div className="dash-header-actions">
-        {/* Assign New Task */}
         <button className="dash-assign-btn">
           <span className="material-symbols-outlined">add</span>
           New Task
         </button>
 
-        {/* Icon buttons */}
         <div className="dash-icon-wrap">
           <button className="dash-icon-btn" aria-label="Notifications">
             <span className="material-symbols-outlined">notifications</span>
@@ -74,56 +129,11 @@ export default function DashboardHeader() {
           <span className="material-symbols-outlined">help</span>
         </button>
 
-        {/* Dark / Light toggle */}
-        <button className="dash-theme-toggle" onClick={toggle} aria-label="Toggle theme">
-          <div className="dash-theme-pill">
-            <div className="dash-theme-thumb">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                {theme === "dark" ? "dark_mode" : "light_mode"}
-              </span>
-            </div>
-          </div>
-          <span className="dash-theme-label">{theme === "dark" ? "Dark" : "Light"}</span>
-        </button>
+        <ThemeToggle />
 
         <div className="dash-header-divider" />
 
-        {/* User profile dropdown */}
-        <div className="dash-user-wrap" ref={menuRef}>
-          <button className="dash-user-btn" onClick={() => setMenuOpen(o => !o)}>
-            <div className="dash-user-avatar-pill">{getInitials(user)}</div>
-            <div className="dash-user-info">
-              <span className="dash-user-name">{getDisplayName(user)}</span>
-              <span className="dash-user-role">{user?.roleName || "—"}</span>
-            </div>
-            <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#94A3B8" }}>
-              {menuOpen ? "expand_less" : "expand_more"}
-            </span>
-          </button>
-
-          {menuOpen && (
-            <div className="dash-user-menu">
-              <div className="dash-user-menu-header">
-                <p className="dash-user-menu-name">{getDisplayName(user)}</p>
-                <p className="dash-user-menu-role">{user?.email || ""}</p>
-              </div>
-              <hr className="dash-user-menu-divider" />
-              <button className="dash-user-menu-item">
-                <span className="material-symbols-outlined">person</span>
-                My Profile
-              </button>
-              <button className="dash-user-menu-item">
-                <span className="material-symbols-outlined">settings</span>
-                Account Settings
-              </button>
-              <hr className="dash-user-menu-divider" />
-              <button className="dash-user-menu-item dash-user-menu-item--danger" onClick={handleLogout}>
-                <span className="material-symbols-outlined">logout</span>
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
+        <UserMenu />
       </div>
     </header>
   );
