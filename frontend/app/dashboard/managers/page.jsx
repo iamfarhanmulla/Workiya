@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { api, getErrorMessage } from "@/lib/apiClient";
 
 const AVATAR_COLORS = ["#8B5CF6","#10B981","#1E3A8A","#F59E0B","#EF4444","#06B6D4","#D946EF","#3B5FCF"];
 function avatarColor(id) { return AVATAR_COLORS[id % AVATAR_COLORS.length]; }
@@ -79,12 +78,12 @@ export default function ManagersPage() {
   const fetchManagers = useCallback(async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${API}/api/managers`);
-      const json = await res.json();
+      const res  = await api.get("/managers");
+      const json = res.data;
       if (json.success) setManagers(json.data);
       else setError("Failed to load managers.");
-    } catch {
-      setError("Cannot connect to server.");
+    } catch (err) {
+      setError(err.response ? "Failed to load managers." : "Cannot connect to server.");
     } finally {
       setLoading(false);
       setTimeout(() => setActive(true), 50);
@@ -93,8 +92,8 @@ export default function ManagersPage() {
 
   const fetchCompanies = useCallback(async () => {
     try {
-      const res  = await fetch(`${API}/api/users/companies`);
-      const json = await res.json();
+      const res  = await api.get("/users/companies");
+      const json = res.data;
       if (json.success) setCompanies(json.data);
     } catch {}
   }, []);
@@ -152,29 +151,27 @@ export default function ManagersPage() {
 
     setSaving(true);
     try {
-      const url    = editMgr ? `${API}/api/managers/${editMgr.Id}` : `${API}/api/managers`;
-      const method = editMgr ? "PUT" : "POST";
       const body   = { ...form };
       if (editMgr && !body.password) delete body.password;
 
-      const res  = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const json = await res.json();
+      const res  = editMgr ? await api.put(`/managers/${editMgr.Id}`, body) : await api.post("/managers", body);
+      const json = res.data;
       if (!json.success) { setFormError(json.message || "Failed to save."); return; }
       showToast(editMgr ? "Manager updated successfully!" : "Manager created successfully!");
       closeModal();
       fetchManagers();
-    } catch { setFormError("Cannot connect to server."); showToast("Cannot connect to server.", "error"); }
+    } catch (err) {
+      const msg = getErrorMessage(err, "Failed to save.");
+      setFormError(msg);
+      if (!err.response) showToast(msg, "error");
+    }
     finally  { setSaving(false); }
   }
 
   // ── Toggle active ──
   async function toggleActive(m) {
     try {
-      await fetch(`${API}/api/managers/${m.Id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: m.IsActive ? 0 : 1 }),
-      });
+      await api.patch(`/managers/${m.Id}/status`, { isActive: m.IsActive ? 0 : 1 });
       showToast(m.IsActive ? "Manager deactivated." : "Manager activated.", m.IsActive ? "warning" : "success");
       fetchManagers();
     } catch { showToast("Failed to update status.", "error"); }
@@ -187,7 +184,7 @@ export default function ManagersPage() {
 
   async function confirmDelete() {
     try {
-      await fetch(`${API}/api/managers/${deleteTarget}`, { method: "DELETE" });
+      await api.delete(`/managers/${deleteTarget}`);
       showToast("Manager deleted successfully!", "success");
       fetchManagers();
     } catch { showToast("Failed to delete manager.", "error"); }

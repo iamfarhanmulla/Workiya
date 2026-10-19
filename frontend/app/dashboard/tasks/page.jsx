@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
-import { selectUser } from "@/store/authSlice";
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
-
-const API = process.env.NEXT_PUBLIC_API_URL;
+import { api, getErrorMessage } from "@/lib/apiClient";
 
 const STATUSES = ["Pending", "InProgress", "Completed", "Cancelled"];
 
@@ -40,7 +37,6 @@ function isPast(iso) {
 }
 
 export default function TasksPage() {
-  const currentUser = useSelector(selectUser);
   const { toasts, showToast } = useToast();
 
   const [tasks, setTasks]         = useState([]);
@@ -65,15 +61,16 @@ export default function TasksPage() {
   async function load() {
     setLoading(true);
     try {
+      // EMPLOYEE may not list employees; the assignee dropdown is only for staff anyway.
       const [tRes, dRes, eRes] = await Promise.all([
-        fetch(`${API}/api/tasks`),
-        fetch(`${API}/api/doctors`),
-        fetch(`${API}/api/employees`),
+        api.get("/tasks"),
+        api.get("/doctors"),
+        api.get("/employees").catch(() => null),
       ]);
-      const [tData, dData, eData] = await Promise.all([tRes.json(), dRes.json(), eRes.json()]);
+      const [tData, dData, eData] = [tRes.data, dRes.data, eRes?.data];
       if (tData.success) setTasks(tData.data);
       if (dData.success) setDoctors(dData.data);
-      if (eData.success) setEmployees(eData.data);
+      if (eData?.success) setEmployees(eData.data);
     } catch {
       showToast("Failed to load data.", "error");
     } finally {
@@ -129,20 +126,18 @@ export default function TasksPage() {
     try {
       const body = {
         ...form,
-        assignedBy: currentUser?.id,
-        companyId:  currentUser?.companyId || null,
         dueDate:    form.dueDate || null,
       };
-      const url    = editTarget ? `${API}/api/tasks/${editTarget.Id}` : `${API}/api/tasks`;
-      const method = editTarget ? "PUT" : "POST";
-      const res  = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const data = await res.json();
+      const res  = editTarget
+        ? await api.put(`/tasks/${editTarget.Id}`, body)
+        : await api.post("/tasks", body);
+      const data = res.data;
       if (!data.success) { showToast(data.message || "Save failed.", "error"); return; }
       showToast(editTarget ? "Task updated." : "Task created.", "success");
       setModalOpen(false);
       load();
-    } catch {
-      showToast("Network error.", "error");
+    } catch (err) {
+      showToast(getErrorMessage(err, "Save failed."), "error");
     } finally {
       setSaving(false);
     }
@@ -150,31 +145,27 @@ export default function TasksPage() {
 
   async function changeStatus(task, status) {
     try {
-      const res  = await fetch(`${API}/api/tasks/${task.Id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      const data = await res.json();
+      const res  = await api.patch(`/tasks/${task.Id}/status`, { status });
+      const data = res.data;
       if (!data.success) { showToast(data.message || "Update failed.", "error"); return; }
       showToast(`Task moved to ${status === "InProgress" ? "In Progress" : status}.`, "success");
       load();
-    } catch {
-      showToast("Network error.", "error");
+    } catch (err) {
+      showToast(getErrorMessage(err, "Update failed."), "error");
     }
   }
 
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
-      const res  = await fetch(`${API}/api/tasks/${deleteTarget}`, { method: "DELETE" });
-      const data = await res.json();
+      const res  = await api.delete(`/tasks/${deleteTarget}`);
+      const data = res.data;
       if (!data.success) { showToast(data.message || "Delete failed.", "error"); return; }
       showToast("Task deleted.", "success");
       setDeleteTarget(null);
       load();
-    } catch {
-      showToast("Network error.", "error");
+    } catch (err) {
+      showToast(getErrorMessage(err, "Delete failed."), "error");
     }
   }
 

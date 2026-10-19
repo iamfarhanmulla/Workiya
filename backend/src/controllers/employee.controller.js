@@ -1,148 +1,131 @@
-const crypto = require("crypto");
 const { connectDb, sql } = require("../config/db");
+const { ROLES } = require("../constants/roles");
+const passwordService = require("../services/password.service");
+const { resolveCompanyId, companyFilter, roleFilter } = require("../services/tenantScope");
+const logger = require("../utils/logger");
 
-const EMPLOYEE_ROLE_ID = 3;
+const ASSIGN_FORBIDDEN = { success: false, message: "You are not allowed to assign this role or company." };
+const NOT_FOUND = { success: false, message: "Employee not found." };
+const PASSWORD_RULE = `Password must be at least ${passwordService.MIN_PASSWORD_LENGTH} characters.`;
 
-function generateHash(password) {
-  const salt = crypto.randomBytes(16);
-  const iterations = 10000;
-  const hash = crypto.pbkdf2Sync(password, salt, iterations, 32, "sha256");
-  return {
-    passwordSalt: salt.toString("base64"),
-    passwordHash: hash.toString("base64"),
-    passwordIterations: iterations
-  };
+const EMPLOYEE_SELECT = `
+  SELECT
+    u.Id, u.FirstName, u.MiddleName, u.LastName, u.DisplayName,
+    u.Email, u.PhoneNumber, u.ProfilePhotoUrl,
+    u.CompanyId, c.Name AS CompanyName,
+    u.RoleId, r.Name AS RoleName,
+    u.ManagerId,
+    CONCAT(m.FirstName, ' ', m.LastName) AS ManagerName,
+    u.Status, u.IsActive, u.CreatedAtUtc, u.UpdatedAtUtc,
+    (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.IsDeleted = 0)                              AS TaskCount,
+    (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.Status = 'Completed' AND t.IsDeleted = 0)  AS TaskDone
+  FROM Users u
+  LEFT JOIN Companies c ON c.Id = u.CompanyId
+  LEFT JOIN Roles r     ON r.Id = u.RoleId
+  LEFT JOIN Users m     ON m.Id = u.ManagerId`;
+
+// Binds the employee-role and caller-company filters on a dbo.Users request.
+function employeeScope(request, user, prefix = "") {
+  return `${roleFilter(request, ROLES.EMPLOYEE, prefix)} AND ${companyFilter(request, user, `${prefix}CompanyId`)}`;
 }
 
-// GET /api/employees
+// GET /api/v1/employees
 async function getAll(req, res) {
   try {
     const pool = await connectDb();
-    const result = await pool.request().query(`
-      SELECT
-        u.Id, u.FirstName, u.MiddleName, u.LastName, u.DisplayName,
-        u.Email, u.PhoneNumber, u.ProfilePhotoUrl,
-        u.CompanyId, c.Name AS CompanyName,
-        u.RoleId, r.Name AS RoleName,
-        u.ManagerId,
-        CONCAT(m.FirstName, ' ', m.LastName) AS ManagerName,
-        u.Status, u.IsActive, u.CreatedAtUtc, u.UpdatedAtUtc,
-        (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.IsDeleted = 0)                              AS TaskCount,
-        (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.Status = 'Completed' AND t.IsDeleted = 0)  AS TaskDone
-      FROM Users u
-      LEFT JOIN Companies c ON c.Id = u.CompanyId
-      LEFT JOIN Roles r     ON r.Id = u.RoleId
-      LEFT JOIN Users m     ON m.Id = u.ManagerId
-      WHERE u.IsDeleted = 0
-        AND u.RoleId = ${EMPLOYEE_ROLE_ID}
+    const request = pool.request();
+    const scope = employeeScope(request, req.user, "u.");
+    const result = await request.query(`${EMPLOYEE_SELECT}
+      WHERE u.IsDeleted = 0 AND ${scope}
       ORDER BY u.CreatedAtUtc DESC
     `);
     return res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error("employees getAll error:", err.message);
+    logger.error({ err }, "employees getAll error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// GET /api/employees/:id
+// GET /api/v1/employees/:id
 async function getById(req, res) {
   try {
     const pool = await connectDb();
-    const result = await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query(`
-        SELECT
-          u.Id, u.FirstName, u.MiddleName, u.LastName, u.DisplayName,
-          u.Email, u.PhoneNumber, u.ProfilePhotoUrl,
-          u.CompanyId, c.Name AS CompanyName,
-          u.RoleId, r.Name AS RoleName,
-          u.ManagerId, CONCAT(m.FirstName, ' ', m.LastName) AS ManagerName,
-          u.Status, u.IsActive, u.CreatedAtUtc,
-          (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.IsDeleted = 0)                             AS TaskCount,
-          (SELECT COUNT(*) FROM Tasks t WHERE t.AssignedTo = u.Id AND t.Status = 'Completed' AND t.IsDeleted = 0) AS TaskDone
-        FROM Users u
-        LEFT JOIN Companies c ON c.Id = u.CompanyId
-        LEFT JOIN Roles r     ON r.Id = u.RoleId
-        LEFT JOIN Users m     ON m.Id = u.ManagerId
-        WHERE u.Id = @id AND u.IsDeleted = 0
-      `);
-    if (result.recordset.length === 0)
-      return res.status(404).json({ success: false, message: "Employee not found." });
+    const request = pool.request().input("id", sql.Int, req.params.id);
+    const scope = employeeScope(request, req.user, "u.");
+    const result = await request.query(`${EMPLOYEE_SELECT}
+      WHERE u.Id = @id AND u.IsDeleted = 0 AND ${scope}
+    `);
+    if (result.recordset.length === 0) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    console.error("employees getById error:", err.message);
+    logger.error({ err }, "employees getById error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// POST /api/employees
-async function create(req, res) {
-  const { firstName, lastName, middleName, email,
-          phoneNumber, displayName, companyId, managerId, password } = req.body;
+async function insertEmployee(pool, fields) {
+  const { passwordHash, passwordSalt, passwordIterations } = passwordService.hashForSharedUsersTable(fields.password);
+  const result = await pool.request()
+    .input("roleCode",           sql.NVarChar,       ROLES.EMPLOYEE)
+    .input("companyId",          sql.Int,            fields.companyId)
+    .input("managerId",          sql.Int,            fields.managerId   || null)
+    .input("firstName",          sql.NVarChar,       fields.firstName   || null)
+    .input("middleName",         sql.NVarChar,       fields.middleName  || null)
+    .input("lastName",           sql.NVarChar,       fields.lastName    || null)
+    .input("displayName",        sql.NVarChar,       fields.displayName || null)
+    .input("username",           sql.NVarChar,       fields.email.split("@")[0])
+    .input("email",              sql.NVarChar,       fields.email)
+    .input("phoneNumber",        sql.NVarChar,       fields.phoneNumber || null)
+    .input("passwordHash",       sql.NVarChar,       passwordHash)
+    .input("passwordSalt",       sql.NVarChar,       passwordSalt)
+    .input("passwordIterations", sql.Int,            passwordIterations)
+    .query(`
+      INSERT INTO Users
+        (RoleId, CompanyId, ManagerId, FirstName, MiddleName, LastName, DisplayName,
+         Username, Email, PhoneNumber, PasswordHash, PasswordSalt, PasswordIterations,
+         Status, IsActive, IsDeleted, CreatedAtUtc)
+      OUTPUT INSERTED.Id
+      SELECT r.Id, @companyId, @managerId, @firstName, @middleName, @lastName, @displayName,
+             @username, @email, @phoneNumber, @passwordHash, @passwordSalt, @passwordIterations,
+             1, 1, 0, SYSDATETIMEOFFSET()
+      FROM Roles r WHERE r.Code = @roleCode
+    `);
+  return result.recordset[0].Id;
+}
 
+// POST /api/v1/employees
+async function create(req, res) {
+  const { email, password } = req.body;
   if (!email) return res.status(400).json({ success: false, message: "Email is required." });
+  if (!passwordService.isAcceptablePassword(password))
+    return res.status(400).json({ success: false, message: PASSWORD_RULE });
+  const company = resolveCompanyId(req.user, req.body.companyId);
+  if (!company.allowed) return res.status(403).json(ASSIGN_FORBIDDEN);
 
   try {
     const pool = await connectDb();
-
     const dup = await pool.request()
       .input("email", sql.NVarChar, email)
       .query("SELECT Id FROM Users WHERE Email = @email");
     if (dup.recordset.length > 0)
       return res.status(409).json({ success: false, message: "Email already in use." });
 
-    const pwd = password || "Employee@123";
-    const { passwordHash, passwordSalt, passwordIterations } = generateHash(pwd);
-
-    const username = email.split("@")[0];
-
-    const result = await pool.request()
-      .input("roleId",             sql.Int,            EMPLOYEE_ROLE_ID)
-      .input("companyId",          sql.Int,            companyId   || null)
-      .input("managerId",          sql.Int,            managerId   || null)
-      .input("firstName",          sql.NVarChar,       firstName   || null)
-      .input("middleName",         sql.NVarChar,       middleName  || null)
-      .input("lastName",           sql.NVarChar,       lastName    || null)
-      .input("displayName",        sql.NVarChar,       displayName || null)
-      .input("username",           sql.NVarChar,       username)
-      .input("email",              sql.NVarChar,       email)
-      .input("phoneNumber",        sql.NVarChar,       phoneNumber || null)
-      .input("passwordHash",       sql.NVarChar,       passwordHash)
-      .input("passwordSalt",       sql.NVarChar,       passwordSalt)
-      .input("passwordIterations", sql.Int,            passwordIterations)
-      .query(`
-        INSERT INTO Users
-          (RoleId, CompanyId, ManagerId, FirstName, MiddleName, LastName, DisplayName,
-           Username, Email, PhoneNumber, PasswordHash, PasswordSalt, PasswordIterations,
-           Status, IsActive, IsDeleted, CreatedAtUtc)
-        OUTPUT INSERTED.Id
-        VALUES
-          (@roleId, @companyId, @managerId, @firstName, @middleName, @lastName, @displayName,
-           @username, @email, @phoneNumber, @passwordHash, @passwordSalt, @passwordIterations,
-           1, 1, 0, SYSDATETIMEOFFSET())
-      `);
-
-    return res.status(201).json({ success: true, message: "Employee created.", id: result.recordset[0].Id });
+    const id = await insertEmployee(pool, { ...req.body, companyId: company.companyId });
+    return res.status(201).json({ success: true, message: "Employee created.", id });
   } catch (err) {
-    console.error("employees create error:", err.message);
+    logger.error({ err }, "employees create error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// PUT /api/employees/:id
+// PUT /api/v1/employees/:id
 async function update(req, res) {
-  const { firstName, lastName, middleName, email,
-          phoneNumber, displayName, companyId, managerId, isActive } = req.body;
+  const { firstName, lastName, middleName, email, phoneNumber, displayName, managerId, isActive } = req.body;
+  const company = resolveCompanyId(req.user, req.body.companyId);
+  if (!company.allowed) return res.status(403).json(ASSIGN_FORBIDDEN);
   try {
     const pool = await connectDb();
-
-    const exists = await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query("SELECT Id FROM Users WHERE Id = @id AND IsDeleted = 0");
-    if (exists.recordset.length === 0)
-      return res.status(404).json({ success: false, message: "Employee not found." });
-
-    await pool.request()
+    const request = pool.request()
       .input("id",          sql.Int,      req.params.id)
       .input("firstName",   sql.NVarChar, firstName   ?? null)
       .input("middleName",  sql.NVarChar, middleName  ?? null)
@@ -150,85 +133,94 @@ async function update(req, res) {
       .input("displayName", sql.NVarChar, displayName ?? null)
       .input("email",       sql.NVarChar, email       ?? null)
       .input("phoneNumber", sql.NVarChar, phoneNumber ?? null)
-      .input("companyId",   sql.Int,      companyId   ?? null)
+      .input("companyId",   sql.Int,      company.companyId)
       .input("managerId",   sql.Int,      managerId   ?? null)
-      .input("isActive",    sql.Bit,      isActive    ?? 1)
-      .query(`
-        UPDATE Users SET
-          FirstName    = @firstName,
-          MiddleName   = @middleName,
-          LastName     = @lastName,
-          DisplayName  = @displayName,
-          Email        = @email,
-          PhoneNumber  = @phoneNumber,
-          CompanyId    = @companyId,
-          ManagerId    = @managerId,
-          IsActive     = @isActive,
-          UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id
-      `);
-
+      .input("isActive",    sql.Bit,      isActive    ?? 1);
+    const scope = employeeScope(request, req.user);
+    const result = await request.query(`
+      UPDATE Users SET
+        FirstName    = @firstName,
+        MiddleName   = @middleName,
+        LastName     = @lastName,
+        DisplayName  = @displayName,
+        Email        = @email,
+        PhoneNumber  = @phoneNumber,
+        CompanyId    = @companyId,
+        ManagerId    = @managerId,
+        IsActive     = @isActive,
+        UpdatedAtUtc = SYSDATETIMEOFFSET()
+      WHERE Id = @id AND IsDeleted = 0 AND ${scope}
+    `);
+    if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, message: "Employee updated." });
   } catch (err) {
-    console.error("employees update error:", err.message);
+    logger.error({ err }, "employees update error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// PATCH /api/employees/:id/status
+// PATCH /api/v1/employees/:id/status
 async function toggleStatus(req, res) {
   const { isActive } = req.body;
   if (isActive === undefined)
     return res.status(400).json({ success: false, message: "isActive is required." });
   try {
     const pool = await connectDb();
-    await pool.request()
+    const request = pool.request()
       .input("id",       sql.Int, req.params.id)
-      .input("isActive", sql.Bit, isActive ? 1 : 0)
-      .query(`
-        UPDATE Users SET
-          IsActive     = @isActive,
-          UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id AND IsDeleted = 0
-      `);
+      .input("isActive", sql.Bit, isActive ? 1 : 0);
+    const scope = employeeScope(request, req.user);
+    const result = await request.query(`
+      UPDATE Users SET
+        IsActive     = @isActive,
+        UpdatedAtUtc = SYSDATETIMEOFFSET()
+      WHERE Id = @id AND IsDeleted = 0 AND ${scope}
+    `);
+    if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, message: isActive ? "Employee activated." : "Employee deactivated." });
   } catch (err) {
-    console.error("toggleStatus error:", err.message);
+    logger.error({ err }, "employees toggleStatus error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// DELETE /api/employees/:id (soft delete)
+// DELETE /api/v1/employees/:id (soft delete)
 async function remove(req, res) {
+  if (Number(req.params.id) === Number(req.user.id))
+    return res.status(403).json({ success: false, message: "You cannot delete your own account." });
   try {
     const pool = await connectDb();
-    await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query(`
-        UPDATE Users SET IsDeleted = 1, IsActive = 0, UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id
-      `);
+    const request = pool.request().input("id", sql.Int, req.params.id);
+    const scope = employeeScope(request, req.user);
+    const result = await request.query(`
+      UPDATE Users SET IsDeleted = 1, IsActive = 0, UpdatedAtUtc = SYSDATETIMEOFFSET()
+      WHERE Id = @id AND IsDeleted = 0 AND ${scope}
+    `);
+    if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
     return res.json({ success: true, message: "Employee deleted." });
   } catch (err) {
-    console.error("employees remove error:", err.message);
+    logger.error({ err }, "employees remove error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// GET /api/employees/managers-list  (for dropdown)
+// GET /api/v1/employees/managers-list  (for dropdown)
 async function getManagersList(req, res) {
   try {
     const pool = await connectDb();
-    const result = await pool.request().query(`
+    const request = pool.request();
+    const role = roleFilter(request, ROLES.MANAGER, "u.");
+    const scope = companyFilter(request, req.user, "u.CompanyId");
+    const result = await request.query(`
       SELECT u.Id, CONCAT(u.FirstName, ' ', u.LastName) AS Name, u.CompanyId, c.Name AS CompanyName
       FROM Users u
       LEFT JOIN Companies c ON c.Id = u.CompanyId
-      WHERE u.RoleId = 4 AND u.IsDeleted = 0 AND u.IsActive = 1
+      WHERE u.IsDeleted = 0 AND u.IsActive = 1 AND ${role} AND ${scope}
       ORDER BY u.FirstName
     `);
     return res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error("getManagersList error:", err.message);
+    logger.error({ err }, "getManagersList error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }

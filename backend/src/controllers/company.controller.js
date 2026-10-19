@@ -1,6 +1,7 @@
 const { connectDb, sql } = require("../config/db");
+const logger = require("../utils/logger");
 
-// GET /api/companies
+// GET /api/v1/companies
 async function getAll(req, res) {
   try {
     const pool = await connectDb();
@@ -11,20 +12,20 @@ async function getAll(req, res) {
         c.Address, c.City, c.Country, c.[Plan],
         c.Status, c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc,
         (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0) AS TotalUsers,
-        (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId = 3) AS EmployeeCount,
-        (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId = 4) AS ManagerCount
+        (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'EMPLOYEE')) AS EmployeeCount,
+        (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'MANAGER')) AS ManagerCount
       FROM Companies c
       WHERE c.IsDeleted = 0
       ORDER BY c.CreatedAtUtc DESC
     `);
     return res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error("companies getAll error:", err.message);
+    logger.error({ err }, "companies getAll error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// GET /api/companies/:id
+// GET /api/v1/companies/:id
 async function getById(req, res) {
   try {
     const pool = await connectDb();
@@ -37,8 +38,8 @@ async function getById(req, res) {
           c.Address, c.City, c.Country, c.[Plan],
           c.Status, c.IsActive, c.CreatedAtUtc,
           (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0) AS TotalUsers,
-          (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId = 3) AS EmployeeCount,
-          (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId = 4) AS ManagerCount
+          (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'EMPLOYEE')) AS EmployeeCount,
+          (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0 AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'MANAGER')) AS ManagerCount
         FROM Companies c
         WHERE c.Id = @id AND c.IsDeleted = 0
       `);
@@ -46,12 +47,12 @@ async function getById(req, res) {
       return res.status(404).json({ success: false, message: "Company not found." });
     return res.json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    console.error("companies getById error:", err.message);
+    logger.error({ err }, "companies getById error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// POST /api/companies
+// POST /api/v1/companies
 async function create(req, res) {
   const { name, key, contactEmail, contactPhone, address, city, country, plan, logoUrl } = req.body;
 
@@ -95,12 +96,12 @@ async function create(req, res) {
 
     return res.status(201).json({ success: true, message: "Company created.", id: result.recordset[0].Id });
   } catch (err) {
-    console.error("companies create error:", err.message);
+    logger.error({ err }, "companies create error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// PUT /api/companies/:id
+// PUT /api/v1/companies/:id
 async function update(req, res) {
   const { name, key, contactEmail, contactPhone, address, city, country, plan, logoUrl, isActive } = req.body;
 
@@ -143,12 +144,12 @@ async function update(req, res) {
 
     return res.json({ success: true, message: "Company updated." });
   } catch (err) {
-    console.error("companies update error:", err.message);
+    logger.error({ err }, "companies update error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// PATCH /api/companies/:id/status
+// PATCH /api/v1/companies/:id/status
 async function toggleStatus(req, res) {
   const { isActive } = req.body;
   if (isActive === undefined)
@@ -166,12 +167,12 @@ async function toggleStatus(req, res) {
       `);
     return res.json({ success: true, message: isActive ? "Company activated." : "Company deactivated." });
   } catch (err) {
-    console.error("companies toggleStatus error:", err.message);
+    logger.error({ err }, "companies toggleStatus error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }
 
-// DELETE /api/companies/:id  (soft delete)
+// DELETE /api/v1/companies/:id  (soft delete)
 async function remove(req, res) {
   try {
     const pool = await connectDb();
@@ -183,7 +184,7 @@ async function remove(req, res) {
       `);
     return res.json({ success: true, message: "Company deleted." });
   } catch (err) {
-    console.error("companies remove error:", err.message);
+    logger.error({ err }, "companies remove error");
     return res.status(500).json({ success: false, message: "Database error." });
   }
 }

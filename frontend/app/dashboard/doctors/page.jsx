@@ -3,10 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { useSelector } from "react-redux";
-import { selectUserId } from "@/store/authSlice";
-
-const API = process.env.NEXT_PUBLIC_API_URL;
+import { api, getErrorMessage } from "@/lib/apiClient";
 
 const SPECIALIZATIONS = [
   "Cardiologist", "General Physician", "Neurologist",
@@ -70,7 +67,6 @@ const BLANK = {
 
 export default function DoctorsPage() {
   const { toasts, showToast } = useToast();
-  const currentUserId = useSelector(selectUserId);
   const [doctors, setDoctors]       = useState([]);
   const [companies, setCompanies]   = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -93,14 +89,16 @@ export default function DoctorsPage() {
   async function load() {
     setLoading(true);
     try {
+      // Only SUPER_ADMIN may list companies; for other roles the dropdown stays empty
+      // and the API files the doctor under the user's own company.
       const [dRes, cRes] = await Promise.all([
-        fetch(`${API}/api/doctors`),
-        fetch(`${API}/api/companies`),
+        api.get("/doctors"),
+        api.get("/companies").catch(() => null),
       ]);
-      const dData = await dRes.json();
-      const cData = await cRes.json();
+      const dData = dRes.data;
+      const cData = cRes?.data;
       if (dData.success) setDoctors(dData.data);
-      if (cData.success) setCompanies(cData.data);
+      if (cData?.success) setCompanies(cData.data);
     } catch {
       showToast("Failed to load data.", "error");
     } finally {
@@ -163,18 +161,17 @@ export default function DoctorsPage() {
       const body = {
         ...form,
         isActive: form.isActive ? 1 : 0,
-        ...(!editTarget && { createdBy: currentUserId }),
       };
-      const url    = editTarget ? `${API}/api/doctors/${editTarget.Id}` : `${API}/api/doctors`;
-      const method = editTarget ? "PUT" : "POST";
-      const res  = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const data = await res.json();
+      const res  = editTarget
+        ? await api.put(`/doctors/${editTarget.Id}`, body)
+        : await api.post("/doctors", body);
+      const data = res.data;
       if (!data.success) { showToast(data.message || "Save failed.", "error"); return; }
       showToast(editTarget ? "Doctor updated successfully." : "Doctor created successfully.", "success");
       setModalOpen(false);
       load();
-    } catch {
-      showToast("Network error.", "error");
+    } catch (err) {
+      showToast(getErrorMessage(err, "Save failed."), "error");
     } finally {
       setSaving(false);
     }
@@ -182,31 +179,27 @@ export default function DoctorsPage() {
 
   async function toggleActive(doc) {
     try {
-      const res  = await fetch(`${API}/api/doctors/${doc.Id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: doc.IsActive ? 0 : 1 }),
-      });
-      const data = await res.json();
+      const res  = await api.patch(`/doctors/${doc.Id}/status`, { isActive: doc.IsActive ? 0 : 1 });
+      const data = res.data;
       if (!data.success) { showToast(data.message || "Update failed.", "error"); return; }
       showToast(doc.IsActive ? "Doctor deactivated." : "Doctor activated.", "success");
       load();
-    } catch {
-      showToast("Network error.", "error");
+    } catch (err) {
+      showToast(getErrorMessage(err, "Update failed."), "error");
     }
   }
 
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
-      const res  = await fetch(`${API}/api/doctors/${deleteTarget}`, { method: "DELETE" });
-      const data = await res.json();
+      const res  = await api.delete(`/doctors/${deleteTarget}`);
+      const data = res.data;
       if (!data.success) { showToast(data.message || "Delete failed.", "error"); return; }
       showToast("Doctor deleted.", "success");
       setDeleteTarget(null);
       load();
-    } catch {
-      showToast("Network error.", "error");
+    } catch (err) {
+      showToast(getErrorMessage(err, "Delete failed."), "error");
     }
   }
 

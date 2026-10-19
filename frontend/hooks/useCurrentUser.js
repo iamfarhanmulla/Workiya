@@ -1,30 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { selectUser } from "@/store/authSlice";
 
 export function useCurrentUser() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("wk_user");
-      if (stored) setUser(JSON.parse(stored));
-    } catch {}
-  }, []);
-
-  return user;
-}
-
-export function saveCurrentUser(user) {
-  try {
-    localStorage.setItem("wk_user", JSON.stringify(user));
-  } catch {}
-}
-
-export function clearCurrentUser() {
-  try {
-    localStorage.removeItem("wk_user");
-  } catch {}
+  return useSelector(selectUser);
 }
 
 export function getInitials(user) {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/store/authSlice";
+import { api, getErrorMessage } from "@/lib/apiClient";
 
 const EmailIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -41,12 +42,61 @@ const ArrowIcon = () => (
   </svg>
 );
 
+function EmailField({ value, onChange }) {
+  return (
+    <label className="field">
+      <span>Email Address</span>
+      <div className="input-shell">
+        <EmailIcon />
+        <input
+          type="email"
+          placeholder="name@company.com"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required
+        />
+      </div>
+    </label>
+  );
+}
+
+function PasswordField({ value, onChange }) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <label className="field">
+      <div className="field-heading">
+        <span>Password</span>
+        <a href="/">Forgot password?</a>
+      </div>
+      <div className="input-shell">
+        <LockIcon />
+        <input
+          type={showPassword ? "text" : "password"}
+          placeholder="********"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required
+        />
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Show password"
+          onClick={() => setShowPassword((v) => !v)}
+        >
+          <EyeIcon />
+        </button>
+      </div>
+    </label>
+  );
+}
+
 export default function LoginForm() {
   const router = useRouter();
   const dispatch = useDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,23 +106,11 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setError(data.message || "Login failed. Please try again.");
-        return;
-      }
-
-      dispatch(setUser(data.user));
+      const res = await api.post("/auth/login", { email, password, rememberMe });
+      dispatch(setUser(res.data.data.user));
       router.push("/dashboard");
-    } catch {
-      setError("Unable to reach the server. Please try again.");
+    } catch (err) {
+      setError(getErrorMessage(err, "Login failed. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -82,47 +120,15 @@ export default function LoginForm() {
     <form className="login-form" onSubmit={handleSubmit}>
       {error && <p className="form-error">{error}</p>}
 
-      <label className="field">
-        <span>Email Address</span>
-        <div className="input-shell">
-          <EmailIcon />
-          <input
-            type="email"
-            placeholder="name@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-      </label>
-
-      <label className="field">
-        <div className="field-heading">
-          <span>Password</span>
-          <a href="/">Forgot password?</a>
-        </div>
-        <div className="input-shell">
-          <LockIcon />
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="********"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Show password"
-            onClick={() => setShowPassword((v) => !v)}
-          >
-            <EyeIcon />
-          </button>
-        </div>
-      </label>
+      <EmailField value={email} onChange={setEmail} />
+      <PasswordField value={password} onChange={setPassword} />
 
       <label className="checkbox-row">
-        <input type="checkbox" />
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+        />
         <span>Keep me signed in for 30 days</span>
       </label>
 
