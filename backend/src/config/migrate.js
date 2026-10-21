@@ -13,8 +13,9 @@
  * Run: node src/config/migrate.js
  */
 
-const { connectDb } = require("./db");
 const dotenv = require("dotenv");
+const { connectDb } = require("./db");
+
 dotenv.config();
 
 async function migrate() {
@@ -50,7 +51,7 @@ async function migrate() {
         END
         ELSE
           PRINT 'Companies table already exists.'
-      `
+      `,
     },
 
     // ── 2. Doctors ────────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ async function migrate() {
         END
         ELSE
           PRINT 'Doctors table already exists.'
-      `
+      `,
     },
 
     // ── 3. Tasks ──────────────────────────────────────────────────────────
@@ -120,14 +121,15 @@ async function migrate() {
             CONSTRAINT FK_Tasks_AssignedTo FOREIGN KEY (AssignedTo) REFERENCES Users(Id),
             CONSTRAINT FK_Tasks_AssignedBy FOREIGN KEY (AssignedBy) REFERENCES Users(Id),
 
-            CONSTRAINT CHK_Tasks_Status   CHECK (Status   IN ('Pending','InProgress','Completed','Cancelled')),
+            CONSTRAINT CHK_Tasks_Status
+              CHECK (Status IN ('Pending','InProgress','Completed','Cancelled')),
             CONSTRAINT CHK_Tasks_Priority CHECK (Priority IN ('Low','Medium','High'))
           )
           PRINT 'Tasks table created.'
         END
         ELSE
           PRINT 'Tasks table already exists.'
-      `
+      `,
     },
 
     // ── 4. TaskFeedback ───────────────────────────────────────────────────
@@ -159,22 +161,24 @@ async function migrate() {
         END
         ELSE
           PRINT 'TaskFeedback table already exists.'
-      `
+      `,
     },
   ];
 
   let passed = 0;
   let failed = 0;
 
+  // eslint-disable-next-line no-restricted-syntax -- steps must run one after another, in order
   for (const step of steps) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- later steps need the tables of earlier ones
       await pool.request().query(step.sql);
       console.log(`  ✓ ${step.name}`);
-      passed++;
+      passed += 1;
     } catch (err) {
       console.error(`  ✗ ${step.name}`);
       console.error(`    Error: ${err.message}`);
-      failed++;
+      failed += 1;
     }
   }
 
@@ -184,14 +188,18 @@ async function migrate() {
     console.log("\nTable order & relationships:");
     console.log("  Companies");
     console.log("  └── Doctors     (CompanyId → Companies, CreatedBy → Users)");
-    console.log("  └── Tasks       (CompanyId → Companies, DoctorId → Doctors, AssignedTo/By → Users)");
+    console.log(
+      "  └── Tasks       (CompanyId → Companies, DoctorId → Doctors, AssignedTo/By → Users)",
+    );
     console.log("       └── TaskFeedback (TaskId → Tasks, EmployeeId → Users)");
   }
 
+  // eslint-disable-next-line n/no-process-exit -- CLI: exit code reports the result
   process.exit(failed > 0 ? 1 : 0);
 }
 
-migrate().catch(err => {
+migrate().catch((err) => {
   console.error("Fatal:", err.message);
+  // eslint-disable-next-line n/no-process-exit -- CLI: exit code reports the result
   process.exit(1);
 });

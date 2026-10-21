@@ -4,7 +4,9 @@ jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: 
 
 const request = require("supertest");
 const app = require("../app");
-const { XHR, USERS, authCookie, mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const {
+  XHR, USERS, authCookie, mockPool, rows, affected,
+} = require("../../test/helpers/apiHarness");
 
 function call(method, url, user = USERS.manager) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
@@ -33,7 +35,7 @@ describe("task.controller tenant scoping", () => {
 
   it.each([
     [[rows()], 404],
-    [[rows({ Id: 1 })], 200]
+    [[rows({ Id: 1 })], 200],
   ])("reads one task within the caller's company", async (responses, status) => {
     // Arrange
     mockPool(mockConnectDb, responses);
@@ -50,7 +52,8 @@ describe("task.controller tenant scoping", () => {
     const db = mockPool(mockConnectDb, [affected(0)]);
 
     // Act
-    const res = await call("patch", "/tasks/99/status", USERS.employee).send({ status: "Completed" });
+    const res = await call("patch", "/tasks/99/status", USERS.employee)
+      .send({ status: "Completed" });
 
     // Assert
     expect(res.status).toBe(404);
@@ -84,7 +87,7 @@ describe("task.controller tenant scoping", () => {
   it.each([
     [{ title: "" }, /Title/],
     [{ title: "T" }, /Doctor/],
-    [{ title: "T", doctorId: 3 }, /Assignee/]
+    [{ title: "T", doctorId: 3 }, /Assignee/],
   ])("validates required task fields %p", async (body, message) => {
     // Arrange
     mockPool(mockConnectDb, []);
@@ -131,7 +134,8 @@ describe("task.controller tenant scoping", () => {
 
     // Assert
     expect(res.status).toBe(404);
-    expect(db.queries[1].text).toContain("WHERE Id = @id AND IsDeleted = 0 AND CompanyId = @scopeCompanyId");
+    expect(db.queries[1].text)
+      .toContain("WHERE Id = @id AND IsDeleted = 0 AND CompanyId = @scopeCompanyId");
   });
 
   it("updates a task in scope", async () => {
@@ -158,8 +162,9 @@ describe("task.controller tenant scoping", () => {
 
   it.each([
     [1, 200],
-    [0, 404]
-  ])("deletes a task only within the caller's company (rows affected %i)", async (count, status) => {
+    [0, 404],
+  ])("deletes a task only within the caller's company "
+    + "(rows affected %i)", async (count, status) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
 
@@ -179,7 +184,7 @@ describe("task.controller database errors", () => {
     ["post", "/tasks"],
     ["put", "/tasks/5"],
     ["patch", "/tasks/5/status"],
-    ["delete", "/tasks/5"]
+    ["delete", "/tasks/5"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
     mockPool(mockConnectDb, [new Error("db down")]);

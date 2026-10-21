@@ -4,7 +4,7 @@ function ok(res, data, message = "", status = 200) {
     data: data === undefined ? null : data,
     message,
     errorCode: null,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 }
 
@@ -14,7 +14,7 @@ function fail(res, status, errorCode, message) {
     data: null,
     message,
     errorCode,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 }
 

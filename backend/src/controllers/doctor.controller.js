@@ -26,19 +26,19 @@ function coordinate(value) {
 // Binds the doctor profile fields shared by create and update.
 function bindProfile(request, body) {
   return request
-    .input("name",          sql.NVarChar, body.name           ?? null)
-    .input("specialization",sql.NVarChar, body.specialization || null)
-    .input("hospitalName",  sql.NVarChar, body.hospitalName   || null)
-    .input("phoneNumber",   sql.NVarChar, body.phoneNumber    || null)
-    .input("email",         sql.NVarChar, body.email          || null)
-    .input("address",       sql.NVarChar, body.address        || null)
-    .input("city",          sql.NVarChar, body.city           || null)
-    .input("state",         sql.NVarChar, body.state          || null)
-    .input("country",       sql.NVarChar, body.country        || null)
-    .input("latitude",      sql.NVarChar, coordinate(body.latitude))
-    .input("longitude",     sql.NVarChar, coordinate(body.longitude))
-    .input("photoUrl",      sql.NVarChar, body.photoUrl       || null)
-    .input("notes",         sql.NVarChar, body.notes          || null);
+    .input("name", sql.NVarChar, body.name ?? null)
+    .input("specialization", sql.NVarChar, body.specialization || null)
+    .input("hospitalName", sql.NVarChar, body.hospitalName || null)
+    .input("phoneNumber", sql.NVarChar, body.phoneNumber || null)
+    .input("email", sql.NVarChar, body.email || null)
+    .input("address", sql.NVarChar, body.address || null)
+    .input("city", sql.NVarChar, body.city || null)
+    .input("state", sql.NVarChar, body.state || null)
+    .input("country", sql.NVarChar, body.country || null)
+    .input("latitude", sql.NVarChar, coordinate(body.latitude))
+    .input("longitude", sql.NVarChar, coordinate(body.longitude))
+    .input("photoUrl", sql.NVarChar, body.photoUrl || null)
+    .input("notes", sql.NVarChar, body.notes || null);
 }
 
 // GET /api/v1/doctors
@@ -77,7 +77,9 @@ async function getById(req, res) {
 
 // POST /api/v1/doctors
 async function create(req, res) {
-  if (!req.body.name) return res.status(400).json({ success: false, message: "Doctor name is required." });
+  if (!req.body.name) {
+    return res.status(400).json({ success: false, message: "Doctor name is required." });
+  }
   const company = resolveCompanyId(req.user, req.body.companyId);
   if (!company.allowed) return res.status(403).json(ASSIGN_FORBIDDEN);
 
@@ -99,7 +101,9 @@ async function create(req, res) {
          @latitude, @longitude, @photoUrl, @notes,
          1, 0, SYSDATETIMEOFFSET())
     `);
-    return res.status(201).json({ success: true, message: "Doctor created.", id: result.recordset[0].Id });
+    return res.status(201).json({
+      success: true, message: "Doctor created.", id: result.recordset[0].Id,
+    });
   } catch (err) {
     logger.error({ err }, "doctors create error");
     return res.status(500).json({ success: false, message: "Database error." });
@@ -114,9 +118,9 @@ async function update(req, res) {
   try {
     const pool = await connectDb();
     const request = pool.request()
-      .input("id",        sql.Int, req.params.id)
+      .input("id", sql.Int, req.params.id)
       .input("companyId", sql.Int, company.companyId)
-      .input("isActive",  sql.Bit, req.body.isActive ?? 1);
+      .input("isActive", sql.Bit, req.body.isActive ?? 1);
     bindProfile(request, req.body);
     const scope = companyFilter(request, req.user, "CompanyId");
     const result = await request.query(`
@@ -150,12 +154,13 @@ async function update(req, res) {
 // PATCH /api/v1/doctors/:id/status
 async function toggleStatus(req, res) {
   const { isActive } = req.body;
-  if (isActive === undefined)
+  if (isActive === undefined) {
     return res.status(400).json({ success: false, message: "isActive is required." });
+  }
   try {
     const pool = await connectDb();
     const request = pool.request()
-      .input("id",       sql.Int, req.params.id)
+      .input("id", sql.Int, req.params.id)
       .input("isActive", sql.Bit, isActive ? 1 : 0);
     const scope = companyFilter(request, req.user, "CompanyId");
     const result = await request.query(`
@@ -165,7 +170,10 @@ async function toggleStatus(req, res) {
       WHERE Id = @id AND IsDeleted = 0 AND ${scope}
     `);
     if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
-    return res.json({ success: true, message: isActive ? "Doctor activated." : "Doctor deactivated." });
+    return res.json({
+      success: true,
+      message: isActive ? "Doctor activated." : "Doctor deactivated.",
+    });
   } catch (err) {
     logger.error({ err }, "doctors toggleStatus error");
     return res.status(500).json({ success: false, message: "Database error." });
@@ -193,4 +201,6 @@ async function remove(req, res) {
   }
 }
 
-module.exports = { getAll, getById, create, update, toggleStatus, remove };
+module.exports = {
+  getAll, getById, create, update, toggleStatus, remove,
+};

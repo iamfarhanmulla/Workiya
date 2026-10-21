@@ -13,7 +13,9 @@ jest.mock("@/lib/apiClient", () => ({ api: { get: jest.fn(), post: jest.fn() } }
 
 function renderHeader() {
   const store = configureStore({ reducer: { auth: authReducer } });
-  store.dispatch(setUser({ id: 1, firstName: "Asha", lastName: "Rao", roleName: "Admin" }));
+  store.dispatch(setUser({
+    id: 1, firstName: "Asha", lastName: "Rao", roleName: "Admin",
+  }));
   render(
     <Provider store={store}>
       <DashboardHeader />

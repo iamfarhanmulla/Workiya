@@ -19,7 +19,9 @@ describe("auth.controller without cookie-parser", () => {
     await logout(bareRequest(), res);
 
     // Assert
-    expect(authService.logout).toHaveBeenCalledWith({ refreshToken: undefined, ip: "127.0.0.1", userAgent: "" });
+    expect(authService.logout).toHaveBeenCalledWith({
+      refreshToken: undefined, ip: "127.0.0.1", userAgent: "",
+    });
     expect(res.clearCookie).toHaveBeenCalledTimes(3);
     expect(res.status).toHaveBeenCalledWith(200);
   });

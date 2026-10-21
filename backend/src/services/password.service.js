@@ -1,5 +1,5 @@
-const crypto = require("crypto");
-const { promisify } = require("util");
+const crypto = require("node:crypto");
+const { promisify } = require("node:util");
 const argon2 = require("argon2");
 
 const pbkdf2 = promisify(crypto.pbkdf2);
@@ -9,7 +9,7 @@ const ARGON2_OPTIONS = Object.freeze({
   type: argon2.argon2id,
   memoryCost: 19456,
   timeCost: 2,
-  parallelism: 1
+  parallelism: 1,
 });
 
 const PASSWORD_SCHEMES = Object.freeze({ ARGON2ID: "argon2id", PBKDF2: "pbkdf2" });
@@ -40,7 +40,7 @@ async function verifyPassword(userRow, plain) {
   if (isArgon2Hash(userRow.PasswordHash)) {
     try {
       return await argon2.verify(userRow.PasswordHash, plain);
-    } catch (_err) {
+    } catch {
       return false;
     }
   }
@@ -59,16 +59,19 @@ async function hashPassword(plain) {
 // system that shares dbo.Users can only verify PBKDF2; switch to hashPassword once it can.
 function hashForSharedUsersTable(plain) {
   const salt = crypto.randomBytes(16);
+  // eslint-disable-next-line n/no-sync -- sync callers; async would change the API
   const hash = crypto.pbkdf2Sync(plain, salt, LEGACY_PBKDF2_ITERATIONS, 32, "sha256");
   return {
     passwordSalt: salt.toString("base64"),
     passwordHash: hash.toString("base64"),
-    passwordIterations: LEGACY_PBKDF2_ITERATIONS
+    passwordIterations: LEGACY_PBKDF2_ITERATIONS,
   };
 }
 
 function isAcceptablePassword(plain) {
-  return typeof plain === "string" && plain.length >= MIN_PASSWORD_LENGTH && plain.length <= MAX_PASSWORD_LENGTH;
+  return typeof plain === "string"
+    && plain.length >= MIN_PASSWORD_LENGTH
+    && plain.length <= MAX_PASSWORD_LENGTH;
 }
 
 function needsRehash(userRow) {
@@ -87,7 +90,13 @@ async function dummyArgon2Verify() {
 // whether an email exists. Pass the scheme that real users are stored with.
 async function dummyVerify(scheme = PASSWORD_SCHEMES.ARGON2ID) {
   if (scheme === PASSWORD_SCHEMES.PBKDF2) {
-    await pbkdf2(crypto.randomBytes(16).toString("hex"), crypto.randomBytes(16), LEGACY_PBKDF2_ITERATIONS, 32, "sha256");
+    await pbkdf2(
+      crypto.randomBytes(16).toString("hex"),
+      crypto.randomBytes(16),
+      LEGACY_PBKDF2_ITERATIONS,
+      32,
+      "sha256",
+    );
     return false;
   }
   await dummyArgon2Verify();
@@ -103,5 +112,5 @@ module.exports = {
   dummyVerify,
   ARGON2_OPTIONS,
   PASSWORD_SCHEMES,
-  MIN_PASSWORD_LENGTH
+  MIN_PASSWORD_LENGTH,
 };

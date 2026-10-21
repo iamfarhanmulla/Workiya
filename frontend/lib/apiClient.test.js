@@ -2,13 +2,19 @@ import { AxiosError } from "axios";
 import { api, getErrorMessage, setSessionExpiredHandler } from "./apiClient";
 
 function reply(config, status, data) {
-  const response = { data, status, statusText: String(status), headers: {}, config };
+  const response = {
+    data, status, statusText: String(status), headers: {}, config,
+  };
   if (status < 400) return Promise.resolve(response);
-  return Promise.reject(new AxiosError("Request failed", "ERR_BAD_RESPONSE", config, null, response));
+  return Promise.reject(
+    new AxiosError("Request failed", "ERR_BAD_RESPONSE", config, null, response),
+  );
 }
 
 function expired(config) {
-  return reply(config, 401, { success: false, errorCode: "AUTH_TOKEN_EXPIRED", message: "Expired" });
+  return reply(config, 401, {
+    success: false, errorCode: "AUTH_TOKEN_EXPIRED", message: "Expired",
+  });
 }
 
 function callsTo(adapter, url) {
@@ -43,7 +49,9 @@ describe("apiClient", () => {
     adapter.mockImplementation((config) => {
       if (config.url === "/auth/refresh") return reply(config, 200, { success: true });
       companyCalls += 1;
-      return companyCalls === 1 ? expired(config) : reply(config, 200, { success: true, data: [1] });
+      return companyCalls === 1
+        ? expired(config)
+        : reply(config, 200, { success: true, data: [1] });
     });
 
     // Act
@@ -126,9 +134,18 @@ describe("apiClient", () => {
   });
 
   it.each([
-    ["a 429 rate limit", (config) => reply(config, 429, { success: false, errorCode: "RATE_LIMITED" })],
-    ["a 500 server error", (config) => reply(config, 500, { success: false, errorCode: "INTERNAL_ERROR" })],
-    ["a network error", (config) => Promise.reject(new AxiosError("Network Error", "ERR_NETWORK", config))],
+    [
+      "a 429 rate limit",
+      (config) => reply(config, 429, { success: false, errorCode: "RATE_LIMITED" }),
+    ],
+    [
+      "a 500 server error",
+      (config) => reply(config, 500, { success: false, errorCode: "INTERNAL_ERROR" }),
+    ],
+    [
+      "a network error",
+      (config) => Promise.reject(new AxiosError("Network Error", "ERR_NETWORK", config)),
+    ],
   ])("keeps the session when the refresh fails with %s", async (_label, refreshReply) => {
     // Arrange
     const onExpired = jest.fn();
@@ -141,7 +158,9 @@ describe("apiClient", () => {
     const result = api.get("/companies");
 
     // Assert
-    await expect(result).rejects.toMatchObject({ response: { data: { errorCode: "AUTH_TOKEN_EXPIRED" } } });
+    await expect(result).rejects.toMatchObject({
+      response: { data: { errorCode: "AUTH_TOKEN_EXPIRED" } },
+    });
     expect(callsTo(adapter, "/auth/refresh")).toBe(1);
     expect(onExpired).not.toHaveBeenCalled();
   });
@@ -203,7 +222,9 @@ describe("apiClient", () => {
     const result = api.request({ method: "get" });
 
     // Assert
-    await expect(result).rejects.toMatchObject({ response: { data: { errorCode: "AUTH_TOKEN_EXPIRED" } } });
+    await expect(result).rejects.toMatchObject({
+      response: { data: { errorCode: "AUTH_TOKEN_EXPIRED" } },
+    });
     expect(callsTo(adapter, "/auth/refresh")).toBe(1);
   });
 });

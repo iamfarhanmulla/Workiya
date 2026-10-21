@@ -6,7 +6,7 @@ const {
   createLoginLimiter,
   createRefreshIpLimiter,
   createRefreshLimiter,
-  loginKey
+  loginKey,
 } = require("./rateLimiters");
 
 function appWith(limiter) {
@@ -19,6 +19,7 @@ function appWith(limiter) {
 
 async function repeat(times, send) {
   for (let i = 0; i < times; i += 1) {
+    // eslint-disable-next-line no-await-in-loop -- requests must hit the limiter in order
     await send(i);
   }
 }

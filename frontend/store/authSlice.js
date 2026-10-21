@@ -14,6 +14,8 @@ export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
   await api.post("/auth/logout");
 });
 
+// Redux Toolkit reducers write to an Immer draft, not to the real state.
+/* eslint-disable no-param-reassign -- Immer draft */
 function applyUser(state, user) {
   state.user = user;
   state.status = "authenticated";
@@ -23,6 +25,7 @@ function resetUser(state) {
   state.user = null;
   state.status = "unauthenticated";
 }
+/* eslint-enable no-param-reassign */
 
 const authSlice = createSlice({
   name: "auth",
@@ -38,6 +41,7 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchCurrentUser.pending, (state) => {
+        // eslint-disable-next-line no-param-reassign -- Immer draft (Redux Toolkit reducer)
         state.status = "loading";
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {

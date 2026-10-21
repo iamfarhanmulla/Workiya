@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const config = require("../config/env");
 const userRepository = require("../repositories/user.repository");
 const refreshTokenRepository = require("../repositories/refreshToken.repository");
@@ -21,7 +21,11 @@ function invalidCredentials() {
 }
 
 function refreshInvalid() {
-  return new AppError(401, ERROR_CODES.AUTH_REFRESH_INVALID, "Session is no longer valid. Please sign in again.");
+  return new AppError(
+    401,
+    ERROR_CODES.AUTH_REFRESH_INVALID,
+    "Session is no longer valid. Please sign in again.",
+  );
 }
 
 function isLocked(row, now) {
@@ -41,7 +45,7 @@ function audit(eventType, ctx, fields = {}) {
     entityType: ENTITY_USER,
     ipAddress: ctx.ip,
     userAgent: ctx.userAgent,
-    ...fields
+    ...fields,
   });
 }
 
@@ -50,11 +54,15 @@ function userAuditFields(row) {
 }
 
 function refreshExpiry(isPersistent, now) {
-  const lifetimeMs = isPersistent ? config.refresh.persistentDays * DAY_MS : config.refresh.sessionHours * HOUR_MS;
+  const lifetimeMs = isPersistent
+    ? config.refresh.persistentDays * DAY_MS
+    : config.refresh.sessionHours * HOUR_MS;
   return new Date(now.getTime() + lifetimeMs);
 }
 
-async function issueSession(user, { familyId, isPersistent, expiresAtUtc, ctx, refreshToken }) {
+async function issueSession(user, {
+  familyId, isPersistent, expiresAtUtc, ctx, refreshToken,
+}) {
   const tokenId = await refreshTokenRepository.insert({
     userId: user.id,
     companyId: user.companyId,
@@ -63,14 +71,14 @@ async function issueSession(user, { familyId, isPersistent, expiresAtUtc, ctx, r
     isPersistent,
     expiresAtUtc,
     createdByIp: ctx.ip || null,
-    userAgent: ctx.userAgent || null
+    userAgent: ctx.userAgent || null,
   });
   const session = {
     user,
     accessToken: tokenService.signAccessToken(user),
     refreshToken,
     isPersistent,
-    refreshExpiresAt: expiresAtUtc
+    refreshExpiresAt: expiresAtUtc,
   };
   return { tokenId, session };
 }
@@ -78,16 +86,16 @@ async function issueSession(user, { familyId, isPersistent, expiresAtUtc, ctx, r
 async function handleFailedPassword(row, ctx) {
   const { failedLoginCount, lockoutEndUtc } = await userRepository.recordFailedLogin(row.Id, {
     maxFailedLogins: config.auth.maxFailedLogins,
-    lockoutMinutes: config.auth.lockoutMinutes
+    lockoutMinutes: config.auth.lockoutMinutes,
   });
   await audit(AUDIT_EVENTS.AUTH_LOGIN_FAILED, ctx, {
     ...userAuditFields(row),
-    newValue: { reason: "INVALID_PASSWORD", failedLoginCount }
+    newValue: { reason: "INVALID_PASSWORD", failedLoginCount },
   });
   if (lockoutEndUtc && failedLoginCount >= config.auth.maxFailedLogins) {
     await audit(AUDIT_EVENTS.AUTH_ACCOUNT_LOCKED, ctx, {
       ...userAuditFields(row),
-      newValue: { lockoutEndUtc: lockoutEndUtc.toISOString() }
+      newValue: { lockoutEndUtc: lockoutEndUtc.toISOString() },
     });
   }
   throw invalidCredentials();
@@ -102,25 +110,31 @@ async function rehashIfNeeded(row, password, ctx) {
   await audit(AUDIT_EVENTS.AUTH_PASSWORD_REHASHED, ctx, {
     ...userAuditFields(row),
     oldValue: { algorithm: "PBKDF2-SHA256" },
-    newValue: { algorithm: "Argon2id" }
+    newValue: { algorithm: "Argon2id" },
   });
 }
 
 // Unknown, locked and wrong-password attempts all hash once and return the same 401,
 // so neither the body nor the timing tells an attacker whether an account exists.
-async function login({ email, password, rememberMe, ip, userAgent }) {
+async function login({
+  email, password, rememberMe, ip, userAgent,
+}) {
   const ctx = { ip, userAgent };
   const now = new Date();
   const row = await userRepository.findActiveByEmail(email);
 
   if (!row) {
     await passwordService.dummyVerify(dummyScheme());
-    await audit(AUDIT_EVENTS.AUTH_LOGIN_FAILED, ctx, { newValue: { reason: "UNKNOWN_EMAIL", email } });
+    await audit(AUDIT_EVENTS.AUTH_LOGIN_FAILED, ctx, {
+      newValue: { reason: "UNKNOWN_EMAIL", email },
+    });
     throw invalidCredentials();
   }
   const passwordMatches = await passwordService.verifyPassword(row, password);
   if (isLocked(row, now)) {
-    await audit(AUDIT_EVENTS.AUTH_LOGIN_FAILED, ctx, { ...userAuditFields(row), newValue: { reason: "LOCKED" } });
+    await audit(AUDIT_EVENTS.AUTH_LOGIN_FAILED, ctx, {
+      ...userAuditFields(row), newValue: { reason: "LOCKED" },
+    });
     throw invalidCredentials();
   }
   if (!passwordMatches) {
@@ -135,9 +149,11 @@ async function login({ email, password, rememberMe, ip, userAgent }) {
     familyId: crypto.randomUUID(),
     isPersistent,
     expiresAtUtc: refreshExpiry(isPersistent, now),
-    ctx
+    ctx,
   });
-  await audit(AUDIT_EVENTS.AUTH_LOGIN_SUCCESS, ctx, { ...userAuditFields(row), newValue: { rememberMe: isPersistent } });
+  await audit(AUDIT_EVENTS.AUTH_LOGIN_SUCCESS, ctx, {
+    ...userAuditFields(row), newValue: { rememberMe: isPersistent },
+  });
   return session;
 }
 
@@ -147,16 +163,21 @@ async function handleReuse(record, ctx) {
     entityId: record.UserId,
     companyId: record.CompanyId,
     performedBy: record.UserId,
-    newValue: { familyId: record.FamilyId }
+    newValue: { familyId: record.FamilyId },
   });
-  throw new AppError(401, ERROR_CODES.AUTH_REFRESH_REUSED, "Session is no longer valid. Please sign in again.");
+  throw new AppError(
+    401,
+    ERROR_CODES.AUTH_REFRESH_REUSED,
+    "Session is no longer valid. Please sign in again.",
+  );
 }
 
 function isRecentRotation(record) {
   if (record.RevokedReason !== ROTATED || !record.RevokedAtUtc) {
     return false;
   }
-  return Date.now() - new Date(record.RevokedAtUtc).getTime() < config.refresh.reuseGraceSeconds * 1000;
+  const revokedForMs = Date.now() - new Date(record.RevokedAtUtc).getTime();
+  return revokedForMs < config.refresh.reuseGraceSeconds * 1000;
 }
 
 // Another tab rotated this token moments ago and the browser already holds its new cookies.
@@ -178,7 +199,7 @@ async function rotate(record, user, ctx) {
     familyId: record.FamilyId,
     isPersistent: Boolean(record.IsPersistent),
     expiresAtUtc: new Date(record.ExpiresAtUtc),
-    ctx
+    ctx,
   });
   const newHash = tokenService.hashRefreshToken(session.refreshToken);
   if (await refreshTokenRepository.revoke(record.Id, ROTATED, newHash)) {
@@ -193,7 +214,8 @@ async function refresh({ refreshToken, ip, userAgent }) {
   if (!refreshToken) {
     throw refreshInvalid();
   }
-  const record = await refreshTokenRepository.findByHash(tokenService.hashRefreshToken(refreshToken));
+  const tokenHash = tokenService.hashRefreshToken(refreshToken);
+  const record = await refreshTokenRepository.findByHash(tokenHash);
   if (!record) {
     throw refreshInvalid();
   }
@@ -216,7 +238,8 @@ async function logout({ refreshToken, ip, userAgent }) {
   if (!refreshToken) {
     return;
   }
-  const record = await refreshTokenRepository.findByHash(tokenService.hashRefreshToken(refreshToken));
+  const tokenHash = tokenService.hashRefreshToken(refreshToken);
+  const record = await refreshTokenRepository.findByHash(tokenHash);
   if (!record) {
     return;
   }
@@ -224,7 +247,7 @@ async function logout({ refreshToken, ip, userAgent }) {
   await audit(AUDIT_EVENTS.AUTH_LOGOUT, { ip, userAgent }, {
     entityId: record.UserId,
     companyId: record.CompanyId,
-    performedBy: record.UserId
+    performedBy: record.UserId,
   });
 }
 
@@ -236,4 +259,6 @@ async function me(userId) {
   return toUserDto(row);
 }
 
-module.exports = { login, refresh, logout, me };
+module.exports = {
+  login, refresh, logout, me,
+};

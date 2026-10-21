@@ -94,7 +94,9 @@ describe("authSlice", () => {
   it("keeps a login that happens while fetchCurrentUser is in flight", async () => {
     // Arrange
     let rejectMe;
-    api.get.mockReturnValue(new Promise((_, reject) => { rejectMe = reject; }));
+    api.get.mockReturnValue(new Promise((_, reject) => {
+      rejectMe = reject;
+    }));
     const store = makeStore();
 
     // Act
@@ -121,7 +123,7 @@ describe("authSlice", () => {
     expect(selectUser(store.getState())).toBeNull();
   });
 
-  it("logoutUser keeps the user when the call fails, because the session is still valid", async () => {
+  it("logoutUser keeps the user when the call fails, as the session is still valid", async () => {
     // Arrange
     api.post.mockRejectedValue(new Error("network"));
     const store = makeStore();

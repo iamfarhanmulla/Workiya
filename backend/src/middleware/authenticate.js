@@ -15,7 +15,7 @@ function authenticate(req, res, next) {
       id: Number(claims.sub),
       companyId: claims.cid,
       roleId: claims.rid,
-      roleCode: claims.role
+      roleCode: claims.role,
     };
     return next();
   } catch (err) {

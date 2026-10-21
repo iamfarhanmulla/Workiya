@@ -4,7 +4,7 @@ const { mockResponse } = require("../../test/helpers/mockResponse");
 
 const schema = z.object({
   email: z.string().trim().pipe(z.email()),
-  age: z.number().int().optional()
+  age: z.number().int().optional(),
 });
 
 describe("validate middleware", () => {

@@ -1,9 +1,9 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const SECTION_MARKERS = Object.freeze({
   up: "-- ==== UP ====",
-  down: "-- ==== DOWN ===="
+  down: "-- ==== DOWN ====",
 });
 
 function parseArgs(argv) {
@@ -57,12 +57,15 @@ async function recordMigration(transaction, sql, fileName, direction) {
 }
 
 async function runBatches(batches, fileName, direction) {
+  // eslint-disable-next-line n/global-require -- lazy, so a dry run never loads the DB
   const { connectDb, sql } = require("../src/config/db");
   const pool = await connectDb();
   const transaction = new sql.Transaction(pool);
   await transaction.begin();
   try {
+    // eslint-disable-next-line no-restricted-syntax -- batches must run one after another, in order
     for (const batch of batches) {
+      // eslint-disable-next-line no-await-in-loop -- each batch can depend on the previous one
       await new sql.Request(transaction).batch(batch);
     }
     await recordMigration(transaction, sql, fileName, direction);
@@ -83,10 +86,13 @@ async function main() {
     return;
   }
   const filePath = path.resolve(process.cwd(), file);
+  // eslint-disable-next-line n/no-sync -- one-shot CLI script, sync I/O is intended
   const batches = splitBatches(extractSection(fs.readFileSync(filePath, "utf8"), direction));
   process.stdout.write(`${path.basename(filePath)} [${direction}]: ${batches.length} batch(es)\n`);
   if (!confirmed) {
-    process.stderr.write("Dry run only. Re-run with --yes to apply these batches to the configured database.\n");
+    process.stderr.write(
+      "Dry run only. Re-run with --yes to apply these batches to the configured database.\n",
+    );
     process.exitCode = 1;
     return;
   }

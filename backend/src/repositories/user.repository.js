@@ -55,7 +55,8 @@ async function recordFailedLogin(id, { maxFailedLogins, lockoutMinutes }) {
       UPDATE Users
       SET FailedLoginCount = ${NEXT_FAILED_COUNT},
           LockoutEndUtc = CASE
-            WHEN ${NEXT_FAILED_COUNT} >= @maxFailedLogins THEN DATEADD(minute, @lockoutMinutes, GETUTCDATE())
+            WHEN ${NEXT_FAILED_COUNT}
+              >= @maxFailedLogins THEN DATEADD(minute, @lockoutMinutes, GETUTCDATE())
             WHEN LockoutEndUtc <= GETUTCDATE() THEN NULL
             ELSE LockoutEndUtc
           END,
@@ -66,7 +67,7 @@ async function recordFailedLogin(id, { maxFailedLogins, lockoutMinutes }) {
   const row = result.recordset[0];
   return {
     failedLoginCount: row ? row.FailedLoginCount : 0,
-    lockoutEndUtc: row && row.LockoutEndUtc ? new Date(row.LockoutEndUtc) : null
+    lockoutEndUtc: row && row.LockoutEndUtc ? new Date(row.LockoutEndUtc) : null,
   };
 }
 
@@ -108,5 +109,5 @@ module.exports = {
   findActiveById,
   recordFailedLogin,
   recordSuccessfulLogin,
-  updatePasswordHash
+  updatePasswordHash,
 };

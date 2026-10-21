@@ -22,7 +22,7 @@ function userRow(overrides = {}) {
     FailedLoginCount: 0,
     LockoutEndUtc: null,
     ...credentials,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -36,7 +36,7 @@ function tokenRecord(overrides = {}) {
     ExpiresAtUtc: new Date(Date.now() + HOUR_MS),
     RevokedAtUtc: null,
     ReplacedByTokenHash: null,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -44,7 +44,8 @@ function installFakeTokenStore(repository) {
   const store = [];
   let nextId = 1;
   repository.insert.mockImplementation(async (token) => {
-    const id = nextId++;
+    const id = nextId;
+    nextId += 1;
     store.push({
       Id: id,
       UserId: token.userId,
@@ -54,17 +55,21 @@ function installFakeTokenStore(repository) {
       IsPersistent: token.isPersistent,
       ExpiresAtUtc: token.expiresAtUtc,
       RevokedAtUtc: null,
-      ReplacedByTokenHash: null
+      ReplacedByTokenHash: null,
     });
     return id;
   });
-  repository.findByHash.mockImplementation(async (hash) => store.find((t) => t.TokenHash === hash) || null);
+  repository.findByHash.mockImplementation(
+    async (hash) => store.find((t) => t.TokenHash === hash) || null,
+  );
   repository.revoke.mockImplementation(async (id, reason, replacedBy) => {
     const token = store.find((t) => t.Id === id && !t.RevokedAtUtc);
     if (!token) {
       return false;
     }
-    Object.assign(token, { RevokedAtUtc: new Date(), RevokedReason: reason, ReplacedByTokenHash: replacedBy });
+    Object.assign(token, {
+      RevokedAtUtc: new Date(), RevokedReason: reason, ReplacedByTokenHash: replacedBy,
+    });
     return true;
   });
   repository.revokeFamily.mockImplementation(async (familyId, reason) => {
@@ -75,4 +80,6 @@ function installFakeTokenStore(repository) {
   return store;
 }
 
-module.exports = { TEST_PASSWORD, HOUR_MS, userRow, tokenRecord, installFakeTokenStore };
+module.exports = {
+  TEST_PASSWORD, HOUR_MS, userRow, tokenRecord, installFakeTokenStore,
+};

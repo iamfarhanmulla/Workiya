@@ -11,7 +11,7 @@ function ThemeToggle() {
   const { theme, toggle } = useTheme();
 
   return (
-    <button className="dash-theme-toggle" onClick={toggle} aria-label="Toggle theme">
+    <button type="button" className="dash-theme-toggle" onClick={toggle} aria-label="Toggle theme">
       <div className="dash-theme-pill">
         <div className="dash-theme-thumb">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -32,21 +32,29 @@ function UserMenuItems({ user, onLogout, logoutError }) {
         <p className="dash-user-menu-role">{user?.email || ""}</p>
       </div>
       {logoutError && (
-        <p className="dash-user-menu-role" role="alert" style={{ color: "var(--ds-danger)", padding: "0 10px" }}>
+        <p
+          className="dash-user-menu-role"
+          role="alert"
+          style={{ color: "var(--ds-danger)", padding: "0 10px" }}
+        >
           {logoutError}
         </p>
       )}
       <hr className="dash-user-menu-divider" />
-      <button className="dash-user-menu-item">
+      <button type="button" className="dash-user-menu-item">
         <span className="material-symbols-outlined">person</span>
         My Profile
       </button>
-      <button className="dash-user-menu-item">
+      <button type="button" className="dash-user-menu-item">
         <span className="material-symbols-outlined">settings</span>
         Account Settings
       </button>
       <hr className="dash-user-menu-divider" />
-      <button className="dash-user-menu-item dash-user-menu-item--danger" onClick={onLogout}>
+      <button
+        type="button"
+        className="dash-user-menu-item dash-user-menu-item--danger"
+        onClick={onLogout}
+      >
         <span className="material-symbols-outlined">logout</span>
         Logout
       </button>
@@ -72,7 +80,7 @@ function UserMenu() {
 
   // If the API never revoked the session, the cookies are still set and the proxy would
   // bounce "/" back to the dashboard, so stay here and say so instead.
-  async function handleLogout() {
+  const handleLogout = async () => {
     setLogoutError("");
     const result = await dispatch(logoutUser());
     if (logoutUser.rejected.match(result)) {
@@ -80,11 +88,11 @@ function UserMenu() {
       return;
     }
     router.push("/");
-  }
+  };
 
   return (
     <div className="dash-user-wrap" ref={menuRef}>
-      <button className="dash-user-btn" onClick={() => setMenuOpen((o) => !o)}>
+      <button type="button" className="dash-user-btn" onClick={() => setMenuOpen((o) => !o)}>
         <div className="dash-user-avatar-pill">{getInitials(user)}</div>
         <div className="dash-user-info">
           <span className="dash-user-name">{getDisplayName(user)}</span>
@@ -111,21 +119,21 @@ export default function DashboardHeader() {
       </div>
 
       <div className="dash-header-actions">
-        <button className="dash-assign-btn">
+        <button type="button" className="dash-assign-btn">
           <span className="material-symbols-outlined">add</span>
           New Task
         </button>
 
         <div className="dash-icon-wrap">
-          <button className="dash-icon-btn" aria-label="Notifications">
+          <button type="button" className="dash-icon-btn" aria-label="Notifications">
             <span className="material-symbols-outlined">notifications</span>
           </button>
           <span className="dash-notif-dot" />
         </div>
-        <button className="dash-icon-btn" aria-label="Apps">
+        <button type="button" className="dash-icon-btn" aria-label="Apps">
           <span className="material-symbols-outlined">apps</span>
         </button>
-        <button className="dash-icon-btn" aria-label="Help">
+        <button type="button" className="dash-icon-btn" aria-label="Help">
           <span className="material-symbols-outlined">help</span>
         </button>
 

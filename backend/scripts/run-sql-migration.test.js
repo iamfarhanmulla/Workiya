@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const { parseArgs, extractSection, splitBatches } = require("./run-sql-migration");
 
 const MIGRATION = path.resolve(
@@ -7,7 +7,7 @@ const MIGRATION = path.resolve(
   "..",
   "db",
   "migrations",
-  "20261016120000_WI-TBD_create_refresh_tokens_and_audit_logs.sql"
+  "20261016120000_WI-TBD_create_refresh_tokens_and_audit_logs.sql",
 );
 
 describe("run-sql-migration helpers", () => {
@@ -23,7 +23,10 @@ describe("run-sql-migration helpers", () => {
 
   it("extracts only the requested section and splits on GO lines", () => {
     // Arrange
-    const content = ["-- header", "-- ==== UP ====", "SELECT 1;", "GO", "", "SELECT 2;", "go", "-- ==== DOWN ====", "SELECT 3;", "GO"].join("\n");
+    const content = [
+      "-- header", "-- ==== UP ====", "SELECT 1;", "GO", "", "SELECT 2;", "go",
+      "-- ==== DOWN ====", "SELECT 3;", "GO",
+    ].join("\n");
 
     // Act
     const up = splitBatches(extractSection(content, "up"));
@@ -41,6 +44,7 @@ describe("run-sql-migration helpers", () => {
 
   it("parses the real migration file into UP and DOWN batches", () => {
     // Arrange
+    // eslint-disable-next-line n/no-sync -- test reads a fixture file
     const content = fs.readFileSync(MIGRATION, "utf8");
 
     // Act
@@ -49,13 +53,15 @@ describe("run-sql-migration helpers", () => {
 
     // Assert
     expect(up.length).toBeGreaterThanOrEqual(7);
-    expect(up.some((b) => b.includes("CREATE OR ALTER TRIGGER dbo.trg_AuditLogs_Immutable"))).toBe(true);
+    const trigger = "CREATE OR ALTER TRIGGER dbo.trg_AuditLogs_Immutable";
+    expect(up.some((b) => b.includes(trigger))).toBe(true);
     expect(up.every((b) => !b.includes("DROP TABLE"))).toBe(true);
     expect(down).toHaveLength(4);
   });
 
   it("lets RefreshTokens.CompanyId be NULL for users without a company", () => {
     // Arrange
+    // eslint-disable-next-line n/no-sync -- test reads a fixture file
     const content = fs.readFileSync(MIGRATION, "utf8");
 
     // Act
@@ -72,6 +78,7 @@ describe("run-sql-migration helpers", () => {
     "adds the Users.%s column the auth code reads, only when it is missing",
     (column) => {
       // Arrange
+      // eslint-disable-next-line n/no-sync -- test reads a fixture file
       const content = fs.readFileSync(MIGRATION, "utf8");
 
       // Act
@@ -80,6 +87,6 @@ describe("run-sql-migration helpers", () => {
       // Assert
       expect(up).toContain(`IF COL_LENGTH('dbo.Users', '${column}') IS NULL`);
       expect(up).toContain(`@level2name = N'${column}'`);
-    }
+    },
   );
 });

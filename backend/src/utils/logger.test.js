@@ -9,6 +9,7 @@ function loadLogger(env) {
   });
   let logger;
   jest.isolateModules(() => {
+    // eslint-disable-next-line n/global-require -- reload inside isolateModules with new env
     logger = require("./logger");
   });
   Object.assign(process.env, saved);

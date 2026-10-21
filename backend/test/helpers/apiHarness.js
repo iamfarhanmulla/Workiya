@@ -5,10 +5,18 @@ const XHR = Object.freeze({ "X-Requested-With": "XMLHttpRequest" });
 
 // Role ids follow the legacy Roles table (EMPLOYEE = 3, MANAGER = 4); code reads only roleCode.
 const USERS = Object.freeze({
-  superAdmin: { id: 1, companyId: null, roleId: 1, roleCode: ROLES.SUPER_ADMIN },
-  admin: { id: 10, companyId: 2, roleId: 2, roleCode: ROLES.ADMIN },
-  manager: { id: 20, companyId: 2, roleId: 4, roleCode: ROLES.MANAGER },
-  employee: { id: 30, companyId: 2, roleId: 3, roleCode: ROLES.EMPLOYEE }
+  superAdmin: {
+    id: 1, companyId: null, roleId: 1, roleCode: ROLES.SUPER_ADMIN,
+  },
+  admin: {
+    id: 10, companyId: 2, roleId: 2, roleCode: ROLES.ADMIN,
+  },
+  manager: {
+    id: 20, companyId: 2, roleId: 4, roleCode: ROLES.MANAGER,
+  },
+  employee: {
+    id: 30, companyId: 2, roleId: 3, roleCode: ROLES.EMPLOYEE,
+  },
 });
 
 function authCookie(user) {
@@ -35,10 +43,10 @@ function mockPool(connectDb, responses = []) {
             throw next;
           }
           return next;
-        }
+        },
       };
       return req;
-    }
+    },
   };
   connectDb.mockResolvedValue(pool);
   return { queries };
@@ -52,4 +60,6 @@ function affected(count) {
   return { recordset: [], rowsAffected: [count] };
 }
 
-module.exports = { XHR, USERS, authCookie, mockPool, rows, affected };
+module.exports = {
+  XHR, USERS, authCookie, mockPool, rows, affected,
+};

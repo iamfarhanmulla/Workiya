@@ -3,6 +3,6 @@ module.exports = {
     SUPER_ADMIN: "SUPER_ADMIN",
     ADMIN: "ADMIN",
     MANAGER: "MANAGER",
-    EMPLOYEE: "EMPLOYEE"
-  })
+    EMPLOYEE: "EMPLOYEE",
+  }),
 };

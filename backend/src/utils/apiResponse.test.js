@@ -12,7 +12,9 @@ describe("apiResponse", () => {
     // Assert
     const body = res.json.mock.calls[0][0];
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(body).toEqual({ success: true, data: { id: 1 }, message: "", errorCode: null, timestamp: expect.any(String) });
+    expect(body).toEqual({
+      success: true, data: { id: 1 }, message: "", errorCode: null, timestamp: expect.any(String),
+    });
     expect(new Date(body.timestamp).toISOString()).toBe(body.timestamp);
   });
 
@@ -42,7 +44,7 @@ describe("apiResponse", () => {
       data: null,
       message: "Missing.",
       errorCode: "NOT_FOUND",
-      timestamp: expect.any(String)
+      timestamp: expect.any(String),
     });
   });
 });

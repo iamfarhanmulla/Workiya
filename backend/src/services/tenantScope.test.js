@@ -1,6 +1,6 @@
 const { ROLES } = require("../constants/roles");
 const {
-  toId, isSuperAdmin, resolveCompanyId, companyFilter, manageableUserFilter, roleFilter
+  toId, isSuperAdmin, resolveCompanyId, companyFilter, manageableUserFilter, roleFilter,
 } = require("./tenantScope");
 
 const SUPER = { id: 1, companyId: null, roleCode: ROLES.SUPER_ADMIN };
@@ -13,7 +13,7 @@ function fakeRequest() {
     input(name, _type, value) {
       inputs[name] = value;
       return this;
-    }
+    },
   };
 }
 
@@ -22,7 +22,7 @@ describe("tenantScope", () => {
     [undefined, null],
     [null, null],
     ["", null],
-    ["7", 7]
+    ["7", 7],
   ])("toId(%p) is %p", (input, expected) => {
     // Arrange / Act
     const result = toId(input);
@@ -44,7 +44,7 @@ describe("tenantScope", () => {
     [SUPER, "", { allowed: true, companyId: null }],
     [ADMIN, "", { allowed: true, companyId: 7 }],
     [ADMIN, 7, { allowed: true, companyId: 7 }],
-    [ADMIN, "8", { allowed: false, companyId: null }]
+    [ADMIN, "8", { allowed: false, companyId: null }],
   ])("resolveCompanyId(%o, %p)", (user, requested, expected) => {
     // Arrange / Act
     const result = resolveCompanyId(user, requested);
@@ -97,7 +97,8 @@ describe("tenantScope", () => {
 
     // Assert
     expect(predicate).toBe(
-      "u.CompanyId = @scopeCompanyId AND u.RoleId NOT IN (SELECT Id FROM Roles WHERE Code = @superAdminCode)"
+      "u.CompanyId = @scopeCompanyId"
+        + " AND u.RoleId NOT IN (SELECT Id FROM Roles WHERE Code = @superAdminCode)",
     );
     expect(request.inputs).toEqual({ scopeCompanyId: 7, superAdminCode: ROLES.SUPER_ADMIN });
   });

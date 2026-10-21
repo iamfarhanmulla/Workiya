@@ -11,7 +11,9 @@ function bodyOf(res) {
 describe("authenticate middleware", () => {
   it("sets req.user from a valid wk_at cookie", () => {
     // Arrange
-    const token = signAccessToken({ id: 5, companyId: 2, roleId: 1, roleCode: "SUPER_ADMIN" });
+    const token = signAccessToken({
+      id: 5, companyId: 2, roleId: 1, roleCode: "SUPER_ADMIN",
+    });
     const req = { cookies: { wk_at: token } };
     const res = mockResponse();
     const next = jest.fn();
@@ -21,12 +23,14 @@ describe("authenticate middleware", () => {
 
     // Assert
     expect(next).toHaveBeenCalledWith();
-    expect(req.user).toEqual({ id: 5, companyId: 2, roleId: 1, roleCode: "SUPER_ADMIN" });
+    expect(req.user).toEqual({
+      id: 5, companyId: 2, roleId: 1, roleCode: "SUPER_ADMIN",
+    });
   });
 
   it.each([
     ["no cookies object", {}],
-    ["no wk_at cookie", { cookies: {} }]
+    ["no wk_at cookie", { cookies: {} }],
   ])("returns 401 AUTH_REQUIRED with %s", (_label, req) => {
     // Arrange
     const res = mockResponse();
@@ -43,11 +47,13 @@ describe("authenticate middleware", () => {
 
   it("returns 401 AUTH_TOKEN_EXPIRED for an expired token", () => {
     // Arrange
-    const expired = jwt.sign({ cid: 1, rid: 1, role: "ADMIN", exp: Math.floor(Date.now() / 1000) - 10 }, config.jwt.privateKey, {
+    const expired = jwt.sign({
+      cid: 1, rid: 1, role: "ADMIN", exp: Math.floor(Date.now() / 1000) - 10,
+    }, config.jwt.privateKey, {
       algorithm: "RS256",
       subject: "1",
       issuer: config.jwt.issuer,
-      audience: config.jwt.audience
+      audience: config.jwt.audience,
     });
     const res = mockResponse();
 
@@ -61,7 +67,9 @@ describe("authenticate middleware", () => {
 
   it("returns 401 AUTH_INVALID_TOKEN for a tampered token", () => {
     // Arrange
-    const token = `${signAccessToken({ id: 1, companyId: 1, roleId: 1, roleCode: "ADMIN" })}x`;
+    const token = `${signAccessToken({
+      id: 1, companyId: 1, roleId: 1, roleCode: "ADMIN",
+    })}x`;
     const res = mockResponse();
 
     // Act

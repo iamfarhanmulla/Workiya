@@ -35,7 +35,9 @@ describe("auth.service.login", () => {
     userRepository.findActiveByEmail.mockResolvedValue(userRow());
 
     // Act
-    const session = await authService.login({ email: "mgr@example.com", password: PASSWORD, ...CTX });
+    const session = await authService.login({
+      email: "mgr@example.com", password: PASSWORD, ...CTX,
+    });
 
     // Assert
     expect(session.user).toMatchObject({ id: 11, roleCode: "MANAGER", email: "mgr@example.com" });
@@ -44,7 +46,9 @@ describe("auth.service.login", () => {
     expect(tokenService.verifyAccessToken(session.accessToken).sub).toBe("11");
     expect(userRepository.recordSuccessfulLogin).toHaveBeenCalledWith(11);
     const inserted = refreshTokenRepository.insert.mock.calls[0][0];
-    expect(inserted).toMatchObject({ userId: 11, companyId: 2, isPersistent: false, createdByIp: "10.0.0.1" });
+    expect(inserted).toMatchObject({
+      userId: 11, companyId: 2, isPersistent: false, createdByIp: "10.0.0.1",
+    });
     expect(inserted.tokenHash).toBe(tokenService.hashRefreshToken(session.refreshToken));
     expect(inserted.expiresAtUtc.getTime() - Date.now()).toBeLessThanOrEqual(12 * HOUR_MS);
     expect(auditedEvents()).toEqual([AUDIT_EVENTS.AUTH_LOGIN_SUCCESS]);
@@ -55,7 +59,9 @@ describe("auth.service.login", () => {
     userRepository.findActiveByEmail.mockResolvedValue(userRow());
 
     // Act
-    const session = await authService.login({ email: "a@b.co", password: PASSWORD, rememberMe: true });
+    const session = await authService.login({
+      email: "a@b.co", password: PASSWORD, rememberMe: true,
+    });
 
     // Assert
     const inserted = refreshTokenRepository.insert.mock.calls[0][0];
@@ -67,8 +73,9 @@ describe("auth.service.login", () => {
 
   it.each([
     ["PBKDF2, the scheme legacy users are stored with", false, "pbkdf2"],
-    ["Argon2id once rehash-on-login moves users to it", true, "argon2id"]
-  ])("returns the same 401 for an unknown email and burns a %s dummy hash", async (_label, rehash, scheme) => {
+    ["Argon2id once rehash-on-login moves users to it", true, "argon2id"],
+  ])("returns the same 401 for an unknown email "
+    + "and burns a %s dummy hash", async (_label, rehash, scheme) => {
     // Arrange
     config.auth.passwordRehashOnLogin = rehash;
     userRepository.findActiveByEmail.mockResolvedValue(null);
@@ -81,7 +88,7 @@ describe("auth.service.login", () => {
     await expect(promise).rejects.toMatchObject({
       status: 401,
       errorCode: "AUTH_INVALID_CREDENTIALS",
-      message: "Invalid email or password."
+      message: "Invalid email or password.",
     });
     expect(dummySpy).toHaveBeenCalledWith(scheme);
     expect(auditedEvents()).toEqual([AUDIT_EVENTS.AUTH_LOGIN_FAILED]);
@@ -91,7 +98,8 @@ describe("auth.service.login", () => {
   it("returns 401 and records a failed login for a wrong password", async () => {
     // Arrange
     userRepository.findActiveByEmail.mockResolvedValue(userRow({ FailedLoginCount: 1 }));
-    userRepository.recordFailedLogin.mockResolvedValue({ failedLoginCount: 2, lockoutEndUtc: null });
+    userRepository.recordFailedLogin
+      .mockResolvedValue({ failedLoginCount: 2, lockoutEndUtc: null });
 
     // Act
     const promise = authService.login({ email: "mgr@example.com", password: "wrong", ...CTX });
@@ -100,10 +108,12 @@ describe("auth.service.login", () => {
     await expect(promise).rejects.toMatchObject({
       status: 401,
       errorCode: "AUTH_INVALID_CREDENTIALS",
-      message: "Invalid email or password."
+      message: "Invalid email or password.",
     });
-    expect(userRepository.recordFailedLogin).toHaveBeenCalledWith(11, { maxFailedLogins: 5, lockoutMinutes: 15 });
-    expect(auditService.log.mock.calls[0][0].newValue).toEqual({ reason: "INVALID_PASSWORD", failedLoginCount: 2 });
+    expect(userRepository.recordFailedLogin)
+      .toHaveBeenCalledWith(11, { maxFailedLogins: 5, lockoutMinutes: 15 });
+    expect(auditService.log.mock.calls[0][0].newValue)
+      .toEqual({ reason: "INVALID_PASSWORD", failedLoginCount: 2 });
     expect(refreshTokenRepository.insert).not.toHaveBeenCalled();
   });
 
@@ -117,16 +127,20 @@ describe("auth.service.login", () => {
     const promise = authService.login({ email: "mgr@example.com", password: "wrong", ...CTX });
 
     // Assert
-    await expect(promise).rejects.toMatchObject({ status: 401, errorCode: "AUTH_INVALID_CREDENTIALS" });
-    expect(auditedEvents()).toEqual([AUDIT_EVENTS.AUTH_LOGIN_FAILED, AUDIT_EVENTS.AUTH_ACCOUNT_LOCKED]);
-    expect(auditService.log.mock.calls[1][0].newValue).toEqual({ lockoutEndUtc: lockoutEndUtc.toISOString() });
+    await expect(promise).rejects
+      .toMatchObject({ status: 401, errorCode: "AUTH_INVALID_CREDENTIALS" });
+    expect(auditedEvents())
+      .toEqual([AUDIT_EVENTS.AUTH_LOGIN_FAILED, AUDIT_EVENTS.AUTH_ACCOUNT_LOCKED]);
+    expect(auditService.log.mock.calls[1][0].newValue)
+      .toEqual({ lockoutEndUtc: lockoutEndUtc.toISOString() });
   });
 
   it("does not audit a new lockout while the failure count is below the limit", async () => {
     // Arrange
     const stillLocked = new Date(Date.now() + 60 * 1000);
     userRepository.findActiveByEmail.mockResolvedValue(userRow());
-    userRepository.recordFailedLogin.mockResolvedValue({ failedLoginCount: 1, lockoutEndUtc: stillLocked });
+    userRepository.recordFailedLogin
+      .mockResolvedValue({ failedLoginCount: 1, lockoutEndUtc: stillLocked });
 
     // Act
     const promise = authService.login({ email: "mgr@example.com", password: "wrong", ...CTX });
@@ -149,7 +163,7 @@ describe("auth.service.login", () => {
     await expect(promise).rejects.toMatchObject({
       status: 401,
       errorCode: "AUTH_INVALID_CREDENTIALS",
-      message: "Invalid email or password."
+      message: "Invalid email or password.",
     });
     expect(verifySpy).toHaveBeenCalledTimes(1);
     expect(userRepository.recordFailedLogin).not.toHaveBeenCalled();
@@ -160,17 +174,19 @@ describe("auth.service.login", () => {
 
   it("signs in a SUPER_ADMIN without a company and stores a NULL CompanyId", async () => {
     // Arrange
-    userRepository.findActiveByEmail.mockResolvedValue(userRow({ CompanyId: null, RoleCode: "SUPER_ADMIN" }));
+    userRepository.findActiveByEmail
+      .mockResolvedValue(userRow({ CompanyId: null, RoleCode: "SUPER_ADMIN" }));
 
     // Act
-    const session = await authService.login({ email: "admin@example.com", password: PASSWORD, ...CTX });
+    const session = await authService.login({
+      email: "admin@example.com", password: PASSWORD, ...CTX,
+    });
 
     // Assert
     expect(session.user).toMatchObject({ companyId: null, roleCode: "SUPER_ADMIN" });
     expect(refreshTokenRepository.insert.mock.calls[0][0].companyId).toBeNull();
     expect(tokenService.verifyAccessToken(session.accessToken).cid).toBeNull();
   });
-
 
   it("rehashes a PBKDF2 password to Argon2id when enabled", async () => {
     // Arrange
@@ -193,7 +209,7 @@ describe("auth.service.login", () => {
     config.auth.passwordRehashOnLogin = true;
     const hashed = await passwordService.hashPassword(PASSWORD);
     userRepository.findActiveByEmail.mockResolvedValue(
-      userRow({ PasswordHash: hashed.passwordHash, PasswordSalt: "", PasswordIterations: 0 })
+      userRow({ PasswordHash: hashed.passwordHash, PasswordSalt: "", PasswordIterations: 0 }),
     );
 
     // Act

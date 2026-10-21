@@ -4,14 +4,17 @@ jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: 
 
 const request = require("supertest");
 const app = require("../app");
-const { XHR, USERS, authCookie, mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const {
+  XHR, USERS, authCookie, mockPool, rows, affected,
+} = require("../../test/helpers/apiHarness");
 
 function call(method, url, user = USERS.manager) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
 }
 
 const NEW_EMPLOYEE = { email: "emp@example.com", password: "Str0ng!Pass", firstName: "E" };
-const EMPLOYEE_AND_COMPANY = "RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode) AND CompanyId = @scopeCompanyId";
+const EMPLOYEE_AND_COMPANY = "RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode)"
+  + " AND CompanyId = @scopeCompanyId";
 
 beforeEach(() => {
   mockConnectDb.mockReset();
@@ -27,7 +30,8 @@ describe("employee.controller tenant and role scoping", () => {
 
     // Assert
     expect(res.body).toEqual({ success: true, data: [{ Id: 30 }] });
-    expect(db.queries[0].text).toContain(`u.${EMPLOYEE_AND_COMPANY.replace("CompanyId", "u.CompanyId")}`);
+    expect(db.queries[0].text)
+      .toContain(`u.${EMPLOYEE_AND_COMPANY.replace("CompanyId", "u.CompanyId")}`);
     expect(db.queries[0].text).not.toMatch(/RoleId = \d/);
     expect(db.queries[0].inputs).toMatchObject({ roleCode: "EMPLOYEE", scopeCompanyId: 2 });
   });
@@ -54,7 +58,8 @@ describe("employee.controller tenant and role scoping", () => {
     expect(res.body.data).toEqual({ Id: 30 });
   });
 
-  it("lets a MANAGER create an employee without picking a company, filed under their own", async () => {
+  it("lets a MANAGER create an employee without picking a company, "
+    + "filed under their own", async () => {
     // Arrange
     const db = mockPool(mockConnectDb, [rows(), rows({ Id: 31 })]);
 
@@ -72,7 +77,7 @@ describe("employee.controller tenant and role scoping", () => {
 
   it.each([
     ["no password", { email: "emp@example.com" }],
-    ["a short password", { email: "emp@example.com", password: "short" }]
+    ["a short password", { email: "emp@example.com", password: "short" }],
   ])("requires a real password instead of a default (%s)", async (_label, body) => {
     // Arrange
     const db = mockPool(mockConnectDb, []);
@@ -119,16 +124,19 @@ describe("employee.controller tenant and role scoping", () => {
     expect(res.status).toBe(409);
   });
 
-  it("returns 404 when a MANAGER edits an ADMIN, a SUPER_ADMIN or another company's user", async () => {
+  it("returns 404 when a MANAGER edits an ADMIN, "
+    + "a SUPER_ADMIN or another company's user", async () => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(0)]);
 
     // Act
-    const res = await call("put", "/employees/1").send({ companyId: 2, email: "attacker@example.com", isActive: 0 });
+    const res = await call("put", "/employees/1")
+      .send({ companyId: 2, email: "attacker@example.com", isActive: 0 });
 
     // Assert
     expect(res.status).toBe(404);
-    expect(db.queries[0].text).toContain(`WHERE Id = @id AND IsDeleted = 0 AND ${EMPLOYEE_AND_COMPANY}`);
+    expect(db.queries[0].text)
+      .toContain(`WHERE Id = @id AND IsDeleted = 0 AND ${EMPLOYEE_AND_COMPANY}`);
   });
 
   it("updates an employee in scope", async () => {
@@ -157,7 +165,7 @@ describe("employee.controller tenant and role scoping", () => {
   it.each([
     [{ isActive: false }, 1, 200, "Employee deactivated."],
     [{ isActive: true }, 1, 200, "Employee activated."],
-    [{ isActive: true }, 0, 404, "Employee not found."]
+    [{ isActive: true }, 0, 404, "Employee not found."],
   ])("toggles status %p only within the caller's company", async (body, count, status, message) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
@@ -184,8 +192,9 @@ describe("employee.controller tenant and role scoping", () => {
 
   it.each([
     [1, 200],
-    [0, 404]
-  ])("lets an ADMIN delete an employee of their company (rows affected %i)", async (count, status) => {
+    [0, 404],
+  ])("lets an ADMIN delete an employee of their company "
+    + "(rows affected %i)", async (count, status) => {
     // Arrange
     const db = mockPool(mockConnectDb, [affected(count)]);
 
@@ -241,7 +250,7 @@ describe("employee.controller database errors", () => {
     ["put", "/employees/30"],
     ["patch", "/employees/30/status"],
     ["delete", "/employees/30"],
-    ["get", "/employees/managers-list"]
+    ["get", "/employees/managers-list"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
     mockPool(mockConnectDb, [new Error("db down")]);

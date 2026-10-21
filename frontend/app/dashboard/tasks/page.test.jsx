@@ -3,18 +3,25 @@ import { api } from "@/lib/apiClient";
 import TasksPage from "./page";
 
 jest.mock("@/lib/apiClient", () => ({
-  api: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+  api: {
+    get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn(),
+  },
   getErrorMessage: (_err, fallback) => fallback,
 }));
 
-const TASK = { Id: 5, Title: "Visit Dr Shah", Status: "Pending", Priority: "High", DoctorName: "Dr Shah" };
+const TASK = {
+  Id: 5, Title: "Visit Dr Shah", Status: "Pending", Priority: "High", DoctorName: "Dr Shah",
+};
 
 function ok(data) {
   return Promise.resolve({ data: { success: true, data } });
 }
 
 function forbidden() {
-  return Promise.reject({ response: { status: 403, data: { errorCode: "FORBIDDEN" } } });
+  const err = Object.assign(new Error("Request failed with status code 403"), {
+    response: { status: 403, data: { errorCode: "FORBIDDEN" } },
+  });
+  return Promise.reject(err);
 }
 
 describe("TasksPage", () => {
