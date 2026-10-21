@@ -38,6 +38,25 @@ Backend tests need no `.env` or database: `backend/test/setupEnv.js` creates
 throwaway JWT keys. Backend coverage thresholds (80% global, 95% for auth and
 security code) are enforced in `backend/jest.config.js`.
 
+### Database migrations
+
+Versioned SQL files live in `backend/db/migrations/` (`YYYYMMDDHHMMSS_<id>_<desc>.sql`, with
+`-- ==== UP ====` and `-- ==== DOWN ====` sections). The development database is shared with
+another system, so review each file before applying it. Run the runner from `backend/`:
+
+```bash
+cd backend
+node scripts/run-sql-migration.js db/migrations/<file>.sql up          # dry run: lists batches
+node scripts/run-sql-migration.js db/migrations/<file>.sql up --yes    # applies + records it
+```
+
+Call `node` directly. In PowerShell, `npm run db:sql -- ... --yes` silently drops `--yes`
+(PowerShell removes the bare `--`), so the runner only does a dry run. Applied files are
+recorded in `SchemaMigrations`. In SSMS, pressing F5 on a whole migration runs only UP
+(newer files carry a guard); then insert the file name into `SchemaMigrations` yourself.
+
+See `docs/database/erd.html` (open in a browser) or `docs/database/ERD.md` for the schema.
+
 ### Branch workflow
 
 - `development` is the integration branch. Branch from it:

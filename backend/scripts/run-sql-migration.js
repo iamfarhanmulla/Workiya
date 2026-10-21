@@ -65,8 +65,13 @@ async function runBatches(batches, fileName, direction) {
   try {
     // eslint-disable-next-line no-restricted-syntax -- batches must run one after another, in order
     for (const batch of batches) {
+      const request = new sql.Request(transaction);
+      // Shows PRINT output and row counts, so the person running the migration sees what it did.
+      request.on("info", (info) => process.stdout.write(`  ${info.message}\n`));
       // eslint-disable-next-line no-await-in-loop -- each batch can depend on the previous one
-      await new sql.Request(transaction).batch(batch);
+      const result = await request.batch(batch);
+      const changed = (result.rowsAffected || []).reduce((sum, n) => sum + n, 0);
+      if (changed > 0) process.stdout.write(`  rows affected: ${changed}\n`);
     }
     await recordMigration(transaction, sql, fileName, direction);
     await transaction.commit();
