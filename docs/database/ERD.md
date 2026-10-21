@@ -9,7 +9,7 @@ tables Workiya uses. Other tables in the same database (`Tenants`, `UserRoles`, 
 | Identity and tenancy | Companies, Roles, Users | Existing |
 | Auth and audit | RefreshTokens, AuditLogs, SchemaMigrations | Existing (migration 20261016120000) |
 | Company settings | CompanyTerminology, CustomFieldDefinitions, ActivityTypes | **New** (migration 20261021100000) |
-| Field work | Accounts, Activities, Submissions | **New**, with temporal history tables |
+| Field work | Accounts, AccountAssignments, Activities, Submissions | **New**, with temporal history tables (AccountAssignments: migration 20261021110000) |
 | Old pharma tables | Doctors, Tasks, TaskFeedback | Backup only; the code stops using them |
 
 Only key columns are drawn. `erd.html` in this folder lists every column.
@@ -27,6 +27,8 @@ erDiagram
   Companies ||--o{ CustomFieldDefinitions : "extra fields"
   Companies ||--o{ ActivityTypes : "visit rules"
   Companies ||--o{ Accounts : "owns"
+  Accounts ||--o{ AccountAssignments : "covered by"
+  Users ||--o{ AccountAssignments : "covers"
   Accounts ||--o{ Activities : "visited in"
   ActivityTypes ||--o{ Activities : "type of"
   Users ||--o{ Activities : "assigned to / by"
@@ -113,6 +115,13 @@ erDiagram
     nvarchar ExtraFields "JSON, company's own fields"
     int LegacyDoctorId
   }
+  AccountAssignments {
+    int Id PK
+    int CompanyId FK
+    int AccountId FK
+    int UserId FK "the rep"
+    tinyint VisitsPerMonth "planned visits"
+  }
   Activities {
     int Id PK
     int CompanyId FK
@@ -165,6 +174,8 @@ erDiagram
 - **Change history.** Accounts, Activities and Submissions are SQL Server temporal tables.
   Every update and delete is kept automatically in `AccountsHistory`, `ActivitiesHistory` and
   `SubmissionsHistory`.
+- **Who covers which account.** AccountAssignments links reps to accounts (several reps per
+  account are allowed) with a planned visit frequency, so missed visits can be detected.
 - **Soft delete.** Every new table has `IsDeleted`; rows are never physically deleted by the app.
 - **Company-specific data is JSON with a definition.** `Accounts.ExtraFields` and
   `Submissions.Answers` must be valid JSON (CHECK constraint), and each key is described in
