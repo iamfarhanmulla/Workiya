@@ -27,8 +27,8 @@ function renderForm() {
 }
 
 async function fillAndSubmit(user, { remember }) {
-  await user.type(screen.getByPlaceholderText("name@company.com"), "user@example.com");
-  await user.type(screen.getByPlaceholderText("********"), "Secret#123");
+  await user.type(screen.getByLabelText("Work email"), "user@example.com");
+  await user.type(screen.getByLabelText("Password"), "Secret#123");
   if (remember) await user.click(screen.getByRole("checkbox"));
   await user.click(screen.getByRole("button", { name: /sign in/i }));
 }
@@ -86,6 +86,20 @@ describe("LoginForm", () => {
     expect(await screen.findByText("Invalid email or password.")).toBeInTheDocument();
     expect(selectUser(store.getState())).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("shows and hides the password", async () => {
+    // Arrange
+    renderForm();
+    const user = userEvent.setup();
+    const password = screen.getByLabelText("Password");
+
+    // Act
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+
+    // Assert
+    expect(password).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "Hide password" })).toBeInTheDocument();
   });
 
   it("shows a connection message when the server is unreachable", async () => {

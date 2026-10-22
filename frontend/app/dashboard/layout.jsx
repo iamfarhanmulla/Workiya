@@ -1,18 +1,12 @@
-import Sidebar from "@/components/Sidebar";
-import DashboardHeader from "@/components/DashboardHeader";
+import TopNav from "@/components/TopNav";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export default function DashboardLayout({ children }) {
   return (
     <ThemeProvider>
-      <div className="dash-shell">
-        <div className="dash-body">
-          <Sidebar />
-          <div className="dash-content">
-            <DashboardHeader />
-            <main className="dash-main">{children}</main>
-          </div>
-        </div>
+      <div className="wk-shell">
+        <TopNav />
+        <main className="wk-shell-main">{children}</main>
       </div>
     </ThemeProvider>
   );
