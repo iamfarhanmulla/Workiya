@@ -77,6 +77,11 @@ export function fmtDate(iso) {
   return new Date(iso).toLocaleDateString("en-IN", options);
 }
 
+export function fmtTime(iso) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+
 export function fmtDateTime(iso) {
   if (!iso) return null;
   return new Date(iso).toLocaleString("en-IN", {
