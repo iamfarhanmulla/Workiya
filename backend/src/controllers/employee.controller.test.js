@@ -151,6 +151,18 @@ describe("employee.controller tenant and role scoping", () => {
     expect(db.queries[0].inputs).toMatchObject({ companyId: 2, firstName: "New" });
   });
 
+  it("stores an empty manager from the form as NULL, not 0 (FK_Users_Manager)", async () => {
+    // Arrange
+    const db = mockPool(mockConnectDb, [affected(1)]);
+
+    // Act
+    const res = await call("put", "/employees/30").send({ companyId: 2, managerId: "" });
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(db.queries[0].inputs).toMatchObject({ managerId: null });
+  });
+
   it("returns 403 when a MANAGER moves an employee to another company", async () => {
     // Arrange
     mockPool(mockConnectDb, []);

@@ -1,7 +1,9 @@
 const { connectDb, sql } = require("../config/db");
 const { ROLES } = require("../constants/roles");
 const passwordService = require("../services/password.service");
-const { resolveCompanyId, companyFilter, roleFilter } = require("../services/tenantScope");
+const {
+  resolveCompanyId, companyFilter, roleFilter, toId,
+} = require("../services/tenantScope");
 const logger = require("../utils/logger");
 
 const ASSIGN_FORBIDDEN = {
@@ -146,7 +148,7 @@ async function update(req, res) {
       .input("email", sql.NVarChar, email ?? null)
       .input("phoneNumber", sql.NVarChar, phoneNumber ?? null)
       .input("companyId", sql.Int, company.companyId)
-      .input("managerId", sql.Int, managerId ?? null)
+      .input("managerId", sql.Int, toId(managerId))
       .input("isActive", sql.Bit, isActive ?? 1);
     const scope = employeeScope(request, req.user);
     const result = await request.query(`

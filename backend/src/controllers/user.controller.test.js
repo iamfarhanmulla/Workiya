@@ -130,6 +130,18 @@ describe("user.controller tenant scoping", () => {
     });
   });
 
+  it("stores an empty manager from the form as NULL, not 0 (FK_Users_Manager)", async () => {
+    // Arrange
+    const db = mockPool(mockConnectDb, [rows({ Id: 7 }), rows({ Code: "MANAGER" }), affected(1)]);
+
+    // Act
+    const res = await call("put", "/users/7").send({ companyId: 2, roleId: "4", managerId: "" });
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(db.queries[2].inputs).toMatchObject({ roleId: 4, managerId: null });
+  });
+
   it("returns 404 when the scoped UPDATE matches no row", async () => {
     // Arrange
     mockPool(mockConnectDb, [rows({ Id: 7 }), affected(0)]);
