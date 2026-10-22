@@ -10,11 +10,14 @@ const mockPush = jest.fn();
 
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("@/lib/apiClient", () => ({ api: { get: jest.fn(), post: jest.fn() } }));
+jest.mock("@/hooks/useTerminology", () => ({
+  useTerminology: () => ({ t: (key) => (key === "activity.singular" ? "Visit" : key) }),
+}));
 
-function renderHeader() {
+function renderHeader(roleCode = "ADMIN") {
   const store = configureStore({ reducer: { auth: authReducer } });
   store.dispatch(setUser({
-    id: 1, firstName: "Asha", lastName: "Rao", roleName: "Admin",
+    id: 1, firstName: "Asha", lastName: "Rao", roleName: "Admin", roleCode,
   }));
   render(
     <Provider store={store}>
@@ -62,5 +65,23 @@ describe("DashboardHeader", () => {
     expect(mockPush).not.toHaveBeenCalled();
     expect(selectUser(store.getState())).toMatchObject({ id: 1 });
     expect(screen.getByRole("alert")).toHaveTextContent(/could not sign out/i);
+  });
+
+  it("links staff to the activities page with the company's term", () => {
+    // Arrange / Act
+    renderHeader("MANAGER");
+
+    // Assert
+    expect(screen.getByRole("link", { name: /New Visit/ }))
+      .toHaveAttribute("href", "/dashboard/activities");
+    expect(screen.queryByText(/New Task/)).not.toBeInTheDocument();
+  });
+
+  it("shows no create shortcut to an EMPLOYEE", () => {
+    // Arrange / Act
+    renderHeader("EMPLOYEE");
+
+    // Assert
+    expect(screen.queryByRole("link", { name: /New Visit/ })).not.toBeInTheDocument();
   });
 });

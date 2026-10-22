@@ -122,27 +122,18 @@ describe("resource route guards", () => {
     expect(db.queries[0]).not.toMatch(/INSERT/i);
   });
 
-  it("uses the signed-in user as AssignedBy and CompanyId when creating a task", async () => {
+  it.each(["/api/v1/doctors", "/api/v1/tasks"])("returns 404 for removed %s", async (path) => {
     // Arrange
-    const db = mockPool([
-      { recordset: [{ DoctorOk: 1, AssigneeOk: 1 }], rowsAffected: [1] },
-      { recordset: [{ Id: 77 }], rowsAffected: [1] },
-    ]);
+    const db = mockPool([]);
 
     // Act
     const res = await request(app)
-      .post("/api/v1/tasks")
-      .set("Cookie", authCookie(USERS.manager))
-      .set("X-Requested-With", "XMLHttpRequest")
-      .send({
-        title: "Visit", doctorId: 3, assignedTo: 30, assignedBy: 999, companyId: 999,
-      });
+      .get(path)
+      .set("Cookie", authCookie(USERS.admin));
 
     // Assert
-    expect(res.status).toBe(201);
-    expect(res.body.id).toBe(77);
-    expect(db.inputs).toContainEqual({ name: "assignedBy", value: USERS.manager.id });
-    expect(db.inputs).not.toContainEqual({ name: "assignedBy", value: 999 });
-    expect(db.inputs).toContainEqual({ name: "companyId", value: USERS.manager.companyId });
+    expect(res.status).toBe(404);
+    expect(res.body.errorCode).toBe("NOT_FOUND");
+    expect(db.queries).toHaveLength(0);
   });
 });

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser, selectUser } from "@/store/authSlice";
 import { getInitials, getDisplayName } from "@/hooks/useCurrentUser";
+import { useTerminology } from "@/hooks/useTerminology";
 import { useTheme } from "@/components/ThemeProvider";
 
 function ThemeToggle() {
@@ -21,6 +23,21 @@ function ThemeToggle() {
       </div>
       <span className="dash-theme-label">{theme === "dark" ? "Dark" : "Light"}</span>
     </button>
+  );
+}
+
+const ACTIVITY_CREATORS = ["SUPER_ADMIN", "ADMIN", "MANAGER"];
+
+// Shortcut to the activities page, named with the company's term, for roles that create them.
+function NewActivityLink() {
+  const user = useSelector(selectUser);
+  const { t } = useTerminology();
+  if (!ACTIVITY_CREATORS.includes(user?.roleCode)) return null;
+  return (
+    <Link href="/dashboard/activities" className="dash-assign-btn">
+      <span className="material-symbols-outlined">add</span>
+      {`New ${t("activity.singular")}`}
+    </Link>
   );
 }
 
@@ -115,14 +132,11 @@ export default function DashboardHeader() {
 
       <div className="dash-search">
         <span className="material-symbols-outlined">search</span>
-        <input type="text" placeholder="Global search — companies, managers, tasks..." />
+        <input type="text" placeholder="Global search — companies, managers, employees..." />
       </div>
 
       <div className="dash-header-actions">
-        <button type="button" className="dash-assign-btn">
-          <span className="material-symbols-outlined">add</span>
-          New Task
-        </button>
+        <NewActivityLink />
 
         <div className="dash-icon-wrap">
           <button type="button" className="dash-icon-btn" aria-label="Notifications">
