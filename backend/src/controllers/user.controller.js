@@ -1,6 +1,7 @@
 const { connectDb, sql } = require("../config/db");
 const { ROLES } = require("../constants/roles");
 const passwordService = require("../services/password.service");
+const passwordReset = require("../services/passwordReset.service");
 const {
   toId, isSuperAdmin, resolveCompanyId, companyFilter, manageableUserFilter,
 } = require("../services/tenantScope");
@@ -157,8 +158,8 @@ async function updateUserRow(pool, user, id, body, companyId) {
     .request()
     .input("id", sql.Int, id)
     .input("companyId", sql.Int, companyId)
-    .input("roleId", sql.Int, body.roleId ?? null)
-    .input("managerId", sql.Int, body.managerId ?? null)
+    .input("roleId", sql.Int, toId(body.roleId))
+    .input("managerId", sql.Int, toId(body.managerId))
     .input("username", sql.NVarChar, body.username ?? null)
     .input("email", sql.NVarChar, body.email ?? null)
     .input("firstName", sql.NVarChar, body.firstName ?? null)
@@ -191,6 +192,10 @@ async function updateUserRow(pool, user, id, body, companyId) {
 async function update(req, res) {
   const company = resolveCompanyId(req.user, req.body.companyId);
   if (!company.allowed) return res.status(403).json(ASSIGN_FORBIDDEN);
+  const newPassword = passwordReset.readNewPassword(req.body);
+  if (newPassword.error) {
+    return res.status(400).json({ success: false, message: newPassword.error });
+  }
   try {
     const pool = await connectDb();
     if (!(await userExistsInScope(pool, req.user, req.params.id))) {
@@ -202,7 +207,11 @@ async function update(req, res) {
     if (!(await updateUserRow(pool, req.user, req.params.id, req.body, company.companyId))) {
       return res.status(404).json(NOT_FOUND);
     }
-    return res.json({ success: true, message: "User updated." });
+    if (newPassword.password) {
+      await passwordReset.resetPassword(req.user, req.params.id, newPassword.password, req);
+    }
+    const message = passwordReset.updatedMessage("User", Boolean(newPassword.password));
+    return res.json({ success: true, message });
   } catch (err) {
     logger.error({ err }, "update user error");
     return res.status(500).json({ success: false, message: "Database error." });

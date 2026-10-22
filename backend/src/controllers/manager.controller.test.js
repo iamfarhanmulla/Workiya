@@ -7,6 +7,7 @@ const app = require("../app");
 const {
   XHR, USERS, authCookie, mockPool, rows, affected,
 } = require("../../test/helpers/apiHarness");
+const { mockTransactionalPool } = require("../../test/helpers/transactionPool");
 
 function call(method, url, user = USERS.admin) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
@@ -100,6 +101,37 @@ describe("manager.controller tenant and role scoping", () => {
     expect(res.status).toBe(404);
     expect(db.queries[0].text)
       .toContain(`WHERE Id = @id AND IsDeleted = 0 AND ${MANAGER_AND_COMPANY}`);
+  });
+
+  it("resets the manager's password and signs out their sessions", async () => {
+    // Arrange
+    const { queries, tx } = await mockTransactionalPool(mockConnectDb, [
+      affected(1), affected(1), affected(1), affected(1),
+    ]);
+
+    // Act
+    const res = await call("put", "/managers/40").send({ companyId: 2, password: "N3w-Passw0rd" });
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(res.body.message)
+      .toBe("Manager updated. Password changed and all their sessions were signed out.");
+    expect(tx).toEqual(["begin", "commit"]);
+    expect(queries[1].text).toContain("PasswordHash = @passwordHash");
+    expect(queries[2].text).toContain("UPDATE RefreshTokens");
+    expect(JSON.stringify(queries)).not.toContain("N3w-Passw0rd");
+  });
+
+  it("rejects a too-short new manager password with 400", async () => {
+    // Arrange
+    const db = mockPool(mockConnectDb, []);
+
+    // Act
+    const res = await call("put", "/managers/40").send({ companyId: 2, password: "short" });
+
+    // Assert
+    expect(res.status).toBe(400);
+    expect(db.queries).toHaveLength(0);
   });
 
   it("updates a manager in scope", async () => {

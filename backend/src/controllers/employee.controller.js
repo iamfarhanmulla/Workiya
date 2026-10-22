@@ -1,7 +1,10 @@
 const { connectDb, sql } = require("../config/db");
 const { ROLES } = require("../constants/roles");
 const passwordService = require("../services/password.service");
-const { resolveCompanyId, companyFilter, roleFilter } = require("../services/tenantScope");
+const passwordReset = require("../services/passwordReset.service");
+const {
+  resolveCompanyId, companyFilter, roleFilter, toId,
+} = require("../services/tenantScope");
 const logger = require("../utils/logger");
 
 const ASSIGN_FORBIDDEN = {
@@ -135,6 +138,10 @@ async function update(req, res) {
   } = req.body;
   const company = resolveCompanyId(req.user, req.body.companyId);
   if (!company.allowed) return res.status(403).json(ASSIGN_FORBIDDEN);
+  const newPassword = passwordReset.readNewPassword(req.body);
+  if (newPassword.error) {
+    return res.status(400).json({ success: false, message: newPassword.error });
+  }
   try {
     const pool = await connectDb();
     const request = pool.request()
@@ -146,7 +153,7 @@ async function update(req, res) {
       .input("email", sql.NVarChar, email ?? null)
       .input("phoneNumber", sql.NVarChar, phoneNumber ?? null)
       .input("companyId", sql.Int, company.companyId)
-      .input("managerId", sql.Int, managerId ?? null)
+      .input("managerId", sql.Int, toId(managerId))
       .input("isActive", sql.Bit, isActive ?? 1);
     const scope = employeeScope(request, req.user);
     const result = await request.query(`
@@ -164,7 +171,11 @@ async function update(req, res) {
       WHERE Id = @id AND IsDeleted = 0 AND ${scope}
     `);
     if (result.rowsAffected[0] === 0) return res.status(404).json(NOT_FOUND);
-    return res.json({ success: true, message: "Employee updated." });
+    if (newPassword.password) {
+      await passwordReset.resetPassword(req.user, req.params.id, newPassword.password, req);
+    }
+    const message = passwordReset.updatedMessage("Employee", Boolean(newPassword.password));
+    return res.json({ success: true, message });
   } catch (err) {
     logger.error({ err }, "employees update error");
     return res.status(500).json({ success: false, message: "Database error." });

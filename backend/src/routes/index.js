@@ -7,8 +7,10 @@ const companyRoutes = require("./company.routes");
 const userRoutes = require("./user.routes");
 const managerRoutes = require("./manager.routes");
 const employeeRoutes = require("./employee.routes");
-const doctorRoutes = require("./doctor.routes");
-const taskRoutes = require("./task.routes");
+const settingsRoutes = require("./settings.routes");
+const accountRoutes = require("./account.routes");
+const activityRoutes = require("./activity.routes");
+const submissionRoutes = require("./submission.routes");
 
 const router = express.Router();
 
@@ -21,7 +23,9 @@ router.use("/companies", companyRoutes);
 router.use("/users", userRoutes);
 router.use("/managers", managerRoutes);
 router.use("/employees", employeeRoutes);
-router.use("/doctors", doctorRoutes);
-router.use("/tasks", taskRoutes);
+router.use("/settings", settingsRoutes);
+router.use("/accounts", accountRoutes);
+router.use("/activities", activityRoutes);
+router.use("/submissions", submissionRoutes);
 
 module.exports = router;
