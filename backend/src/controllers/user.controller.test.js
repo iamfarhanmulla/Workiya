@@ -7,6 +7,7 @@ const app = require("../app");
 const {
   XHR, USERS, authCookie, mockPool, rows, affected,
 } = require("../../test/helpers/apiHarness");
+const { mockTransactionalPool } = require("../../test/helpers/transactionPool");
 
 function call(method, url, user = USERS.admin) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
@@ -140,6 +141,55 @@ describe("user.controller tenant scoping", () => {
     // Assert
     expect(res.status).toBe(200);
     expect(db.queries[2].inputs).toMatchObject({ roleId: 4, managerId: null });
+  });
+
+  it("resets the password: hashes it, revokes sessions, audits, never echoes it", async () => {
+    // Arrange
+    const { queries, tx } = await mockTransactionalPool(mockConnectDb, [
+      rows({ Id: 7 }), rows({ Code: "EMPLOYEE" }),
+      affected(1), affected(1), affected(2), affected(1),
+    ]);
+
+    // Act
+    const res = await call("put", "/users/7")
+      .send({ companyId: 2, roleId: 3, password: "N3w-Passw0rd" });
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(res.body.message)
+      .toBe("User updated. Password changed and all their sessions were signed out.");
+    expect(tx).toEqual(["begin", "commit"]);
+    expect(queries[3].text).toContain("PasswordHash = @passwordHash");
+    expect(queries[3].inputs.passwordHash).not.toBe("N3w-Passw0rd");
+    expect(queries[4].text).toContain("UPDATE RefreshTokens");
+    expect(queries[5].inputs).toMatchObject({ eventType: "USER_PASSWORD_RESET", entityId: "7" });
+    expect(JSON.stringify(queries)).not.toContain("N3w-Passw0rd");
+  });
+
+  it("rejects a too-short new password with 400 before touching the DB", async () => {
+    // Arrange
+    const db = mockPool(mockConnectDb, []);
+
+    // Act
+    const res = await call("put", "/users/7").send({ companyId: 2, password: "short" });
+
+    // Assert
+    expect(res.status).toBe(400);
+    expect(db.queries).toHaveLength(0);
+  });
+
+  it("keeps the current password when New Password is left empty", async () => {
+    // Arrange
+    const db = mockPool(mockConnectDb, [rows({ Id: 7 }), rows({ Code: "EMPLOYEE" }), affected(1)]);
+
+    // Act
+    const res = await call("put", "/users/7").send({ companyId: 2, roleId: 3, password: "" });
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("User updated.");
+    expect(db.queries).toHaveLength(3);
+    expect(db.queries.map((q) => q.text).join(" ")).not.toContain("PasswordHash");
   });
 
   it("returns 404 when the scoped UPDATE matches no row", async () => {
