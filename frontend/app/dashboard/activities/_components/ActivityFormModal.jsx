@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api, getErrorMessage } from "@/lib/apiClient";
 import { useActivityTypes } from "@/hooks/useActivityTypes";
-import ModalShell from "./ModalShell";
+import Modal from "@/components/Modal";
 import ActivityFormFields from "./ActivityFormFields";
 import { isoToLocalInput, localInputToIso } from "./activityConfig";
 
@@ -109,18 +109,19 @@ export default function ActivityFormModal({
   });
   const footer = (
     <>
-      <button type="button" className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
-      <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
-        <span className="material-symbols-outlined">send</span>
-        {saving ? "Saving..." : "Save"}
+      <button type="button" className="wk-btn wk-btn--secondary" onClick={onClose}>Cancel</button>
+      <button type="button" className="wk-btn wk-btn--primary" onClick={save} disabled={saving}>
+        <span className="material-symbols-outlined" aria-hidden="true">send</span>
+        {saving ? "Saving…" : "Save"}
       </button>
     </>
   );
   return (
-    <ModalShell
+    <Modal
       icon="assignment_add"
+      labelId="activity-form-title"
       title={activity ? `Edit ${labels.activity}` : `New ${labels.activity}`}
-      sub={`Assign a ${labels.account.toLowerCase()} visit to a team member`}
+      sub={`Plan a ${labels.activity.toLowerCase()} and assign it to a team member`}
       onClose={onClose}
       footer={footer}
     >
@@ -133,6 +134,6 @@ export default function ActivityFormModal({
         types={types}
         accountLabel={labels.account}
       />
-    </ModalShell>
+    </Modal>
   );
 }

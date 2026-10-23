@@ -1,121 +1,64 @@
 "use client";
 
-import {
-  COL_CFG, PRIORITY_STYLE, fmtDate, initials, isOverdue,
-} from "./activityConfig";
+import { PriorityTag, REVIEW_STATUS, StatusPill } from "@/components/status";
+import { fmtDate, initials, isOverdue } from "./activityConfig";
+import RowButton from "./RowButton";
 import StatusMoveButtons from "./StatusMoveButtons";
 
-const AVATAR = {
-  width: 20,
-  height: 20,
-  borderRadius: "50%",
-  background: "linear-gradient(135deg,#6366F1,#06B6D4)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 8,
-  fontWeight: 700,
-  color: "#fff",
-  flexShrink: 0,
-};
-
-const ACTION_ROW = {
-  display: "flex", gap: 4, marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--ds-border)",
-};
-
-function IconAction({
-  icon, title, onClick, danger = false,
-}) {
+function CardMeta({ icon, children }) {
   return (
-    <button
-      type="button"
-      className={`icon-btn${danger ? " icon-btn-danger" : ""}`}
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{icon}</span>
-    </button>
+    <div className="wk-act-card-meta">
+      <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+      {children}
+    </div>
   );
 }
 
 function CardFooter({ activity }) {
   const overdue = isOverdue(activity);
   return (
-    <div className="task-card-ft">
-      <div className="task-card-assignee">
-        <div style={AVATAR}>{initials(activity.assignedToName)}</div>
-        <span style={{ fontSize: 11, color: "var(--ds-text-2)" }}>{activity.assignedToName}</span>
-      </div>
-      {activity.dueAtUtc && (
-        <span style={{
-          fontSize: 10, fontWeight: 600, color: overdue ? "#EF4444" : "var(--ds-text-2)",
-        }}
-        >
-          {overdue ? "Overdue · " : ""}{fmtDate(activity.dueAtUtc)}
+    <div className="wk-act-card-ft">
+      {activity.dueAtUtc ? (
+        <span className={`wk-act-card-due${overdue ? " is-overdue" : ""}`}>
+          <span className="material-symbols-outlined" aria-hidden="true">event</span>
+          {`${overdue ? "Overdue · " : ""}${fmtDate(activity.dueAtUtc)}`}
         </span>
-      )}
+      ) : <span />}
+      <span className="wk-person" title={activity.assignedToName}>
+        <span className="wk-avatar wk-avatar--xs" aria-hidden="true">
+          {initials(activity.assignedToName)}
+        </span>
+        <span className="wk-person-meta">{activity.assignedToName}</span>
+      </span>
     </div>
-  );
-}
-
-function CardSummary({ activity }) {
-  const ps = PRIORITY_STYLE[activity.priority] || PRIORITY_STYLE.Medium;
-  return (
-    <>
-      <div className="task-card-top">
-        <span style={{
-          fontSize: 10,
-          fontWeight: 700,
-          padding: "2px 8px",
-          borderRadius: 20,
-          background: ps.bg,
-          color: ps.color,
-        }}
-        >
-          {activity.priority?.toUpperCase()}
-        </span>
-        <span className="task-card-id">#{activity.id}</span>
-      </div>
-      <div className="task-card-main-title">{activity.title}</div>
-      {activity.accountName && (
-        <div className="task-card-doctor-row">
-          <span className="material-symbols-outlined">medical_services</span>
-          {activity.accountName}
-        </div>
-      )}
-      {activity.activityTypeName && (
-        <div className="task-card-loc">
-          <span className="material-symbols-outlined">category</span>
-          {activity.activityTypeName}
-        </div>
-      )}
-    </>
   );
 }
 
 export default function ActivityCard({
-  activity, index, isStaff, moves, onView, onEdit, onDelete, onMove,
+  activity, isStaff, moves, onView, onEdit, onDelete, onMove,
 }) {
-  const cfg = COL_CFG[activity.status] || COL_CFG.Pending;
+  const review = activity.latestSubmission?.reviewStatus;
   return (
-    <div
-      className="task-card-item"
-      style={{ "--card-du": `${index * 0.05}s`, borderLeftWidth: 3, borderLeftColor: cfg.border }}
-    >
-      <CardSummary activity={activity} />
-      <CardFooter activity={activity} />
-      <div style={ACTION_ROW}>
-        <IconAction icon="visibility" title="View" onClick={() => onView(activity)} />
-        {isStaff && <IconAction icon="edit" title="Edit" onClick={() => onEdit(activity)} />}
-        {isStaff && (
-          <IconAction icon="delete" title="Delete" danger onClick={() => onDelete(activity)} />
-        )}
+    <article className="wk-card wk-act-card">
+      <div className="wk-act-card-top">
+        <span className="wk-mono wk-muted">{`#${activity.id}`}</span>
+        <PriorityTag priority={activity.priority} />
       </div>
-      <div style={{ marginTop: 4 }}>
+      <h3 className="wk-act-card-title">{activity.title}</h3>
+      {activity.accountName && <CardMeta icon="storefront">{activity.accountName}</CardMeta>}
+      {activity.activityTypeName && (
+        <CardMeta icon="category">{activity.activityTypeName}</CardMeta>
+      )}
+      {review && <div><StatusPill status={review} map={REVIEW_STATUS} /></div>}
+      <CardFooter activity={activity} />
+      <div className="wk-act-card-actions">
+        <RowButton icon="visibility" label="View" onClick={() => onView(activity)} />
+        {isStaff && <RowButton icon="edit" label="Edit" onClick={() => onEdit(activity)} />}
+        {isStaff && (
+          <RowButton icon="delete" label="Delete" danger onClick={() => onDelete(activity)} />
+        )}
         <StatusMoveButtons compact moves={moves} onMove={(status) => onMove(activity, status)} />
       </div>
-    </div>
+    </article>
   );
 }

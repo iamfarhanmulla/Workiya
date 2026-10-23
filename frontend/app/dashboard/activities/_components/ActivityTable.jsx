@@ -1,104 +1,55 @@
 "use client";
 
-import {
-  COL_CFG, PILL, PRIORITY_STYLE, fmtDate, initials, isOverdue,
-} from "./activityConfig";
-
-const SUB_TEXT = { fontSize: 11, color: "var(--ds-text-2)", marginTop: 2 };
-const AVATAR = { background: "linear-gradient(135deg,#6366F1,#06B6D4)", width: 28, height: 28 };
-
-function RowButton({
-  icon, title, onClick, danger = false,
-}) {
-  return (
-    <button
-      type="button"
-      className={`icon-btn${danger ? " icon-btn-danger" : ""}`}
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-    >
-      <span className="material-symbols-outlined">{icon}</span>
-    </button>
-  );
-}
-
-function RowActions({
-  activity, isStaff, onView, onEdit, onDelete,
-}) {
-  return (
-    <div className="action-btns">
-      <RowButton icon="visibility" title="View" onClick={() => onView(activity)} />
-      {isStaff && <RowButton icon="edit" title="Edit" onClick={() => onEdit(activity)} />}
-      {isStaff && (
-        <RowButton icon="delete" title="Delete" danger onClick={() => onDelete(activity)} />
-      )}
-    </div>
-  );
-}
-
-function AssigneeCell({ name }) {
-  return (
-    <div className="avatar-cell">
-      <div className="avatar avatar-circle" style={AVATAR}>
-        <span style={{ fontSize: 10, color: "#fff", fontWeight: 700 }}>{initials(name)}</span>
-      </div>
-      <span style={{ fontSize: 12 }}>{name || "—"}</span>
-    </div>
-  );
-}
+import { PriorityTag, StatusPill } from "@/components/status";
+import { fmtDate, initials, isOverdue } from "./activityConfig";
+import RowButton from "./RowButton";
 
 function TitleCell({ activity }) {
   const description = activity.description || "";
+  const short = description.length > 60 ? `${description.slice(0, 60)}…` : description;
   return (
     <td>
-      <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ds-text)" }}>{activity.title}</div>
-      {description && (
-        <div style={SUB_TEXT}>
-          {description.slice(0, 60)}{description.length > 60 ? "…" : ""}
-        </div>
-      )}
+      <div className="wk-person-name">{activity.title}</div>
+      {short && <div className="wk-person-meta">{short}</div>}
     </td>
   );
 }
 
 function ActivityRow({
-  activity, index, isStaff, onView, onEdit, onDelete,
+  activity, isStaff, onView, onEdit, onDelete,
 }) {
-  const ps = PRIORITY_STYLE[activity.priority] || PRIORITY_STYLE.Medium;
-  const cfg = COL_CFG[activity.status] || COL_CFG.Pending;
   const overdue = isOverdue(activity);
   return (
-    <tr style={{ animation: `docFadeUp 0.3s ease ${index * 0.04}s both` }}>
-      <td style={{ color: "var(--ds-text-2)", fontSize: 12 }}>#{activity.id}</td>
+    <tr>
+      <td className="wk-mono wk-muted">{`#${activity.id}`}</td>
       <TitleCell activity={activity} />
       <td>
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{activity.accountName || "—"}</div>
-        {activity.activityTypeName && <div style={SUB_TEXT}>{activity.activityTypeName}</div>}
-      </td>
-      <td><AssigneeCell name={activity.assignedToName} /></td>
-      <td>
-        <span style={{ ...PILL, background: ps.bg, color: ps.color }}>{activity.priority}</span>
+        <div>{activity.accountName || "—"}</div>
+        {activity.activityTypeName && (
+          <div className="wk-person-meta">{activity.activityTypeName}</div>
+        )}
       </td>
       <td>
-        <span style={{ ...PILL, background: cfg.countBg, color: cfg.countColor }}>{cfg.label}</span>
+        <div className="wk-person">
+          <span className="wk-avatar wk-avatar--xs" aria-hidden="true">
+            {initials(activity.assignedToName)}
+          </span>
+          <span>{activity.assignedToName || "—"}</span>
+        </div>
       </td>
-      <td style={{
-        fontSize: 12,
-        color: overdue ? "#EF4444" : "var(--ds-text-2)",
-        fontWeight: overdue ? 700 : 400,
-      }}
-      >
+      <td><PriorityTag priority={activity.priority} /></td>
+      <td><StatusPill status={activity.status} /></td>
+      <td className={overdue ? "wk-cell-overdue" : undefined}>
         {fmtDate(activity.dueAtUtc) || "—"}
       </td>
-      <td>
-        <RowActions
-          activity={activity}
-          isStaff={isStaff}
-          onView={onView}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
+      <td className="col-actions">
+        <div className="wk-row-actions">
+          <RowButton icon="visibility" label="View" onClick={() => onView(activity)} />
+          {isStaff && <RowButton icon="edit" label="Edit" onClick={() => onEdit(activity)} />}
+          {isStaff && (
+            <RowButton icon="delete" label="Delete" danger onClick={() => onDelete(activity)} />
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -107,49 +58,46 @@ function ActivityRow({
 export default function ActivityTable({
   activities, accountLabel, emptyLabel, isStaff, onView, onEdit, onDelete,
 }) {
-  return (
-    <div style={{ margin: "0 20px 20px" }}>
-      <div className="table-card" style={{ margin: 0 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Title</th>
-              <th>{accountLabel}</th>
-              <th>Assigned To</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Due</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activities.map((activity, i) => (
-              <ActivityRow
-                key={activity.id}
-                activity={activity}
-                index={i}
-                isStaff={isStaff}
-                onView={onView}
-                onEdit={onEdit}
-                onDelete={onDelete}
-              />
-            ))}
-            {activities.length === 0 && (
-              <tr>
-                <td colSpan={8}>
-                  <div className="page-placeholder" style={{ minHeight: 140 }}>
-                    <span className="material-symbols-outlined page-placeholder-icon">
-                      search_off
-                    </span>
-                    <p>{emptyLabel}</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+  if (!activities.length) {
+    return (
+      <div className="wk-empty">
+        <div className="wk-empty-icon">
+          <span className="material-symbols-outlined wk-icon--lg" aria-hidden="true">
+            search_off
+          </span>
+        </div>
+        <div className="wk-empty-title">{emptyLabel}</div>
       </div>
+    );
+  }
+  return (
+    <div className="wk-table-wrap" style={{ borderTop: 0 }}>
+      <table className="wk-table">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Title</th>
+            <th scope="col">{accountLabel}</th>
+            <th scope="col">Assigned to</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Status</th>
+            <th scope="col">Due</th>
+            <th scope="col" className="col-actions"><span className="wk-sr">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {activities.map((activity) => (
+            <ActivityRow
+              key={activity.id}
+              activity={activity}
+              isStaff={isStaff}
+              onView={onView}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

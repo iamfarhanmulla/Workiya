@@ -42,25 +42,27 @@ export default function ActivitiesPage() {
   };
 
   return (
-    <div className="tasks-page">
-      <ToastContainer toasts={toasts} />
-      <ActivityHeader
-        labels={labels}
-        activities={data.items}
-        total={data.total}
-        isStaff={isStaff}
-        onAdd={actions.openAdd}
-      />
-      <ActivityToolbar
-        filters={filters}
-        onFilterChange={setFilters}
-        view={view}
-        onViewChange={setView}
-        isStaff={isStaff}
-        plural={labels.activities}
-      />
-      <ActivityContent view={view} data={data} activities={visible} ctx={ctx} />
-      <ActivityModals pickers={pickers} ctx={ctx} />
+    <div className="wk-app">
+      <div className="wk-main">
+        <ToastContainer toasts={toasts} />
+        <ActivityHeader
+          labels={labels}
+          activities={data.items}
+          total={data.total}
+          isStaff={isStaff}
+          onAdd={actions.openAdd}
+        />
+        <ActivityToolbar
+          filters={filters}
+          onFilterChange={setFilters}
+          view={view}
+          onViewChange={setView}
+          isStaff={isStaff}
+          plural={labels.activities}
+        />
+        <ActivityContent view={view} data={data} activities={visible} ctx={ctx} />
+        <ActivityModals pickers={pickers} ctx={ctx} />
+      </div>
     </div>
   );
 }

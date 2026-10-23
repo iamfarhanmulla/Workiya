@@ -1,22 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import ModalShell from "./ModalShell";
+import Modal from "@/components/Modal";
+import { SkeletonRows } from "@/components/DataStates";
 import SubmissionDetails from "./SubmissionDetails";
 import { usePendingReviews } from "./useActivitiesData";
 import { fmtDateTime } from "./activityConfig";
 
-const MUTED = { fontSize: 12, color: "var(--ds-text-2)" };
-
 function ReviewRow({ submission, onOpen }) {
   return (
     <tr>
-      <td style={{ fontWeight: 600, fontSize: 13 }}>{submission.activityTitle || "—"}</td>
-      <td style={{ fontSize: 13 }}>{submission.accountName || "—"}</td>
-      <td style={{ fontSize: 12 }}>{submission.submittedByName || "—"}</td>
-      <td style={MUTED}>{fmtDateTime(submission.submittedAtUtc)}</td>
-      <td>
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => onOpen(submission)}>
+      <td className="is-primary">{submission.activityTitle || "—"}</td>
+      <td>{submission.accountName || "—"}</td>
+      <td>{submission.submittedByName || "—"}</td>
+      <td>{fmtDateTime(submission.submittedAtUtc)}</td>
+      <td className="col-actions">
+        <button
+          type="button"
+          className="wk-btn wk-btn--secondary wk-btn--sm"
+          onClick={() => onOpen(submission)}
+        >
           Review
         </button>
       </td>
@@ -24,33 +27,31 @@ function ReviewRow({ submission, onOpen }) {
   );
 }
 
-function ReviewTable({
-  items, loading, labels, onOpen,
-}) {
-  const empty = loading
-    ? "Loading..."
-    : `No ${labels.submissions.toLowerCase()} waiting for review.`;
+function ReviewTable({ items, labels, onOpen }) {
+  if (!items.length) {
+    return (
+      <div className="wk-empty">
+        <div className="wk-empty-title">All caught up</div>
+        <div className="wk-empty-text">
+          {`No ${labels.submissions.toLowerCase()} waiting for review.`}
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="table-card" style={{ margin: 0 }}>
-      <table>
+    <div className="wk-table-wrap" style={{ borderTop: 0 }}>
+      <table className="wk-table">
         <thead>
           <tr>
-            <th>{labels.activity}</th>
-            <th>{labels.account}</th>
-            <th>Submitted by</th>
-            <th>Submitted</th>
-            <th>Action</th>
+            <th scope="col">{labels.activity}</th>
+            <th scope="col">{labels.account}</th>
+            <th scope="col">Submitted by</th>
+            <th scope="col">Submitted</th>
+            <th scope="col" className="col-actions"><span className="wk-sr">Action</span></th>
           </tr>
         </thead>
         <tbody>
           {items.map((s) => <ReviewRow key={s.id} submission={s} onOpen={onOpen} />)}
-          {items.length === 0 && (
-            <tr>
-              <td colSpan={5}>
-                <div className="page-placeholder" style={{ minHeight: 140 }}><p>{empty}</p></div>
-              </td>
-            </tr>
-          )}
         </tbody>
       </table>
     </div>
@@ -68,11 +69,14 @@ export default function PendingReviews({ labels, onReviewed, showToast }) {
   };
 
   return (
-    <div style={{ margin: "0 20px 20px" }}>
-      <ReviewTable items={items} loading={loading} labels={labels} onOpen={setOpen} />
+    <section className="wk-card wk-results" aria-label="Pending review">
+      {loading
+        ? <SkeletonRows rows={4} />
+        : <ReviewTable items={items} labels={labels} onOpen={setOpen} />}
       {open && (
-        <ModalShell
+        <Modal
           icon="rate_review"
+          labelId="review-title"
           title={open.activityTitle || labels.submission}
           sub={open.accountName}
           onClose={() => setOpen(null)}
@@ -84,8 +88,8 @@ export default function PendingReviews({ labels, onReviewed, showToast }) {
             onReviewed={handleReviewed}
             showToast={showToast}
           />
-        </ModalShell>
+        </Modal>
       )}
-    </div>
+    </section>
   );
 }

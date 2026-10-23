@@ -16,6 +16,23 @@ export const REVIEW_STATUS = {
   Rejected: { label: "Rejected", pill: "wk-pill wk-pill--rejected" },
 };
 
+// Priority pairs a direction icon with its word, so it never relies on colour alone.
+const PRIORITY = {
+  High: { icon: "keyboard_double_arrow_up", cls: "wk-priority wk-priority--high" },
+  Medium: { icon: "drag_handle", cls: "wk-priority wk-priority--medium" },
+  Low: { icon: "keyboard_arrow_down", cls: "wk-priority wk-priority--low" },
+};
+
+export function PriorityTag({ priority }) {
+  const meta = PRIORITY[priority] ?? PRIORITY.Medium;
+  return (
+    <span className={meta.cls}>
+      <span className="material-symbols-outlined" aria-hidden="true">{meta.icon}</span>
+      {priority || "Medium"}
+    </span>
+  );
+}
+
 export function StatusPill({ status, map = ACTIVITY_STATUS }) {
   const meta = map[status] ?? { label: status, pill: "wk-pill" };
   return <span className={meta.pill}>{meta.label}</span>;

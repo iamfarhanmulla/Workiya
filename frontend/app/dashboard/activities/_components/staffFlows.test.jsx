@@ -99,7 +99,7 @@ describe("ActivitiesPage staff flows", () => {
     render(<ActivitiesPage />);
 
     // Act
-    await user.click(await screen.findByRole("button", { name: "→ IN PROGRESS" }));
+    await user.click(await screen.findByRole("button", { name: "→ In progress" }));
 
     // Assert
     expect(api.patch).toHaveBeenCalledWith("/activities/5/status", { status: "InProgress" });
@@ -115,7 +115,7 @@ describe("ActivitiesPage staff flows", () => {
     render(<ActivitiesPage />);
 
     // Act
-    await user.click(await screen.findByRole("button", { name: "→ MISSED" }));
+    await user.click(await screen.findByRole("button", { name: "→ Missed" }));
 
     // Assert
     expect(await screen.findByText("Not allowed.")).toBeInTheDocument();

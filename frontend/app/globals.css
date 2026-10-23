@@ -425,69 +425,6 @@ tr:hover td { background: #FAFBFF; }
   display: flex; justify-content: flex-end; gap: 8px;
 }
 
-/* Task board (Kanban) */
-.task-board {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  padding: 16px 20px;
-}
-
-.task-col {
-  background: var(--ds-bg);
-  border-radius: var(--ds-radius-sm);
-  padding: 12px;
-  min-height: 300px;
-}
-
-.task-col-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.task-col-title { font-size: 11px; font-weight: 700; color: var(--ds-text-2); letter-spacing: 0.06em; }
-.task-col-count { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-
-.task-card {
-  background: var(--ds-surface);
-  border-radius: 10px;
-  border: 1px solid var(--ds-border);
-  padding: 12px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.15s;
-}
-
-.task-card:hover { box-shadow: var(--ds-shadow); transform: translateY(-1px); }
-.task-card-title { font-size: 12px; font-weight: 600; color: var(--ds-text); margin-bottom: 6px; }
-
-.task-card-doctor {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 11px; color: var(--ds-text-3); margin-bottom: 8px;
-}
-.task-card-doctor .material-symbols-outlined { font-size: 13px; color: var(--ds-accent); }
-.task-card-footer { display: flex; align-items: center; justify-content: space-between; }
-.task-assignee { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ds-text-3); }
-
-.task-priority { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 5px; letter-spacing: .04em; }
-.priority-high   { background: var(--ds-danger-soft);  color: var(--ds-danger); }
-.priority-medium { background: var(--ds-warning-soft); color: var(--ds-warning); }
-.priority-low    { background: var(--ds-success-soft); color: var(--ds-success); }
-
-.task-progress-bar { height: 3px; background: var(--ds-border); border-radius: 999px; margin-top: 8px; overflow: hidden; }
-.task-progress-fill { height: 100%; border-radius: 999px; }
-
-/* Add task col button */
-.task-add-btn {
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  width: 100%; padding: 8px; border-radius: 8px;
-  border: 1.5px dashed var(--ds-border);
-  background: none; font-size: 12px; color: var(--ds-text-3);
-  cursor: pointer; transition: background 0.12s, color 0.12s;
-}
-.task-add-btn:hover { background: var(--ds-primary-soft); color: var(--ds-primary); }
-.task-add-btn .material-symbols-outlined { font-size: 14px; }
-
 /* Page placeholder (fallback for unbuilt pages) */
 .page-placeholder {
   display: flex;
@@ -789,96 +726,6 @@ tr:hover td { background: #FAFBFF; }
 }
 
 /* ============================================================
-   TASKS PAGE (Kanban)
-   ============================================================ */
-
-@keyframes taskFadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
-}
-
-.tasks-page { display: flex; flex-direction: column; gap: 0; width: 100%; }
-
-.tasks-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 20px 8px;
-  flex-wrap: wrap;
-}
-
-.tasks-view-btns { display: flex; gap: 4px; }
-.tasks-view-btn {
-  width: 32px; height: 32px; border-radius: 7px;
-  border: 1px solid var(--ds-border); background: var(--ds-surface);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.12s;
-}
-.tasks-view-btn.active { background: var(--ds-primary-soft); border-color: var(--ds-primary); }
-.tasks-view-btn .material-symbols-outlined { font-size: 16px; color: var(--ds-text-2); }
-.tasks-view-btn.active .material-symbols-outlined { color: var(--ds-primary); }
-
-.tasks-board {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  padding: 8px 20px 20px;
-  animation: taskFadeUp 0.4s ease both;
-}
-
-.tasks-col {
-  background: var(--ds-bg);
-  border-radius: 10px;
-  padding: 12px;
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.tasks-col-hd {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 10px; padding-bottom: 8px;
-  border-bottom: 2px solid var(--ds-border);
-}
-
-.tasks-col-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-}
-
-.tasks-col-title { font-size: 11px; font-weight: 700; color: var(--ds-text-2); letter-spacing: 0.06em; flex: 1; }
-.tasks-col-count { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-
-.task-card-item {
-  background: var(--ds-surface);
-  border-radius: 10px;
-  border: 1px solid var(--ds-border);
-  padding: 12px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  animation: cardIn 0.3s ease both;
-  animation-delay: var(--card-du, 0s);
-  transition: box-shadow 0.15s, transform 0.15s;
-}
-
-.task-card-item:hover { box-shadow: var(--ds-shadow); transform: translateY(-1px); }
-
-.task-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-.task-card-id  { font-size: 10px; color: var(--ds-text-3); }
-.task-card-main-title { font-size: 12px; font-weight: 600; color: var(--ds-text); margin-bottom: 4px; }
-.task-card-doctor-row { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ds-text-3); margin-bottom: 4px; }
-.task-card-doctor-row .material-symbols-outlined { font-size: 13px; color: var(--ds-accent); }
-.task-card-loc { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ds-text-3); margin-bottom: 8px; }
-.task-card-loc .material-symbols-outlined { font-size: 12px; color: var(--ds-accent); }
-.task-card-ft  { display: flex; align-items: center; justify-content: space-between; }
-.task-card-assignee { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ds-text-3); }
-.task-card-due  { font-size: 10px; }
-
-/* ============================================================
    ATTENDANCE PAGE
    ============================================================ */
 
@@ -1082,7 +929,6 @@ tr:hover td { background: #FAFBFF; }
   .stat-cards   { grid-template-columns: repeat(2, 1fr); }
   .co-stat-grid { grid-template-columns: repeat(2, 1fr); }
   .rpt-charts-grid { grid-template-columns: 1fr; }
-  .tasks-board  { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 900px) {
@@ -1091,7 +937,6 @@ tr:hover td { background: #FAFBFF; }
 
 @media (max-width: 700px) {
   .stat-cards { grid-template-columns: 1fr; }
-  .tasks-board { grid-template-columns: 1fr; }
 }
 
 /* ============================================================

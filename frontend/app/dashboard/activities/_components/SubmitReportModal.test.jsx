@@ -45,7 +45,7 @@ function renderModal() {
 async function fillAndSubmit(user, photoUrl) {
   await user.type(screen.getByLabelText(/^Photo URL/), photoUrl);
   await user.type(screen.getByLabelText(/^Signature URL/), "/uploads/sign.png");
-  await user.click(screen.getByRole("button", { name: /^send Submit$/ }));
+  await user.click(screen.getByRole("button", { name: /^Submit$/ }));
 }
 
 describe("SubmitReportModal", () => {
@@ -68,7 +68,7 @@ describe("SubmitReportModal", () => {
     const { showToast } = renderModal();
 
     // Act
-    await user.click(screen.getByRole("button", { name: /^send Submit$/ }));
+    await user.click(screen.getByRole("button", { name: /^Submit$/ }));
 
     // Assert
     expect(showToast).toHaveBeenCalledWith(

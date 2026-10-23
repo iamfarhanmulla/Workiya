@@ -5,12 +5,9 @@ import { api, getErrorMessage } from "@/lib/apiClient";
 import CustomFieldValues from "@/components/CustomFieldValues";
 import { useCustomFields } from "@/hooks/useCustomFields";
 import { isSafeUrl } from "@/lib/safeUrl";
+import { REVIEW_STATUS, StatusPill } from "@/components/status";
 import DetailRow, { SectionTitle } from "./DetailRow";
-import { PILL, REVIEW_STYLE, fmtDateTime } from "./activityConfig";
-
-const LINK = { fontSize: 13, color: "#6366F1" };
-const MUTED = { fontSize: 12, color: "var(--ds-text-2)" };
-const ERROR = { fontSize: 12, color: "#EF4444" };
+import { fmtDateTime } from "./activityConfig";
 
 function coords(lat, lng) {
   if (lat === null || lat === undefined || lng === null || lng === undefined) return null;
@@ -20,7 +17,7 @@ function coords(lat, lng) {
 function FileLink({ url, label }) {
   if (!isSafeUrl(url)) return null;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" style={LINK}>
+    <a href={url} target="_blank" rel="noopener noreferrer">
       {label}
     </a>
   );
@@ -44,32 +41,32 @@ function ReviewActions({ submission, onReviewed, showToast }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <label htmlFor="review-comment" className="form-label">Review comment</label>
+    <div className="wk-field">
+      <label htmlFor="review-comment" className="wk-label">Review comment</label>
       <textarea
         id="review-comment"
-        className="form-textarea"
+        className="wk-textarea"
         rows={2}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
       />
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="wk-actions">
         <button
           type="button"
-          className="btn btn-primary btn-sm"
+          className="wk-btn wk-btn--primary"
           disabled={busy}
           onClick={() => review("Approved")}
         >
-          <span className="material-symbols-outlined">check</span>
+          <span className="material-symbols-outlined" aria-hidden="true">check</span>
           Approve
         </button>
         <button
           type="button"
-          className="btn btn-outline btn-sm"
+          className="wk-btn wk-btn--danger-soft"
           disabled={busy}
           onClick={() => review("Rejected")}
         >
-          <span className="material-symbols-outlined">close</span>
+          <span className="material-symbols-outlined" aria-hidden="true">close</span>
           Reject
         </button>
       </div>
@@ -78,14 +75,9 @@ function ReviewActions({ submission, onReviewed, showToast }) {
 }
 
 function SubmissionBody({ submission, fields }) {
-  const review = REVIEW_STYLE[submission.reviewStatus] || REVIEW_STYLE.Pending;
   return (
     <>
-      <div>
-        <span style={{ ...PILL, background: review.bg, color: review.color }}>
-          {submission.reviewStatus}
-        </span>
-      </div>
+      <div><StatusPill status={submission.reviewStatus} map={REVIEW_STATUS} /></div>
       <DetailRow icon="person" label="Submitted by" value={submission.submittedByName} />
       <DetailRow icon="schedule" label="Submitted" value={fmtDateTime(submission.submittedAtUtc)} />
       <DetailRow icon="login" label="Check-in" value={fmtDateTime(submission.checkInAtUtc)} />
@@ -106,7 +98,7 @@ function SubmissionBody({ submission, fields }) {
         value={submission.rating ? `${submission.rating} / 5` : null}
       />
       <DetailRow icon="notes" label="Notes" value={submission.notes} />
-      <div style={{ display: "flex", gap: 16 }}>
+      <div className="wk-actions">
         <FileLink url={submission.photoUrl} label="View photo" />
         <FileLink url={submission.signatureUrl} label="View signature" />
       </div>
@@ -143,10 +135,10 @@ export default function SubmissionDetails({
   const { submission, failed } = result;
   const loading = result.id !== submissionId;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="wk-detail-section">
       <SectionTitle>{title}</SectionTitle>
-      {loading && <p style={MUTED}>Loading...</p>}
-      {!loading && failed && <p style={ERROR}>Could not load the report.</p>}
+      {loading && <p className="wk-muted">Loading…</p>}
+      {!loading && failed && <p className="wk-error-text">Could not load the report.</p>}
       {!loading && submission && <SubmissionBody submission={submission} fields={fields || []} />}
       {!loading && submission && isStaff && submission.reviewStatus === "Pending" && (
         <ReviewActions submission={submission} onReviewed={onReviewed} showToast={showToast} />
