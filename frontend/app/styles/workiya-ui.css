@@ -376,6 +376,8 @@
 
 /* ---- Description list (detail pages) ------------------------------------- */
 .wk-dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px 24px; margin: 0; }
+.wk-dl--2col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 640px) { .wk-dl--2col { grid-template-columns: minmax(0, 1fr); } }
 .wk-dl > div { min-width: 0; }
 .wk-dl dt { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
 .wk-dl dd { margin: 0; font-size: var(--text-base); color: var(--color-text); overflow-wrap: anywhere; }
@@ -528,6 +530,17 @@
 .wk-detail-value { color: var(--color-text); white-space: pre-wrap; overflow-wrap: anywhere; }
 .wk-detail-note { padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-surface-sunken); white-space: pre-wrap; line-height: var(--leading-normal); }
 @media (max-width: 640px) { .wk-detail-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- Settings: side menu + section cards ---------------------------------- */
+.wk-settings { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.wk-settings-nav { flex: 0 1 220px; position: sticky; top: calc(var(--topnav-h) + 16px); display: flex; flex-direction: column; gap: 2px; }
+.wk-settings-nav a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: var(--radius-sm); font-weight: var(--weight-medium); color: var(--color-text-secondary); text-decoration: none; }
+.wk-settings-nav a:hover { background: var(--color-surface-sunken); color: var(--color-text); text-decoration: none; }
+.wk-settings-nav .material-symbols-outlined { font-size: 18px; }
+.wk-settings-body { flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.wk-settings-body > section { scroll-margin-top: calc(var(--topnav-h) + 16px); }
+.wk-flag-row { display: flex; flex-wrap: wrap; gap: 16px; }
+@media (max-width: 767px) { .wk-settings-nav { position: static; flex-direction: row; flex-wrap: wrap; } }
 
 /* ---- Login page ------------------------------------------------------------
    Form panel + brand panel; the brand panel hides under 900px

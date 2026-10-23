@@ -102,7 +102,7 @@ describe("SettingsPage — Fields & Labels", () => {
     // Assert
     const termInput = await screen.findByDisplayValue("Doctor");
     expect(termInput).toHaveAttribute("id", "stg-term-account-singular");
-    expect(screen.getByText("Labels")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Labels" })).toBeInTheDocument();
     expect(screen.getByText("Doctor fields")).toBeInTheDocument();
     expect(screen.getByText("Report questions")).toBeInTheDocument();
     expect(await screen.findByText("Speciality")).toBeInTheDocument();
@@ -114,9 +114,9 @@ describe("SettingsPage — Fields & Labels", () => {
     renderAs("EMPLOYEE");
 
     // Assert
-    expect(screen.getByText("Profile Information")).toBeInTheDocument();
+    expect(screen.getByText("Company settings are managed by your admin")).toBeInTheDocument();
     expect(screen.queryByText("Labels")).not.toBeInTheDocument();
-    expect(screen.queryByText("Visit Types")).not.toBeInTheDocument();
+    expect(screen.queryByText("Visit types")).not.toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalled();
   });
 
@@ -226,34 +226,5 @@ describe("SettingsPage — Fields & Labels", () => {
       { params: {} },
     ));
     expect(mockReloadFields).toHaveBeenCalled();
-  });
-});
-
-describe("SettingsPage — existing sections", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockApi();
-  });
-
-  it("still toggles notifications and confirms Save Changes", async () => {
-    // Arrange
-    const user = userEvent.setup();
-    renderAs("EMPLOYEE");
-    // Row/Toggle remount on each render, so each checkbox is looked up again before a click.
-    const names = ["Email Notifications", "Push Notifications", "New Task Alerts",
-      "Weekly Summary Report"];
-
-    // Act
-    await names.reduce(
-      (p, name) => p.then(() => user.click(screen.getByRole("checkbox", { name }))),
-      Promise.resolve(),
-    );
-    await user.click(screen.getByRole("button", { name: /save changes/i }));
-
-    // Assert
-    expect(screen.getByRole("checkbox", { name: "Weekly Summary Report" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Email Notifications" })).not.toBeChecked();
-    expect(screen.getByText("Saved!")).toBeInTheDocument();
-    expect(screen.getByLabelText("First Name")).toHaveValue("Asha");
   });
 });

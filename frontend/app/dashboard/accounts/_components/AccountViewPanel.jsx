@@ -46,7 +46,7 @@ export default function AccountViewPanel({
       onClose={onClose}
       footer={footer}
     >
-      <dl className="wk-dl" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+      <dl className="wk-dl wk-dl--2col">
         {detailRows(account).map((row) => (
           <div key={row.label}>
             <dt>

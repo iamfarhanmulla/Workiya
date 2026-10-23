@@ -20,7 +20,11 @@ const mockUseActivityTypes = jest.fn(() => ({
   types: [], loading: false, reload: mockReloadTypes,
 }));
 jest.mock("@/hooks/useTerminology", () => ({
-  useTerminology: () => ({ t: (key) => key, loading: false, reload: jest.fn() }),
+  useTerminology: () => ({
+    t: (key) => ({ "activity.singular": "Visit", "activity.plural": "Visits" }[key] || key),
+    loading: false,
+    reload: jest.fn(),
+  }),
 }));
 jest.mock("@/hooks/useCustomFields", () => ({
   useCustomFields: () => ({ fields: [], loading: false, reload: jest.fn() }),

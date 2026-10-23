@@ -1,58 +1,60 @@
 "use client";
 
-import { useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import ProfileSection from "./_components/ProfileSection";
+import { useTerminology } from "@/hooks/useTerminology";
+import PageHeader from "@/components/PageHeader";
+import { EmptyState } from "@/components/DataStates";
+import { SETTINGS_ROLES } from "@/components/navConfig";
 import FieldsAndLabels from "./_components/FieldsAndLabels";
-import {
-  DangerZoneSection,
-  NotificationsSection,
-  PlatformSection,
-  SaveBar,
-  SecuritySection,
-} from "./_components/PreferenceSections";
 
-const SAVED_NOTICE_MS = 2500;
-
-function PageHeader() {
+function SettingsNav({ activity }) {
+  const links = [
+    ["#labels", "Labels", "translate"],
+    ["#custom-fields", "Custom fields", "dynamic_form"],
+    ["#visit-types", `${activity} types`, "fact_check"],
+  ];
   return (
-    <div className="dash-fade-up" style={{ "--du": "0s" }}>
-      <div className="breadcrumb">
-        <span className="material-symbols-outlined">home</span>
-        <span className="material-symbols-outlined">chevron_right</span>
-        <span className="breadcrumb-active">Settings</span>
-      </div>
-      <h1 className="stg-title">Settings</h1>
-      <p className="stg-sub">Manage your platform preferences and account configuration</p>
-    </div>
+    <nav className="wk-settings-nav" aria-label="Settings sections">
+      {links.map(([href, label, icon]) => (
+        <a key={href} href={href}>
+          <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+          {label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
+// Company settings for admins: labels, custom fields and activity types.
 export default function SettingsPage() {
   const user = useCurrentUser();
-  const [notifications, setNotifications] = useState({
-    email: true, push: true, weekly: false, newTask: true,
-  });
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), SAVED_NOTICE_MS);
-  };
+  const { t } = useTerminology();
+  const canEdit = SETTINGS_ROLES.includes(user?.roleCode);
+  const activity = t("activity.singular");
 
   return (
-    <div className="stg-page">
-      <PageHeader />
-      <ProfileSection user={user} />
-      <SecuritySection />
-      <NotificationsSection
-        notifications={notifications}
-        onChange={(key, value) => setNotifications((n) => ({ ...n, [key]: value }))}
-      />
-      <PlatformSection />
-      <FieldsAndLabels />
-      <DangerZoneSection />
-      <SaveBar saved={saved} onSave={handleSave} />
+    <div className="wk-app">
+      <div className="wk-main">
+        <PageHeader
+          title="Settings"
+          sub={`Labels, custom fields and ${activity.toLowerCase()} types for your company`}
+        />
+        {canEdit && (
+          <div className="wk-settings">
+            <SettingsNav activity={activity} />
+            <div className="wk-settings-body"><FieldsAndLabels /></div>
+          </div>
+        )}
+        {user && !canEdit && (
+          <section className="wk-card">
+            <EmptyState
+              icon="lock"
+              title="Company settings are managed by your admin"
+              text="Ask an admin if a label, field or type needs to change."
+            />
+          </section>
+        )}
+      </div>
     </div>
   );
 }

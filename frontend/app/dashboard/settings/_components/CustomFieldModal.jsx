@@ -48,11 +48,11 @@ function toBody(form, isEdit, entityType) {
 
 function TypeSelect({ value, disabled, onChange }) {
   return (
-    <div className="form-group">
-      <label htmlFor="cf-type" className="form-label">Data type</label>
+    <div className="wk-field">
+      <label htmlFor="cf-type" className="wk-label">Data type</label>
       <select
         id="cf-type"
-        className="form-select"
+        className="wk-select"
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -65,7 +65,7 @@ function TypeSelect({ value, disabled, onChange }) {
 
 function FieldFlags({ form, set }) {
   return (
-    <div style={{ display: "flex", gap: 20, marginTop: 6 }}>
+    <div className="wk-flag-row">
       <CheckboxField
         id="cf-required"
         label="Required"
@@ -85,7 +85,7 @@ function FieldFlags({ form, set }) {
 function FieldForm({ form, isEdit, set }) {
   return (
     <>
-      <div className="form-row form-row-2">
+      <div className="wk-form-row">
         <TextField
           id="cf-label"
           label="Label"
@@ -102,7 +102,7 @@ function FieldForm({ form, isEdit, set }) {
           onChange={set("fieldKey")}
         />
       </div>
-      <div className="form-row form-row-2">
+      <div className="wk-form-row">
         <TypeSelect value={form.dataType} disabled={isEdit} onChange={set("dataType")} />
         <TextField
           id="cf-sort"

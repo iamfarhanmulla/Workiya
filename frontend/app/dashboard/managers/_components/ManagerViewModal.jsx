@@ -34,7 +34,7 @@ export default function ManagerViewModal({ manager, onClose, onEdit }) {
         <PersonCell name={managerName(manager)} sub={manager.Email} />
         <ActiveState isActive={manager.IsActive} />
       </div>
-      <dl className="wk-dl" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+      <dl className="wk-dl wk-dl--2col">
         {rows.map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>

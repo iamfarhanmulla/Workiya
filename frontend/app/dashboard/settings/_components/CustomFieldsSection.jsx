@@ -2,24 +2,25 @@
 
 import { useCallback, useState } from "react";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { EmptyState, SkeletonRows } from "@/components/DataStates";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useCustomFields } from "@/hooks/useCustomFields";
 import CustomFieldModal from "./CustomFieldModal";
 import useSettingsList from "./useSettingsList";
 import useRowEditing from "./useRowEditing";
 import {
-  AddButton, RowActions, SectionTitle, StatusBadge,
+  AddButton, RowActions, SettingsCard, StatusBadge,
 } from "./FormBits";
 import { deleteCustomField, listCustomFields } from "./settingsApi";
 
 function FieldsTable({
   fields, loading, onEdit, onDelete,
 }) {
-  if (loading) return <p className="stg-row-desc">Loading...</p>;
-  if (fields.length === 0) return <p className="stg-row-desc">No fields yet.</p>;
+  if (loading) return <SkeletonRows rows={3} />;
+  if (fields.length === 0) return <EmptyState icon="dynamic_form" title="No fields yet" />;
   return (
-    <div className="table-card" style={{ margin: 0 }}>
-      <table>
+    <div className="wk-table-wrap">
+      <table className="wk-table">
         <thead>
           <tr>
             <th>Label</th>
@@ -29,20 +30,20 @@ function FieldsTable({
             <th>Options</th>
             <th>Order</th>
             <th>Status</th>
-            <th>Actions</th>
+            <th className="col-actions"><span className="wk-sr">Actions</span></th>
           </tr>
         </thead>
         <tbody>
           {fields.map((f) => (
             <tr key={f.id}>
-              <td>{f.label}</td>
-              <td><code>{f.fieldKey}</code></td>
-              <td>{f.dataType}</td>
+              <td className="is-primary">{f.label}</td>
+              <td className="wk-mono">{f.fieldKey}</td>
+              <td><span className="wk-tag">{f.dataType}</span></td>
               <td>{f.isRequired ? "Yes" : "No"}</td>
               <td>{f.options?.length ? f.options.join(", ") : "—"}</td>
               <td>{f.sortOrder}</td>
               <td><StatusBadge active={f.isActive} /></td>
-              <td>
+              <td className="col-actions">
                 <RowActions name={f.label} onEdit={() => onEdit(f)} onDelete={() => onDelete(f)} />
               </td>
             </tr>
@@ -78,7 +79,10 @@ function EntityFields({
 
   return (
     <>
-      <AddButton label={`Add ${title}`} onClick={() => setEditing({})} />
+      <div className="wk-toolbar">
+        <span className="wk-spacer" />
+        <AddButton label={`Add ${title}`} onClick={() => setEditing({})} />
+      </div>
       <FieldsTable fields={items} loading={loading} onEdit={setEditing} onDelete={setDeleting} />
       {editing && (
         <CustomFieldModal
@@ -114,16 +118,19 @@ export default function CustomFieldsSection({ companyId, notify }) {
   const current = tabs.find((x) => x.key === tab);
 
   return (
-    <div className="stg-section" style={{ "--stg-du": "0.2s" }}>
-      <SectionTitle icon="dynamic_form" color="#8B5CF6">Custom Fields</SectionTitle>
-      <div role="tablist" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+    <SettingsCard
+      id="custom-fields"
+      title="Custom fields"
+      desc="Extra fields on records and report questions, set per company"
+    >
+      <div className="wk-tabs" role="tablist" style={{ padding: "0 12px" }}>
         {tabs.map((x) => (
           <button
             key={x.key}
             type="button"
             role="tab"
+            className="wk-tab"
             aria-selected={tab === x.key}
-            className={`btn btn-sm ${tab === x.key ? "btn-primary" : "btn-outline"}`}
             onClick={() => setTab(x.key)}
           >
             {x.label}
@@ -137,6 +144,6 @@ export default function CustomFieldsSection({ companyId, notify }) {
         companyId={companyId}
         notify={notify}
       />
-    </div>
+    </SettingsCard>
   );
 }
