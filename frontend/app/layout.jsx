@@ -2,7 +2,6 @@
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./styles/tokens.css";
 import "./globals.css";
-import "./styles/legacy-bridge.css";
 import "./styles/workiya-ui.css";
 import ReduxProvider from "@/components/ReduxProvider";
 
