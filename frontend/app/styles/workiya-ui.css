@@ -219,6 +219,7 @@
 
 .wk-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .wk-person-name { font-weight: var(--weight-medium); color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-person-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .wk-person-meta { font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- Cards & stat tiles -------------------------------------------------- */
