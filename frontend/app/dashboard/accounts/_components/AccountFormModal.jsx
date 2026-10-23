@@ -4,22 +4,22 @@ import { useState } from "react";
 import { api, getErrorMessage } from "@/lib/apiClient";
 import CustomFieldInputs from "@/components/CustomFieldInputs";
 import { useCustomFields } from "@/hooks/useCustomFields";
+import Modal, { ModalFooter } from "@/components/Modal";
 import AccountFormFields from "./AccountFormFields";
 import ErrorText from "./ErrorText";
-import Modal, { ModalFooter } from "./Modal";
 import { BLANK_FORM, toBody, toForm } from "./accountForm";
 
 const ID_PREFIX = "account-form";
 
 function CompanySelect({ companies, value, onChange }) {
   return (
-    <div className="form-group">
-      <label htmlFor={`${ID_PREFIX}-company`} className="form-label">
-        Company<span style={{ color: "#EF4444" }}> *</span>
+    <div className="wk-field">
+      <label htmlFor={`${ID_PREFIX}-company`} className="wk-label">
+        Company<span className="wk-req" aria-hidden="true">*</span>
       </label>
       <select
         id={`${ID_PREFIX}-company`}
-        className="form-select"
+        className="wk-select"
         value={value}
         onChange={(e) => onChange("companyId", e.target.value)}
       >
@@ -78,7 +78,7 @@ export default function AccountFormModal({
       sub={`${singular} details are used for visits and assignments`}
       onClose={onClose}
       footer={footer}
-      maxWidth={620}
+      size="lg"
     >
       <AccountFormFields form={form} onChange={setField} singular={singular} idPrefix={ID_PREFIX} />
       {isSuperAdmin && !account && (

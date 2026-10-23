@@ -73,9 +73,9 @@ function PasswordField({ value, onChange }) {
 function FormError({ message }) {
   if (!message) return null;
   return (
-    <div className="wk-banner wk-banner--danger" role="alert">
+    <div className="wk-banner wk-banner--danger">
       <span className="material-symbols-outlined" aria-hidden="true">error</span>
-      <div>{message}</div>
+      <div role="alert">{message}</div>
     </div>
   );
 }

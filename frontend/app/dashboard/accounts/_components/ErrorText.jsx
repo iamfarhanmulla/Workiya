@@ -4,8 +4,9 @@
 export default function ErrorText({ message }) {
   if (!message) return null;
   return (
-    <div role="alert" style={{ color: "#DC2626", fontSize: 12, fontWeight: 600 }}>
-      {message}
+    <div className="wk-banner wk-banner--danger">
+      <span className="material-symbols-outlined" aria-hidden="true">error</span>
+      <div role="alert">{message}</div>
     </div>
   );
 }

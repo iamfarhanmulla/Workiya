@@ -9,27 +9,27 @@ export default function Pagination({
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   return (
-    <div className="co-pagination" style={{ margin: "0 20px 20px" }}>
-      <span>Showing {from}–{to} of {total}</span>
-      <div className="co-page-btns">
+    <div className="wk-pagination">
+      <span>{`Showing ${from}–${to} of ${total}`}</span>
+      <div className="wk-pages">
         <button
           type="button"
-          className="co-page-btn"
+          className="wk-page"
           aria-label="Previous page"
           disabled={page <= 1}
           onClick={() => onPage(page - 1)}
         >
-          <span className="material-symbols-outlined">chevron_left</span>
+          <span className="material-symbols-outlined" aria-hidden="true">chevron_left</span>
         </button>
-        <span className="co-page-btn active" aria-current="page">{page}</span>
+        <span className="wk-page" aria-current="page">{`${page} / ${pages}`}</span>
         <button
           type="button"
-          className="co-page-btn"
+          className="wk-page"
           aria-label="Next page"
           disabled={page >= pages}
           onClick={() => onPage(page + 1)}
         >
-          <span className="material-symbols-outlined">chevron_right</span>
+          <span className="material-symbols-outlined" aria-hidden="true">chevron_right</span>
         </button>
       </div>
     </div>

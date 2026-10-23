@@ -34,7 +34,7 @@ async function chooseUsers(user) {
     await screen.findByRole("option", { name: "Ravi Kumar (inactive)" }),
   );
   await user.selectOptions(screen.getByLabelText("To"), "12");
-  await user.click(screen.getByRole("button", { name: /^swap_horiz\s*Transfer$/ }));
+  await user.click(screen.getByRole("button", { name: "Transfer" }));
 }
 
 describe("TransferModal", () => {
@@ -88,7 +88,7 @@ describe("TransferModal", () => {
     await screen.findByRole("option", { name: "Asha Patel" });
 
     // Act
-    await user.click(screen.getByRole("button", { name: /^swap_horiz\s*Transfer$/ }));
+    await user.click(screen.getByRole("button", { name: "Transfer" }));
     const firstError = screen.getByRole("alert").textContent;
     await chooseUsers(user);
 

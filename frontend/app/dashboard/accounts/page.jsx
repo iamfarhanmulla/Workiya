@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast, ToastContainer } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { SkeletonRows } from "@/components/DataStates";
 import { api } from "@/lib/apiClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -35,35 +36,49 @@ function useCompanies(enabled) {
   return companies;
 }
 
-function Loading({ plural }) {
+function EmptyResults({ plural, filtered }) {
+  const lower = plural.toLowerCase();
   return (
-    <div className="page-placeholder">
-      <span
-        className="material-symbols-outlined page-placeholder-icon"
-        style={{ animation: "spin 1s linear infinite" }}
-      >
-        progress_activity
-      </span>
-      <p>Loading {plural.toLowerCase()}...</p>
+    <div className="wk-empty">
+      <div className="wk-empty-icon">
+        <span className="material-symbols-outlined wk-icon--lg" aria-hidden="true">
+          {filtered ? "search_off" : "contacts"}
+        </span>
+      </div>
+      <div className="wk-empty-title">
+        {filtered ? `No ${lower} match these filters` : `No ${lower} yet`}
+      </div>
+      <div className="wk-empty-text">
+        {filtered ? "Try another search or status." : `${plural} you add will show here.`}
+      </div>
     </div>
   );
 }
 
-function AccountResults({
+function ResultsBody({
   list, view, terms, canManage, handlers,
 }) {
+  if (list.loading) return <SkeletonRows rows={6} />;
+  if (!list.items.length) {
+    const filtered = Boolean(list.search.trim()) || list.status !== "all";
+    return <EmptyResults plural={terms.plural} filtered={filtered} />;
+  }
   const Results = view === "grid" ? AccountGrid : AccountTable;
   return (
+    <Results
+      items={list.items}
+      singular={terms.singular}
+      canManage={canManage}
+      handlers={handlers}
+    />
+  );
+}
+
+function AccountResults(props) {
+  const { list } = props;
+  return (
     <>
-      {list.loading ? <Loading plural={terms.plural} /> : (
-        <Results
-          items={list.items}
-          singular={terms.singular}
-          plural={terms.plural}
-          canManage={canManage}
-          handlers={handlers}
-        />
-      )}
+      <ResultsBody {...props} />
       <Pagination
         page={list.page}
         pageSize={list.pageSize}
@@ -132,47 +147,46 @@ export default function AccountsPage() {
   const canManage = isStaff(page.user);
   const [view, setView] = useState("grid");
   return (
-    <div className="doc-page">
-      <ToastContainer toasts={page.toasts} />
-      <ConfirmModal
-        open={!!page.deleteTarget}
-        title={`Delete ${terms.singular}`}
-        message={`This will remove ${page.deleteTarget?.name || "this record"} from the list.`}
-        onConfirm={async () => {
-          if (await page.mutations.remove(page.deleteTarget)) page.setDeleteTarget(null);
-        }}
-        onCancel={() => page.setDeleteTarget(null)}
-      />
-      <AccountsHeader
-        singular={terms.singular}
-        plural={terms.plural}
-        canManage={canManage}
-        onAdd={() => page.setModal({ type: "form", account: null })}
-        onTransfer={() => page.setModal({ type: "transfer" })}
-      />
-      <AccountStats items={list.items} total={list.total} plural={terms.plural} />
-      <AccountsToolbar
-        plural={terms.plural}
-        list={list}
-        view={view}
-        onView={setView}
-      />
-      <AccountResults
-        list={list}
-        view={view}
-        terms={terms}
-        canManage={canManage}
-        handlers={page.handlers}
-      />
-      <AccountModals
-        modal={page.modal}
-        setModal={page.setModal}
-        terms={terms}
-        user={page.user}
-        companies={page.companies}
-        canManage={canManage}
-        completions={page.completions}
-      />
+    <div className="wk-app">
+      <div className="wk-main">
+        <ToastContainer toasts={page.toasts} />
+        <ConfirmModal
+          open={!!page.deleteTarget}
+          title={`Delete ${terms.singular}`}
+          message={`This will remove ${page.deleteTarget?.name || "this record"} from the list.`}
+          onConfirm={async () => {
+            if (await page.mutations.remove(page.deleteTarget)) page.setDeleteTarget(null);
+          }}
+          onCancel={() => page.setDeleteTarget(null)}
+        />
+        <AccountsHeader
+          singular={terms.singular}
+          plural={terms.plural}
+          canManage={canManage}
+          onAdd={() => page.setModal({ type: "form", account: null })}
+          onTransfer={() => page.setModal({ type: "transfer" })}
+        />
+        <AccountStats items={list.items} total={list.total} plural={terms.plural} />
+        <section className="wk-card wk-results" aria-label={terms.plural}>
+          <AccountsToolbar plural={terms.plural} list={list} view={view} onView={setView} />
+          <AccountResults
+            list={list}
+            view={view}
+            terms={terms}
+            canManage={canManage}
+            handlers={page.handlers}
+          />
+        </section>
+        <AccountModals
+          modal={page.modal}
+          setModal={page.setModal}
+          terms={terms}
+          user={page.user}
+          companies={page.companies}
+          canManage={canManage}
+          completions={page.completions}
+        />
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-// Small building blocks shared by the staff dashboard and "My day".
+// Meter, loading skeleton and load-error banner shared by the rebuilt pages.
 
 export function Meter({
   pct, tone, label, showLabel = false,
@@ -6,11 +6,11 @@ export function Meter({
   const fill = { width: `${pct}%` };
   if (tone) fill.background = `var(--color-${tone})`;
   return (
-    <div className="wk-dash-meter">
+    <div className="wk-meter-row">
       <div className="wk-meter" role="img" aria-label={label}>
         <span style={fill} />
       </div>
-      {showLabel && <span className="wk-dash-meter-label" aria-hidden="true">{label}</span>}
+      {showLabel && <span className="wk-meter-label" aria-hidden="true">{label}</span>}
     </div>
   );
 }
@@ -19,7 +19,7 @@ export function SkeletonRows({ rows, tiles = false }) {
   const keys = Array.from({ length: rows }, (_, i) => i);
   if (tiles) {
     return (
-      <div className="wk-dash-kpis" aria-busy="true" aria-label="Loading">
+      <div className="wk-kpis" aria-busy="true" aria-label="Loading">
         {[0, 1, 2, 3].map((k) => (
           <div key={k} className="wk-card wk-stat">
             <span className="wk-skel" style={{ width: "50%" }} />
@@ -30,7 +30,7 @@ export function SkeletonRows({ rows, tiles = false }) {
     );
   }
   return (
-    <div className="wk-card-bd wk-dash-skeleton" aria-busy="true" aria-label="Loading">
+    <div className="wk-card-bd wk-skeleton-rows" aria-busy="true" aria-label="Loading">
       {keys.map((k) => (
         <span key={k} className="wk-skel" style={{ width: `${80 - (k % 3) * 15}%` }} />
       ))}
@@ -46,7 +46,7 @@ export function LoadError({ what, onRetry }) {
         <strong>{`Couldn't load ${what}`}</strong>
         <button
           type="button"
-          className="wk-btn wk-btn--secondary wk-btn--sm wk-dash-retry"
+          className="wk-btn wk-btn--secondary wk-btn--sm wk-retry"
           onClick={onRetry}
         >
           Try again

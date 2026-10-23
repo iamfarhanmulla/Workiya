@@ -1,89 +1,47 @@
 "use client";
 
 import AccountActions from "./AccountActions";
+import { AccountState, RepChips } from "./AccountBits";
 import { formatLocation } from "./accountForm";
+import { initials } from "../../activities/_components/activityConfig";
 
-const BADGE = {
-  position: "absolute",
-  top: 8,
-  right: 8,
-  fontSize: 10,
-  fontWeight: 700,
-  padding: "3px 8px",
-  borderRadius: 20,
-  letterSpacing: "0.5px",
-};
-
-const TOGGLE = {
-  fontSize: 11,
-  fontWeight: 600,
-  padding: "4px 10px",
-  borderRadius: 8,
-  border: "none",
-  cursor: "pointer",
-};
-
-function statusColors(isActive) {
-  return isActive
-    ? { background: "#D1FAE5", color: "#059669" }
-    : { background: "#FEE2E2", color: "#DC2626" };
-}
-
-function InfoRow({ icon, children }) {
+function InfoRow({ icon, label, children }) {
   return (
-    <div className="doc-info-row">
-      <span className="material-symbols-outlined">{icon}</span>
-      {children}
+    <div className="wk-account-card-row">
+      <dt>
+        <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+        <span className="wk-sr">{label}</span>
+      </dt>
+      <dd>{children}</dd>
     </div>
   );
 }
 
-export function repNames(account) {
-  return (account.assignedUsers || []).map((u) => u.displayName).filter(Boolean).join(", ");
-}
-
-function MapStrip({ isActive }) {
-  return (
-    <div className="doc-map-preview">
-      <div className="doc-map-grid" />
-      <div className="doc-map-pin">
-        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-          location_on
-        </span>
-      </div>
-      <div style={{ ...BADGE, ...statusColors(isActive) }}>{isActive ? "ACTIVE" : "INACTIVE"}</div>
-    </div>
-  );
-}
-
-export default function AccountCard({
-  account, index, canManage, handlers,
-}) {
+export default function AccountCard({ account, canManage, handlers }) {
   const location = formatLocation(account);
-  const reps = repNames(account);
   return (
-    <div className="doc-card" style={{ "--doc-du": `${index * 0.06}s` }}>
-      <MapStrip isActive={account.isActive} />
-      <div className="doc-card-top">
-        <div className="doc-avatar">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-            storefront
-          </span>
+    <article className="wk-card wk-account-card">
+      <div className="wk-account-card-top">
+        <span className="wk-avatar wk-avatar--lg wk-avatar--slate" aria-hidden="true">
+          {initials(account.name)}
+        </span>
+        <div className="wk-list-main">
+          <h3 className="wk-account-card-name">{account.name}</h3>
+          {account.email && <div className="wk-person-meta">{account.email}</div>}
         </div>
-        <div style={{ minWidth: 0 }}>
-          <div className="doc-name">{account.name}</div>
-          {account.email && <div className="doc-spec">{account.email}</div>}
-        </div>
+        <AccountState isActive={account.isActive} />
       </div>
-      {location && <InfoRow icon="location_on">{location}</InfoRow>}
-      {account.phoneNumber && <InfoRow icon="call">{account.phoneNumber}</InfoRow>}
-      <InfoRow icon="group">{reps || "No reps assigned"}</InfoRow>
-      <div className="doc-card-footer">
+      <dl className="wk-account-card-info">
+        {location && <InfoRow icon="location_on" label="Location">{location}</InfoRow>}
+        {account.phoneNumber && <InfoRow icon="call" label="Phone">{account.phoneNumber}</InfoRow>}
+        <InfoRow icon="group" label="Assigned reps"><RepChips account={account} /></InfoRow>
+      </dl>
+      <div className="wk-account-card-ft">
         {canManage ? (
           <button
             type="button"
+            className="wk-btn wk-btn--secondary wk-btn--sm"
             onClick={() => handlers.onToggle(account)}
-            style={{ ...TOGGLE, ...statusColors(!account.isActive) }}
           >
             {account.isActive ? "Deactivate" : "Activate"}
           </button>
@@ -94,6 +52,6 @@ export default function AccountCard({
           handlers={{ ...handlers, onToggle: null }}
         />
       </div>
-    </div>
+    </article>
   );
 }

@@ -8,12 +8,6 @@ const INPUT_TYPES = {
   EMAIL: "email",
 };
 
-const ERROR_STYLE = {
-  margin: "4px 0 0", color: "#c0392b", fontSize: 12, fontWeight: 500,
-};
-const CHECK_LABEL_STYLE = {
-  display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13,
-};
 const FIELDSET_STYLE = { border: 0, margin: 0, padding: 0 };
 
 function isEmpty(value) {
@@ -35,8 +29,15 @@ function parseInput(field, raw) {
   return Number.isFinite(num) ? num : raw;
 }
 
+// Reads "Label *" for a required field; the star is styled by .wk-req.
 function fieldLabel(field) {
-  return `${field.label}${field.isRequired ? " *" : ""}`;
+  if (!field.isRequired) return field.label;
+  return (
+    <>
+      {`${field.label} `}
+      <span className="wk-req">*</span>
+    </>
+  );
 }
 
 const describedBy = (id, error) => (error ? `${id}-error` : undefined);
@@ -44,7 +45,7 @@ const invalid = (error) => (error ? true : undefined);
 
 function FieldError({ id, error }) {
   if (!error) return null;
-  return <p id={`${id}-error`} role="alert" style={ERROR_STYLE}>{error}</p>;
+  return <p id={`${id}-error`} role="alert" className="wk-error-text">{error}</p>;
 }
 
 function TextLikeInput({
@@ -54,7 +55,7 @@ function TextLikeInput({
     <input
       id={id}
       type={INPUT_TYPES[field.dataType] ?? "text"}
-      className="form-input"
+      className="wk-input"
       value={value ?? ""}
       required={field.isRequired}
       maxLength={field.dataType === "TEXT" ? 1000 : undefined}
@@ -72,7 +73,7 @@ function SelectInput({
   return (
     <select
       id={id}
-      className="form-select"
+      className="wk-select"
       value={value ?? ""}
       required={field.isRequired}
       onChange={(e) => onValue(e.target.value)}
@@ -91,8 +92,8 @@ function BooleanField({
   field, id, value, error, onValue,
 }) {
   return (
-    <div className="form-group">
-      <label htmlFor={id} style={CHECK_LABEL_STYLE} className="form-label">
+    <div className="wk-field">
+      <label htmlFor={id} className="wk-check">
         <input
           id={id}
           type="checkbox"
@@ -118,13 +119,13 @@ function MultiSelectField({
   };
   return (
     <fieldset
-      className="form-group"
+      className="wk-field"
       style={FIELDSET_STYLE}
       aria-describedby={describedBy(id, error)}
     >
-      <legend className="form-label">{fieldLabel(field)}</legend>
+      <legend className="wk-label">{fieldLabel(field)}</legend>
       {(field.options ?? []).map((opt, index) => (
-        <label key={opt} htmlFor={`${id}-${index}`} style={CHECK_LABEL_STYLE}>
+        <label key={opt} htmlFor={`${id}-${index}`} className="wk-check">
           <input
             id={`${id}-${index}`}
             type="checkbox"
@@ -144,8 +145,8 @@ function LabelledField({
 }) {
   const Control = field.dataType === "SELECT" ? SelectInput : TextLikeInput;
   return (
-    <div className="form-group">
-      <label htmlFor={id} className="form-label">{fieldLabel(field)}</label>
+    <div className="wk-field">
+      <label htmlFor={id} className="wk-label">{fieldLabel(field)}</label>
       <Control field={field} id={id} value={value} error={error} onValue={onValue} />
       <FieldError id={id} error={error} />
     </div>

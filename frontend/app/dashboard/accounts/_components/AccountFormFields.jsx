@@ -1,6 +1,6 @@
 "use client";
 
-// Fixed account fields, laid out in rows like the original doctor form.
+// Fixed account fields, in rows of one, two or three columns.
 const ROWS = [
   [{ key: "name", label: "Name", required: true }],
   [
@@ -27,23 +27,25 @@ const ROWS = [
   ],
 ];
 
-const ROW_CLASS = { 2: "form-row form-row-2", 3: "form-row form-row-3" };
+const ROW_CLASS = { 2: "wk-form-row", 3: "wk-form-row wk-form-row--3" };
 
 function Field({
   field, value, onChange, idPrefix, label,
 }) {
   const id = `${idPrefix}-${field.key}`;
   return (
-    <div className="form-group">
-      <label htmlFor={id} className="form-label">
-        {label}{field.required && <span style={{ color: "#EF4444" }}> *</span>}
+    <div className="wk-field">
+      <label htmlFor={id} className="wk-label">
+        {label}
+        {field.required && <span className="wk-req" aria-hidden="true">*</span>}
       </label>
       <input
         id={id}
-        className="form-input"
+        className="wk-input"
         type={field.type || "text"}
         inputMode={field.inputMode}
         placeholder={field.placeholder}
+        required={field.required}
         value={value}
         onChange={(e) => onChange(field.key, e.target.value)}
       />
@@ -71,13 +73,13 @@ export default function AccountFormFields({
           ? <div key={row[0].key} className={ROW_CLASS[row.length]}>{fields}</div>
           : fields;
       })}
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-notes`} className="form-label">Notes</label>
+      <div className="wk-field">
+        <label htmlFor={`${idPrefix}-notes`} className="wk-label">Notes</label>
         <textarea
           id={`${idPrefix}-notes`}
-          className="form-textarea"
+          className="wk-textarea"
           rows={3}
-          placeholder="Visit between 10am–12pm. Ask at reception..."
+          placeholder="Visit between 10am–12pm. Ask at reception…"
           value={form.notes}
           onChange={(e) => onChange("notes", e.target.value)}
         />

@@ -879,84 +879,6 @@ tr:hover td { background: #FAFBFF; }
 .task-card-due  { font-size: 10px; }
 
 /* ============================================================
-   DOCTORS PAGE
-   ============================================================ */
-
-@keyframes docFadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.doc-page { display: flex; flex-direction: column; gap: 0; width: 100%; }
-
-.doc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-  padding: 16px 20px 20px;
-}
-
-.doc-card {
-  background: var(--ds-surface);
-  border-radius: var(--ds-radius);
-  border: 1px solid var(--ds-border);
-  padding: 16px;
-  cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.15s;
-  animation: docFadeUp 0.4s ease both;
-  animation-delay: var(--doc-du, 0s);
-}
-
-.doc-card:hover { box-shadow: var(--ds-shadow); transform: translateY(-2px); }
-
-.doc-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-
-.doc-avatar {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--ds-accent), var(--ds-primary));
-  display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;
-}
-.doc-avatar .material-symbols-outlined { font-size: 22px; font-variation-settings: 'FILL' 1; }
-
-.doc-name { font-size: 14px; font-weight: 700; color: var(--ds-text); }
-.doc-spec { font-size: 11px; color: var(--ds-text-3); }
-
-.doc-info-row {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: var(--ds-text-2); margin-bottom: 5px;
-}
-.doc-info-row .material-symbols-outlined { font-size: 14px; color: var(--ds-accent); }
-
-.doc-card-footer {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-top: 12px; padding-top: 10px;
-  border-top: 1px solid var(--ds-border);
-}
-
-.doc-map-preview {
-  background: linear-gradient(135deg, #DBEAFE, #BAE6FD);
-  border-radius: 8px;
-  height: 80px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 12px;
-  border: 1px solid #BAE6FD;
-}
-
-.doc-map-grid {
-  position: absolute; inset: 0; opacity: 0.3;
-  background-image: linear-gradient(#60A5FA 1px, transparent 1px),
-    linear-gradient(90deg, #60A5FA 1px, transparent 1px);
-  background-size: 16px 16px;
-}
-
-.doc-map-pin {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%); color: var(--ds-danger);
-}
-.doc-map-pin .material-symbols-outlined { font-size: 22px; font-variation-settings: 'FILL' 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
-
-/* ============================================================
    ATTENDANCE PAGE
    ============================================================ */
 
@@ -1165,13 +1087,11 @@ tr:hover td { background: #FAFBFF; }
 
 @media (max-width: 900px) {
   .panels-2 { grid-template-columns: 1fr; }
-  .doc-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 700px) {
   .stat-cards { grid-template-columns: 1fr; }
   .tasks-board { grid-template-columns: 1fr; }
-  .doc-grid   { grid-template-columns: 1fr; }
 }
 
 /* ============================================================

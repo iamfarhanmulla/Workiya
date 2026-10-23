@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { StatusPill } from "@/components/status";
+import { LoadError, Meter, SkeletonRows } from "@/components/DataStates";
 import { fmtTime, isOverdue } from "../activities/_components/activityConfig";
 import { summarize } from "./dashboardStats";
 import { useTodayActivities } from "./useDashboardData";
-import { LoadError, Meter, SkeletonRows } from "./DashboardParts";
 
 const byDueTime = (a, b) => new Date(a.dueAtUtc) - new Date(b.dueAtUtc);
 

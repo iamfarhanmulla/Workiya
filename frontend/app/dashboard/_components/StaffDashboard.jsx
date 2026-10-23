@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import StatTile from "@/components/StatTile";
+import { LoadError, Meter, SkeletonRows } from "@/components/DataStates";
 import { fmtDateTime, initials } from "../activities/_components/activityConfig";
 import {
   byRep, completionTone, summarize,
@@ -9,12 +10,11 @@ import {
 import {
   REVIEW_PAGE_SIZE, TODAY_PAGE_SIZE, usePendingReviews, useTodayActivities,
 } from "./useDashboardData";
-import { LoadError, Meter, SkeletonRows } from "./DashboardParts";
 
 function KpiRow({ stats, reviewsTotal, plural }) {
   const { byStatus, planned, completion } = stats;
   return (
-    <div className="wk-dash-kpis">
+    <div className="wk-kpis">
       <StatTile icon="event_note" label={`Planned ${plural}`} value={planned}>
         <span className="wk-stat-foot">
           {`${byStatus.Pending} pending · ${byStatus.InProgress} in progress`}
