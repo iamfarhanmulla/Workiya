@@ -1,7 +1,7 @@
 "use client";
 
-// Inline error shown inside a modal (e.g. the server's INVALID_EXTRA_FIELDS message).
-export default function ErrorText({ message }) {
+// Form or dialog error: the banner is decoration, only the message is announced.
+export default function FormError({ message }) {
   if (!message) return null;
   return (
     <div className="wk-banner wk-banner--danger">

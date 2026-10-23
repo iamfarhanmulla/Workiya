@@ -1,8 +1,8 @@
 "use client";
 
 import { PriorityTag, StatusPill } from "@/components/status";
+import RowButton from "@/components/RowButton";
 import { fmtDate, initials, isOverdue } from "./activityConfig";
-import RowButton from "./RowButton";
 
 function TitleCell({ activity }) {
   const description = activity.description || "";

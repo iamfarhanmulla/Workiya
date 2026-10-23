@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, getErrorMessage } from "@/lib/apiClient";
 import Modal, { ModalFooter } from "@/components/Modal";
-import ErrorText from "./ErrorText";
+import ErrorText from "@/components/FormError";
 import useAssignableUsers from "./useAssignableUsers";
 
 const ROLE_LABEL = { EMPLOYEE: "Employee", MANAGER: "Manager" };

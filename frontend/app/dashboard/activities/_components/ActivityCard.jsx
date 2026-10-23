@@ -1,8 +1,8 @@
 "use client";
 
 import { PriorityTag, REVIEW_STATUS, StatusPill } from "@/components/status";
+import RowButton from "@/components/RowButton";
 import { fmtDate, initials, isOverdue } from "./activityConfig";
-import RowButton from "./RowButton";
 import StatusMoveButtons from "./StatusMoveButtons";
 
 function CardMeta({ icon, children }) {

@@ -5,8 +5,8 @@ import { api, getErrorMessage } from "@/lib/apiClient";
 import CustomFieldInputs from "@/components/CustomFieldInputs";
 import { useCustomFields } from "@/hooks/useCustomFields";
 import Modal, { ModalFooter } from "@/components/Modal";
+import ErrorText from "@/components/FormError";
 import AccountFormFields from "./AccountFormFields";
-import ErrorText from "./ErrorText";
 import { BLANK_FORM, toBody, toForm } from "./accountForm";
 
 const ID_PREFIX = "account-form";

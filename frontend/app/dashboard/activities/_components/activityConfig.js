@@ -2,23 +2,14 @@
 // so the Next.js App Router adds no route for it).
 import { ACTIVITY_STATUS } from "@/components/status";
 
+export { fmtDate, initials } from "@/lib/format";
+
 export const STATUSES = ["Pending", "InProgress", "Completed", "Cancelled", "Missed"];
 
 const EMPLOYEE_MOVES = {
   Pending: [{ status: "InProgress", label: "Start" }],
   InProgress: [{ status: "Pending", label: "Back to Pending" }],
 };
-
-export function initials(name = "") {
-  return (name || "").split(" ").map((w) => w[0]).join("").toUpperCase()
-    .slice(0, 2) || "?";
-}
-
-export function fmtDate(iso) {
-  if (!iso) return null;
-  const options = { day: "numeric", month: "short", year: "numeric" };
-  return new Date(iso).toLocaleDateString("en-IN", options);
-}
 
 export function fmtTime(iso) {
   if (!iso) return null;

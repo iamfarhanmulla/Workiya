@@ -38,12 +38,49 @@ export function SkeletonRows({ rows, tiles = false }) {
   );
 }
 
-export function LoadError({ what, onRetry }) {
+export function EmptyState({ icon = "search_off", title, text }) {
+  return (
+    <div className="wk-empty">
+      <div className="wk-empty-icon">
+        <span className="material-symbols-outlined wk-icon--lg" aria-hidden="true">{icon}</span>
+      </div>
+      <div className="wk-empty-title">{title}</div>
+      {text && <div className="wk-empty-text">{text}</div>}
+    </div>
+  );
+}
+
+// The body of a list card: skeleton while loading, error with retry, empty state,
+// otherwise the table, followed by a "Showing x of y" footer.
+export function ListBody({
+  list, plural, shown, emptyTitle, emptyText, children,
+}) {
+  if (list.loading) return <SkeletonRows rows={6} />;
+  if (list.error) {
+    const detail = list.error === "network" ? " Cannot connect to server." : "";
+    return (
+      <div className="wk-card-bd">
+        <LoadError what={plural} detail={detail} onRetry={list.reload} />
+      </div>
+    );
+  }
+  return (
+    <>
+      {shown === 0 ? <EmptyState title={emptyTitle} text={emptyText} /> : children}
+      <div className="wk-pagination">
+        <span>{`Showing ${shown} of ${list.items.length} ${plural}`}</span>
+      </div>
+    </>
+  );
+}
+
+export function LoadError({ what, detail, onRetry }) {
   return (
     <div className="wk-banner wk-banner--danger" role="alert">
       <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
       <div>
         <strong>{`Couldn't load ${what}`}</strong>
+        {detail}
         <button
           type="button"
           className="wk-btn wk-btn--secondary wk-btn--sm wk-retry"

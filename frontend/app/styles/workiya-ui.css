@@ -212,6 +212,7 @@
 .wk-avatar--teal  { background: var(--color-success-bg); color: var(--color-success-fg); }
 .wk-avatar--amber { background: var(--color-warning-bg); color: var(--color-warning-fg); }
 .wk-avatar--slate { background: var(--color-neutral-bg); color: var(--color-neutral-fg); }
+.wk-avatar--square { border-radius: var(--radius-md); }
 .wk-avatars { display: inline-flex; align-items: center; }
 .wk-avatars .wk-avatar { box-shadow: 0 0 0 2px var(--color-surface); }
 .wk-avatars .wk-avatar + .wk-avatar { margin-left: -6px; }
