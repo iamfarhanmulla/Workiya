@@ -5,7 +5,8 @@ const REFRESHABLE_CODES = ["AUTH_TOKEN_EXPIRED", "AUTH_REQUIRED"];
 const SESSION_ENDED_CODES = ["AUTH_REFRESH_INVALID", "AUTH_REFRESH_REUSED"];
 
 export const api = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api/v1`,
+  // Empty NEXT_PUBLIC_API_URL means "same site" (Vercel: forwarded by next.config rewrites).
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1`,
   withCredentials: true,
   headers: { "X-Requested-With": "XMLHttpRequest" },
 });
