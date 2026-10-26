@@ -2,7 +2,7 @@
 
 import { isSafeUrl } from "@/lib/safeUrl";
 
-const REQUIRED = <span style={{ color: "#EF4444" }}> *</span>;
+const REQUIRED = <span className="wk-req" aria-hidden="true">*</span>;
 
 // The evidence an activity type asks for: a photo (minPhotos > 0) and/or a signature.
 export function evidenceNeeds(activityType) {
@@ -30,14 +30,14 @@ function UrlInput({
   id, label, value, onChange,
 }) {
   return (
-    <div className="form-group">
-      <label htmlFor={id} className="form-label">
+    <div className="wk-field">
+      <label htmlFor={id} className="wk-label">
         {label}
         {REQUIRED}
       </label>
       <input
         id={id}
-        className="form-input"
+        className="wk-input"
         type="url"
         maxLength={500}
         placeholder="https://..."

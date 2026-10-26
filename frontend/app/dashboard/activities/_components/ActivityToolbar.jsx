@@ -1,6 +1,7 @@
 "use client";
 
-import { COL_CFG, STATUSES } from "./activityConfig";
+import { ACTIVITY_STATUS } from "@/components/status";
+import { STATUSES } from "./activityConfig";
 
 const VIEWS = [
   { value: "kanban", icon: "view_kanban", title: "Board" },
@@ -12,18 +13,16 @@ const VIEWS = [
 
 function ViewButtons({ view, onViewChange, isStaff }) {
   return (
-    <div className="tasks-view-btns" style={{ marginLeft: "auto" }}>
+    <div className="wk-seg" role="group" aria-label="View">
       {VIEWS.filter((v) => isStaff || !v.staffOnly).map((v) => (
         <button
           type="button"
           key={v.value}
-          className={`tasks-view-btn${view === v.value ? " active" : ""}`}
-          onClick={() => onViewChange(v.value)}
-          title={v.title}
-          aria-label={v.title}
           aria-pressed={view === v.value}
+          onClick={() => onViewChange(v.value)}
         >
-          <span className="material-symbols-outlined">{v.icon}</span>
+          <span className="material-symbols-outlined" aria-hidden="true">{v.icon}</span>
+          {v.title}
         </button>
       ))}
     </div>
@@ -36,37 +35,39 @@ export default function ActivityToolbar({
   const set = (key) => (e) => onFilterChange({ ...filters, [key]: e.target.value });
   const searchLabel = `Search ${plural.toLowerCase()}`;
   return (
-    <div className="tasks-toolbar">
-      <div className="co-search" style={{ maxWidth: 260 }}>
-        <span className="material-symbols-outlined">search</span>
+    <div className="wk-toolbar wk-toolbar--bare">
+      <div className="wk-input-wrap wk-toolbar-search">
+        <span className="material-symbols-outlined" aria-hidden="true">search</span>
         <input
           type="text"
+          className="wk-input"
           aria-label={searchLabel}
-          placeholder={`${searchLabel}...`}
+          placeholder={`${searchLabel}…`}
           value={filters.search}
           onChange={set("search")}
         />
       </div>
       <select
-        className="co-filter-select"
+        className="wk-select wk-toolbar-select"
         aria-label="Status"
         value={filters.status}
         onChange={set("status")}
       >
-        <option value="all">All Statuses</option>
-        {STATUSES.map((s) => <option key={s} value={s}>{COL_CFG[s].label}</option>)}
+        <option value="all">All statuses</option>
+        {STATUSES.map((s) => <option key={s} value={s}>{ACTIVITY_STATUS[s].label}</option>)}
       </select>
       <select
-        className="co-filter-select"
+        className="wk-select wk-toolbar-select"
         aria-label="Priority"
         value={filters.priority}
         onChange={set("priority")}
       >
-        <option value="all">All Priorities</option>
+        <option value="all">All priorities</option>
         <option value="High">High</option>
         <option value="Medium">Medium</option>
         <option value="Low">Low</option>
       </select>
+      <span className="wk-spacer" />
       <ViewButtons view={view} onViewChange={onViewChange} isStaff={isStaff} />
     </div>
   );

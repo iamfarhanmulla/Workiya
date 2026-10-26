@@ -1,39 +1,28 @@
 "use client";
 
-import ModalShell from "./ModalShell";
+import Modal from "@/components/Modal";
+import { PriorityTag, StatusPill } from "@/components/status";
 import DetailRow, { SectionTitle } from "./DetailRow";
 import StatusMoveButtons from "./StatusMoveButtons";
 import SubmissionDetails from "./SubmissionDetails";
-import {
-  COL_CFG, PILL, PRIORITY_STYLE, fmtDate, fmtDateTime,
-} from "./activityConfig";
-
-const DESCRIPTION = {
-  fontSize: 13,
-  color: "var(--ds-text)",
-  lineHeight: 1.6,
-  padding: "10px 12px",
-  background: "var(--ds-surface-2, #F8FAFC)",
-  borderRadius: 8,
-  whiteSpace: "pre-wrap",
-};
+import { fmtDate, fmtDateTime } from "./activityConfig";
 
 function Footer({
   isStaff, canSubmit, onClose, onEdit, onSubmitReport,
 }) {
   return (
     <>
-      <button type="button" className="btn btn-outline btn-sm" onClick={onClose}>Close</button>
-      {canSubmit && (
-        <button type="button" className="btn btn-primary btn-sm" onClick={onSubmitReport}>
-          <span className="material-symbols-outlined">task_alt</span>
-          Submit report
+      <button type="button" className="wk-btn wk-btn--secondary" onClick={onClose}>Close</button>
+      {isStaff && (
+        <button type="button" className="wk-btn wk-btn--secondary" onClick={onEdit}>
+          <span className="material-symbols-outlined" aria-hidden="true">edit</span>
+          Edit
         </button>
       )}
-      {isStaff && (
-        <button type="button" className="btn btn-primary btn-sm" onClick={onEdit}>
-          <span className="material-symbols-outlined">edit</span>
-          Edit
+      {canSubmit && (
+        <button type="button" className="wk-btn wk-btn--primary" onClick={onSubmitReport}>
+          <span className="material-symbols-outlined" aria-hidden="true">task_alt</span>
+          Submit report
         </button>
       )}
     </>
@@ -41,21 +30,21 @@ function Footer({
 }
 
 function ActivityDetails({ activity, accountLabel }) {
-  const cfg = COL_CFG[activity.status] || COL_CFG.Pending;
-  const ps = PRIORITY_STYLE[activity.priority] || PRIORITY_STYLE.Medium;
   return (
     <>
-      {activity.description && <div style={DESCRIPTION}>{activity.description}</div>}
-      <DetailRow icon="medical_services" label={accountLabel} value={activity.accountName} />
-      <DetailRow icon="category" label="Type" value={activity.activityTypeName} />
-      <DetailRow icon="person" label="Assigned To" value={activity.assignedToName} />
-      <DetailRow icon="manage_accounts" label="Assigned By" value={activity.assignedByName} />
-      <DetailRow icon="event" label="Due" value={fmtDateTime(activity.dueAtUtc)} />
-      <DetailRow icon="task_alt" label="Completed" value={fmtDateTime(activity.completedAtUtc)} />
-      <DetailRow icon="schedule" label="Created" value={fmtDate(activity.createdAtUtc)} />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <span style={{ ...PILL, background: ps.bg, color: ps.color }}>{activity.priority}</span>
-        <span style={{ ...PILL, background: cfg.countBg, color: cfg.countColor }}>{cfg.label}</span>
+      <div className="wk-actions">
+        <StatusPill status={activity.status} />
+        <PriorityTag priority={activity.priority} />
+      </div>
+      {activity.description && <p className="wk-detail-note">{activity.description}</p>}
+      <div className="wk-detail-grid">
+        <DetailRow icon="storefront" label={accountLabel} value={activity.accountName} />
+        <DetailRow icon="category" label="Type" value={activity.activityTypeName} />
+        <DetailRow icon="person" label="Assigned to" value={activity.assignedToName} />
+        <DetailRow icon="manage_accounts" label="Assigned by" value={activity.assignedByName} />
+        <DetailRow icon="event" label="Due" value={fmtDateTime(activity.dueAtUtc)} />
+        <DetailRow icon="task_alt" label="Completed" value={fmtDateTime(activity.completedAtUtc)} />
+        <DetailRow icon="schedule" label="Created" value={fmtDate(activity.createdAtUtc)} />
       </div>
     </>
   );
@@ -65,7 +54,6 @@ export default function ActivityViewModal({
   activity, labels, isStaff, moves, canSubmit, onMove, onEdit, onSubmitReport, onReviewed,
   onClose, showToast,
 }) {
-  const cfg = COL_CFG[activity.status] || COL_CFG.Pending;
   const latest = activity.latestSubmission;
   const footer = (
     <Footer
@@ -77,19 +65,17 @@ export default function ActivityViewModal({
     />
   );
   return (
-    <ModalShell
-      icon={cfg.icon}
-      iconBg={cfg.countBg}
-      iconColor={cfg.countColor}
+    <Modal
+      icon="event_note"
+      labelId="activity-view-title"
       title={activity.title}
       sub={`${labels.activity} #${activity.id}`}
-      maxWidth={540}
       onClose={onClose}
       footer={footer}
     >
       <ActivityDetails activity={activity} accountLabel={labels.account} />
       {moves.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="wk-field">
           <SectionTitle>Move to</SectionTitle>
           <StatusMoveButtons moves={moves} onMove={onMove} />
         </div>
@@ -103,6 +89,6 @@ export default function ActivityViewModal({
           showToast={showToast}
         />
       )}
-    </ModalShell>
+    </Modal>
   );
 }

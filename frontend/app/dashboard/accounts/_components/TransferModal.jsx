@@ -2,19 +2,19 @@
 
 import { useState } from "react";
 import { api, getErrorMessage } from "@/lib/apiClient";
-import ErrorText from "./ErrorText";
-import Modal, { ModalFooter } from "./Modal";
+import Modal, { ModalFooter } from "@/components/Modal";
+import ErrorText from "@/components/FormError";
 import useAssignableUsers from "./useAssignableUsers";
 
 function UserSelect({
   id, label, users, value, onChange,
 }) {
   return (
-    <div className="form-group">
-      <label htmlFor={id} className="form-label">{label}</label>
+    <div className="wk-field">
+      <label htmlFor={id} className="wk-label">{label}</label>
       <select
         id={id}
-        className="form-select"
+        className="wk-select"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -107,7 +107,6 @@ export default function TransferModal({
       sub={`Move all ${plural.toLowerCase()} of one rep to another`}
       onClose={onClose}
       footer={footer}
-      maxWidth={480}
     >
       <UserSelect
         id="transfer-from"

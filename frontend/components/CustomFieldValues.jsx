@@ -1,7 +1,4 @@
 const EMPTY = "—";
-const LIST_STYLE = { margin: 0, display: "grid", gap: 8 };
-const TERM_STYLE = { fontSize: 12, fontWeight: 600, color: "#6b7280" };
-const VALUE_STYLE = { margin: 0, fontSize: 14 };
 
 function isEmpty(value) {
   return value === undefined || value === null || value === ""
@@ -21,11 +18,11 @@ export function formatFieldValue(field, value) {
 export default function CustomFieldValues({ fields, values }) {
   if (!fields?.length) return null;
   return (
-    <dl className="custom-field-values" style={LIST_STYLE}>
+    <dl className="wk-dl custom-field-values">
       {fields.map((field) => (
         <div key={field.fieldKey} className="custom-field-value">
-          <dt style={TERM_STYLE}>{field.label}</dt>
-          <dd style={VALUE_STYLE}>{formatFieldValue(field, values?.[field.fieldKey])}</dd>
+          <dt>{field.label}</dt>
+          <dd>{formatFieldValue(field, values?.[field.fieldKey])}</dd>
         </div>
       ))}
     </dl>

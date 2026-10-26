@@ -9,7 +9,7 @@ import { useToast, ToastContainer } from "@/components/Toast";
 import LabelsSection from "./LabelsSection";
 import CustomFieldsSection from "./CustomFieldsSection";
 import VisitTypesSection from "./VisitTypesSection";
-import { SectionTitle } from "./FormBits";
+import { SettingsCard } from "./FormBits";
 
 const EDITOR_ROLES = ["SUPER_ADMIN", "ADMIN"];
 
@@ -34,24 +34,26 @@ function CompanyPicker({ companyId, onChange, notify }) {
   }, [notify]);
 
   return (
-    <div className="stg-section" style={{ "--stg-du": "0.2s" }}>
-      <SectionTitle icon="domain" color="#06B6D4">Fields &amp; Labels</SectionTitle>
-      <div className="stg-row">
-        <div>
-          <label className="stg-row-label" htmlFor="stg-company">Company</label>
-          <div className="stg-row-desc">Labels, fields and visit types are set per company</div>
+    <SettingsCard
+      id="company"
+      title="Choose a company"
+      desc="Labels, fields and types are set per company. Choose which one to edit."
+    >
+      <div className="wk-card-bd">
+        <div className="wk-field" style={{ maxWidth: 360 }}>
+          <label className="wk-label" htmlFor="stg-company">Company</label>
+          <select
+            id="stg-company"
+            className="wk-select"
+            value={companyId || ""}
+            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">Choose a company</option>
+            {companies.map((c) => <option key={c.Id} value={c.Id}>{c.Name}</option>)}
+          </select>
         </div>
-        <select
-          id="stg-company"
-          className="co-filter-select"
-          value={companyId || ""}
-          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">Choose a company</option>
-          {companies.map((c) => <option key={c.Id} value={c.Id}>{c.Name}</option>)}
-        </select>
       </div>
-    </div>
+    </SettingsCard>
   );
 }
 

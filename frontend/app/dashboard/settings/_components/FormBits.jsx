@@ -1,20 +1,23 @@
 "use client";
 
-export function SectionTitle({
-  icon, color, children, style,
+import RowButton from "@/components/RowButton";
+import { ActiveState } from "@/components/PersonCell";
+
+// A settings card: title, one-line description and an optional action on the right.
+export function SettingsCard({
+  id, title, desc, action, children,
 }) {
   return (
-    <div className="stg-section-title" style={style}>
-      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: 18, color, fontVariationSettings: "'FILL' 1" }}
-        >
-          {icon}
-        </span>
-        {children}
-      </span>
-    </div>
+    <section className="wk-card" id={id} aria-labelledby={`${id}-title`}>
+      <div className="wk-card-hd">
+        <div>
+          <h2 className="wk-card-title" id={`${id}-title`}>{title}</h2>
+          {desc && <div className="wk-card-sub">{desc}</div>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -22,17 +25,18 @@ export function TextField({
   id, label, value, onChange, type = "text", disabled = false, required = false, placeholder,
 }) {
   return (
-    <div className="form-group">
-      <label htmlFor={id} className="form-label">
+    <div className="wk-field">
+      <label htmlFor={id} className="wk-label">
         {label}
-        {required && <span style={{ color: "#EF4444" }}> *</span>}
+        {required && <span className="wk-req" aria-hidden="true">*</span>}
       </label>
       <input
         id={id}
-        className="form-input"
+        className="wk-input"
         type={type}
         value={value}
         disabled={disabled}
+        required={required}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -44,13 +48,7 @@ export function CheckboxField({
   id, label, checked, onChange,
 }) {
   return (
-    <label
-      htmlFor={id}
-      className="form-label"
-      style={{
-        display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
-      }}
-    >
+    <label htmlFor={id} className="wk-check">
       <input
         id={id}
         type="checkbox"
@@ -63,45 +61,23 @@ export function CheckboxField({
 }
 
 export function StatusBadge({ active }) {
-  return (
-    <span className={`badge ${active ? "badge-success" : "badge-gray"}`}>
-      {active ? "Active" : "Inactive"}
-    </span>
-  );
+  return <ActiveState isActive={active} />;
 }
 
 export function RowActions({ name, onEdit, onDelete }) {
   return (
-    <div className="action-btns">
-      <button
-        type="button"
-        className="icon-btn"
-        title="Edit"
-        aria-label={`Edit ${name}`}
-        onClick={onEdit}
-      >
-        <span className="material-symbols-outlined">edit</span>
-      </button>
-      <button
-        type="button"
-        className="icon-btn icon-btn-danger"
-        title="Delete"
-        aria-label={`Delete ${name}`}
-        onClick={onDelete}
-      >
-        <span className="material-symbols-outlined">delete</span>
-      </button>
+    <div className="wk-row-actions">
+      <RowButton icon="edit" label={`Edit ${name}`} onClick={onEdit} />
+      <RowButton icon="delete" label={`Delete ${name}`} danger onClick={onDelete} />
     </div>
   );
 }
 
 export function AddButton({ label, onClick }) {
   return (
-    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-      <button type="button" className="btn btn-primary btn-sm" onClick={onClick}>
-        <span className="material-symbols-outlined" aria-hidden="true">add</span>
-        {label}
-      </button>
-    </div>
+    <button type="button" className="wk-btn wk-btn--primary wk-btn--sm" onClick={onClick}>
+      <span className="material-symbols-outlined" aria-hidden="true">add</span>
+      {label}
+    </button>
   );
 }

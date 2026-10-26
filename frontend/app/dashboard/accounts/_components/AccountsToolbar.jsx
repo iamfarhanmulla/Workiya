@@ -1,17 +1,17 @@
 "use client";
 
 function ViewButton({
-  mode, icon, view, onView, label,
+  mode, icon, text, label, view, onView,
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       aria-pressed={view === mode}
-      className={`tasks-view-btn${view === mode ? " active" : ""}`}
       onClick={() => onView(mode)}
     >
-      <span className="material-symbols-outlined">{icon}</span>
+      <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+      {text}
     </button>
   );
 }
@@ -19,31 +19,35 @@ function ViewButton({
 export default function AccountsToolbar({
   plural, list, view, onView,
 }) {
+  const lower = plural.toLowerCase();
+  const toggle = { view, onView };
   return (
-    <div className="co-toolbar">
-      <div className="co-search">
-        <span className="material-symbols-outlined">search</span>
+    <div className="wk-toolbar">
+      <div className="wk-input-wrap wk-toolbar-search">
+        <span className="material-symbols-outlined" aria-hidden="true">search</span>
         <input
           type="text"
-          aria-label={`Search ${plural.toLowerCase()}`}
-          placeholder={`Search ${plural.toLowerCase()}, cities, phone...`}
+          className="wk-input"
+          aria-label={`Search ${lower}`}
+          placeholder={`Search ${lower}, cities, phone…`}
           value={list.search}
           onChange={(e) => list.setSearch(e.target.value)}
         />
       </div>
       <select
-        className="co-filter-select"
+        className="wk-select wk-toolbar-select"
         aria-label="Status filter"
         value={list.status}
         onChange={(e) => list.setStatus(e.target.value)}
       >
-        <option value="all">All Status</option>
+        <option value="all">All statuses</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
-      <div className="tasks-view-btns" style={{ marginLeft: "auto" }}>
-        <ViewButton mode="grid" icon="grid_view" label="Grid view" view={view} onView={onView} />
-        <ViewButton mode="list" icon="table_rows" label="List view" view={view} onView={onView} />
+      <span className="wk-spacer" />
+      <div className="wk-seg" role="group" aria-label="Layout">
+        <ViewButton mode="grid" icon="grid_view" text="Grid" label="Grid view" {...toggle} />
+        <ViewButton mode="list" icon="table_rows" text="List" label="List view" {...toggle} />
       </div>
     </div>
   );

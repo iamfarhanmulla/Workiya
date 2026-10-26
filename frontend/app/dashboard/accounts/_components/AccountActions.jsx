@@ -1,48 +1,43 @@
 "use client";
 
-import activateOnKey from "@/app/dashboard/_utils/activateOnKey";
-
 function IconButton({
-  icon, title, onClick, danger,
+  icon, label, onClick, danger,
 }) {
+  const tone = danger ? " wk-btn--ghost-danger" : "";
   return (
-    <div
-      className={`icon-btn${danger ? " icon-btn-danger" : ""}`}
-      title={title}
-      aria-label={title}
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
+      className={`wk-btn wk-btn--ghost wk-btn--icon wk-btn--sm${tone}`}
+      title={label}
+      aria-label={label}
       onClick={onClick}
-      onKeyDown={activateOnKey}
     >
-      <span className="material-symbols-outlined">{icon}</span>
-    </div>
+      <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+    </button>
   );
 }
 
 // View is always available; edit, assign, toggle and delete only for staff.
 // handlers: { onView, onEdit, onAssign, onToggle, onDelete }; onToggle is optional.
-export default function AccountActions({
-  account, canManage, handlers, className,
-}) {
+export default function AccountActions({ account, canManage, handlers }) {
   const {
     onView, onEdit, onAssign, onToggle, onDelete,
   } = handlers;
   return (
-    <div className={className} style={className ? undefined : { display: "flex", gap: 4 }}>
-      <IconButton icon="visibility" title="View" onClick={() => onView(account)} />
+    <div className="wk-row-actions">
+      <IconButton icon="visibility" label="View" onClick={() => onView(account)} />
       {canManage && (
         <>
-          <IconButton icon="edit" title="Edit" onClick={() => onEdit(account)} />
-          <IconButton icon="group_add" title="Assign reps" onClick={() => onAssign(account)} />
+          <IconButton icon="edit" label="Edit" onClick={() => onEdit(account)} />
+          <IconButton icon="group_add" label="Assign reps" onClick={() => onAssign(account)} />
           {onToggle && (
             <IconButton
               icon={account.isActive ? "toggle_on" : "toggle_off"}
-              title={account.isActive ? "Deactivate" : "Activate"}
+              label={account.isActive ? "Deactivate" : "Activate"}
               onClick={() => onToggle(account)}
             />
           )}
-          <IconButton icon="delete" title="Delete" danger onClick={() => onDelete(account)} />
+          <IconButton icon="delete" label="Delete" danger onClick={() => onDelete(account)} />
         </>
       )}
     </div>

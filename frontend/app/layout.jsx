@@ -1,11 +1,21 @@
 // eslint-disable-next-line camelcase -- next/font/google names each export after the font family
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import "./styles/tokens.css";
 import "./globals.css";
+import "./styles/workiya-ui.css";
 import ReduxProvider from "@/components/ReduxProvider";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+// The font variables sit on <html> so tokens.css (on :root) can read them.
+const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
-  variable: "--font-jakarta",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plex",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-plex-mono",
 });
 
 export const metadata = {
@@ -15,7 +25,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <head>
         <link
           rel="stylesheet"
@@ -23,7 +33,7 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
         />
       </head>
-      <body className={plusJakartaSans.variable} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <ReduxProvider>{children}</ReduxProvider>
       </body>
     </html>

@@ -60,11 +60,11 @@ const FLAGS = [
 function TypeForm({ form, set }) {
   return (
     <>
-      <div className="form-row form-row-2">
+      <div className="wk-form-row">
         <TextField id="vt-name" label="Name" required value={form.name} onChange={set("name")} />
         <TextField id="vt-code" label="Code" required value={form.code} onChange={set("code")} />
       </div>
-      <div className="form-row form-row-2">
+      <div className="wk-form-row">
         <TextField
           id="vt-geofence"
           label="Geofence (metres, empty = off)"
@@ -80,10 +80,7 @@ function TypeForm({ form, set }) {
           onChange={set("minPhotos")}
         />
       </div>
-      <div style={{
-        display: "flex", flexWrap: "wrap", gap: 16, marginTop: 6,
-      }}
-      >
+      <div className="wk-flag-row">
         {FLAGS.map(([key, label]) => (
           <CheckboxField
             key={key}

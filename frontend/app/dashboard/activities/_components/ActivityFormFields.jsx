@@ -1,14 +1,14 @@
 "use client";
 
-const REQUIRED = <span style={{ color: "#EF4444" }}>*</span>;
+const REQUIRED = <span className="wk-req" aria-hidden="true">*</span>;
 
 function SelectField({
   id, label, value, onChange, placeholder, options,
 }) {
   return (
-    <div className="form-group">
-      <label htmlFor={id} className="form-label">{label} {REQUIRED}</label>
-      <select id={id} className="form-select" value={value} onChange={onChange}>
+    <div className="wk-field">
+      <label htmlFor={id} className="wk-label">{label} {REQUIRED}</label>
+      <select id={id} className="wk-select" value={value} onChange={onChange}>
         <option value="">{placeholder}</option>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -30,12 +30,12 @@ function employeeOptions(employees) {
 
 function PriorityAndDue({ form, set }) {
   return (
-    <div className="form-row form-row-2">
-      <div className="form-group">
-        <label htmlFor="act-priority" className="form-label">Priority</label>
+    <div className="wk-form-row">
+      <div className="wk-field">
+        <label htmlFor="act-priority" className="wk-label">Priority</label>
         <select
           id="act-priority"
-          className="form-select"
+          className="wk-select"
           value={form.priority}
           onChange={set("priority")}
         >
@@ -44,11 +44,11 @@ function PriorityAndDue({ form, set }) {
           <option value="Low">Low</option>
         </select>
       </div>
-      <div className="form-group">
-        <label htmlFor="act-due" className="form-label">Due</label>
+      <div className="wk-field">
+        <label htmlFor="act-due" className="wk-label">Due</label>
         <input
           id="act-due"
-          className="form-input"
+          className="wk-input"
           type="datetime-local"
           value={form.dueAt}
           onChange={set("dueAt")}
@@ -64,15 +64,15 @@ export default function ActivityFormFields({
 }) {
   return (
     <>
-      <div className="form-group">
-        <label htmlFor="act-title" className="form-label">Title {REQUIRED}</label>
-        <input id="act-title" className="form-input" value={form.title} onChange={set("title")} />
+      <div className="wk-field">
+        <label htmlFor="act-title" className="wk-label">Title {REQUIRED}</label>
+        <input id="act-title" className="wk-input" value={form.title} onChange={set("title")} />
       </div>
-      <div className="form-group">
-        <label htmlFor="act-description" className="form-label">Description / Instructions</label>
+      <div className="wk-field">
+        <label htmlFor="act-description" className="wk-label">Description / Instructions</label>
         <textarea
           id="act-description"
-          className="form-textarea"
+          className="wk-textarea"
           rows={3}
           value={form.description}
           onChange={set("description")}

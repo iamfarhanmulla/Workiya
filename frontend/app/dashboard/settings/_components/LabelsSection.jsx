@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getErrorMessage } from "@/lib/apiClient";
 import { useTerminology } from "@/hooks/useTerminology";
-import { SectionTitle, TextField } from "./FormBits";
+import { SettingsCard, TextField } from "./FormBits";
 import { TERM_KEYS, getTerminology, saveTerminology } from "./settingsApi";
 
 const KEY_LABELS = {
@@ -43,7 +43,7 @@ function useCompanyLabels(companyId, notify) {
 
 function LabelInputs({ labels, disabled, onChange }) {
   return (
-    <div className="form-row form-row-2">
+    <div className="wk-form-row">
       {TERM_KEYS.map((key) => (
         <TextField
           key={key}
@@ -83,23 +83,27 @@ export default function LabelsSection({ companyId, notify }) {
   };
 
   return (
-    <div className="stg-section" style={{ "--stg-du": "0.2s" }}>
-      <SectionTitle icon="translate" color="#1E3A8A">Labels</SectionTitle>
-      <p className="stg-row-desc" style={{ marginBottom: 12 }}>
-        The words used for accounts, visits and reports across the app.
-      </p>
-      <LabelInputs labels={labels} disabled={loading} onChange={setLabels} />
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+    <SettingsCard
+      id="labels"
+      title="Labels"
+      desc="The words your company uses for accounts, visits and reports, everywhere in the app."
+    >
+      <div className="wk-card-bd">
+        <LabelInputs labels={labels} disabled={loading} onChange={setLabels} />
+      </div>
+      <div className="wk-card-ft">
+        <span className="wk-muted">Each label is required, up to 100 characters.</span>
         <button
           type="button"
-          className="btn btn-primary btn-sm"
+          className="wk-btn wk-btn--primary wk-btn--sm"
           onClick={handleSave}
           disabled={saving || loading}
+          aria-busy={saving}
         >
           <span className="material-symbols-outlined" aria-hidden="true">save</span>
-          {saving ? "Saving..." : "Save Labels"}
+          {saving ? "Saving…" : "Save labels"}
         </button>
       </div>
-    </div>
+    </SettingsCard>
   );
 }

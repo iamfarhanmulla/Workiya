@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api, getErrorMessage } from "@/lib/apiClient";
-import ErrorText from "./ErrorText";
-import Modal, { ModalFooter } from "./Modal";
+import Modal, { ModalFooter } from "@/components/Modal";
+import ErrorText from "@/components/FormError";
 import useAssignableUsers from "./useAssignableUsers";
 
 const ROLE_LABEL = { EMPLOYEE: "Employee", MANAGER: "Manager" };
@@ -29,21 +29,19 @@ function RepRow({
 }) {
   const id = `assign-rep-${user.userId}`;
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 12, padding: "6px 0",
-    }}
-    >
-      <input id={id} type="checkbox" checked={checked} onChange={() => onToggle(user.userId)} />
-      <label htmlFor={id} style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
-        {user.displayName}
-        <span style={{ color: "#94A3B8", fontWeight: 500 }}> · {ROLE_LABEL[user.roleCode]}</span>
+    <div className={`wk-assign-row${checked ? " is-selected" : ""}`}>
+      <label htmlFor={id} className="wk-check wk-assign-name">
+        <input id={id} type="checkbox" checked={checked} onChange={() => onToggle(user.userId)} />
+        <span>
+          {user.displayName}
+          <span className="wk-muted">{` · ${ROLE_LABEL[user.roleCode]}`}</span>
+        </span>
       </label>
       <input
-        className="form-input"
+        className="wk-input wk-assign-visits"
         type="number"
         min={1}
         max={31}
-        style={{ width: 110 }}
         aria-label={`Visits per month for ${user.displayName}`}
         placeholder="Visits/mo"
         disabled={!checked}
@@ -73,8 +71,8 @@ function useCurrentAssignments(account) {
 function RepList({
   users, loading, selection, setSelection,
 }) {
-  if (loading) return <p style={{ fontSize: 13 }}>Loading reps...</p>;
-  if (users.length === 0) return <p style={{ fontSize: 13 }}>No active reps in this company.</p>;
+  if (loading) return <p className="wk-muted">Loading reps…</p>;
+  if (users.length === 0) return <p className="wk-muted">No active reps in this company.</p>;
   const toggle = (userId) => setSelection((prev) => {
     const next = { ...prev };
     if (userId in next) delete next[userId];
@@ -82,16 +80,20 @@ function RepList({
     return next;
   });
   const setVisits = (userId, value) => setSelection((prev) => ({ ...prev, [userId]: value }));
-  return users.map((user) => (
-    <RepRow
-      key={user.userId}
-      user={user}
-      checked={user.userId in selection}
-      visits={selection[user.userId] ?? ""}
-      onToggle={toggle}
-      onVisits={setVisits}
-    />
-  ));
+  return (
+    <div className="wk-assign-list">
+      {users.map((user) => (
+        <RepRow
+          key={user.userId}
+          user={user}
+          checked={user.userId in selection}
+          visits={selection[user.userId] ?? ""}
+          onToggle={toggle}
+          onVisits={setVisits}
+        />
+      ))}
+    </div>
+  );
 }
 
 function useAssignReps(account, callerRole, onSaved) {

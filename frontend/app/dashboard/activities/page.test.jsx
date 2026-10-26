@@ -190,7 +190,7 @@ describe("ActivitiesPage", () => {
 
     // Assert
     expect(screen.getByRole("button", { name: "→ Start" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /COMPLETED/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Completed/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /New Visit/ })).not.toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalledWith("/employees");
   });
@@ -210,7 +210,7 @@ describe("ActivitiesPage", () => {
     await user.click(screen.getByRole("button", { name: /Use my location/ }));
     await user.type(screen.getByLabelText("Notes"), "Doctor agreed to trial");
     await user.type(screen.getByLabelText("Samples given"), "Two boxes");
-    await user.click(screen.getByRole("button", { name: /^send Submit$/ }));
+    await user.click(screen.getByRole("button", { name: /^Submit$/ }));
 
     // Assert
     await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
@@ -255,7 +255,7 @@ describe("ActivitiesPage", () => {
     await user.click(screen.getByRole("button", { name: /Use my location/ }));
 
     // Act
-    await user.click(screen.getByRole("button", { name: /^send Submit$/ }));
+    await user.click(screen.getByRole("button", { name: /^Submit$/ }));
 
     // Assert
     expect(await screen.findByText("You are 812 m away.")).toBeInTheDocument();

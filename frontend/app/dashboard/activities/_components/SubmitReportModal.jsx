@@ -5,40 +5,34 @@ import { api, getErrorMessage } from "@/lib/apiClient";
 import CustomFieldInputs from "@/components/CustomFieldInputs";
 import { useActivityTypes } from "@/hooks/useActivityTypes";
 import { useCustomFields } from "@/hooks/useCustomFields";
+import Modal from "@/components/Modal";
 import EvidenceFields, { evidenceProblem } from "./EvidenceFields";
-import ModalShell from "./ModalShell";
 import useGeoCheckIn from "./useGeoCheckIn";
 import { fmtDateTime } from "./activityConfig";
-
-const ROW = {
-  display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-};
-const MUTED = { fontSize: 12, color: "var(--ds-text-2)" };
-const ERROR = { fontSize: 12, color: "#EF4444", marginTop: 6 };
 
 function LocationPicker({ geo }) {
   const { checkIn } = geo;
   return (
-    <div className="form-group">
-      <span className="form-label">Check-in</span>
-      <div style={ROW}>
+    <div className="wk-field">
+      <span className="wk-label">Check-in</span>
+      <div className="wk-actions">
         <button
           type="button"
-          className="btn btn-outline btn-sm"
+          className="wk-btn wk-btn--secondary"
           onClick={geo.locate}
           disabled={geo.locating}
         >
-          <span className="material-symbols-outlined">my_location</span>
-          {geo.locating ? "Locating..." : "Use my location"}
+          <span className="material-symbols-outlined" aria-hidden="true">my_location</span>
+          {geo.locating ? "Locating…" : "Use my location"}
         </button>
         {checkIn && (
-          <span style={MUTED}>
+          <span className="wk-muted">
             {`${checkIn.latitude.toFixed(6)}, ${checkIn.longitude.toFixed(6)}`}
             {` at ${fmtDateTime(checkIn.at)}`}
           </span>
         )}
       </div>
-      {geo.error && <p role="alert" style={ERROR}>{geo.error}</p>}
+      {geo.error && <p role="alert" className="wk-error-text">{geo.error}</p>}
     </div>
   );
 }
@@ -47,22 +41,22 @@ function ReportFields({ report, setReport, fields }) {
   const set = (key) => (e) => setReport((prev) => ({ ...prev, [key]: e.target.value }));
   return (
     <>
-      <div className="form-group">
-        <label htmlFor="report-notes" className="form-label">Notes</label>
+      <div className="wk-field">
+        <label htmlFor="report-notes" className="wk-label">Notes</label>
         <textarea
           id="report-notes"
-          className="form-textarea"
+          className="wk-textarea"
           rows={3}
           maxLength={3000}
           value={report.notes}
           onChange={set("notes")}
         />
       </div>
-      <div className="form-group">
-        <label htmlFor="report-rating" className="form-label">Rating</label>
+      <div className="wk-field">
+        <label htmlFor="report-rating" className="wk-label">Rating</label>
         <select
           id="report-rating"
-          className="form-select"
+          className="wk-select"
           value={report.rating}
           onChange={set("rating")}
         >
@@ -137,18 +131,17 @@ export default function SubmitReportModal({
 
   const footer = (
     <>
-      <button type="button" className="btn btn-outline btn-sm" onClick={onClose}>Cancel</button>
-      <button type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={saving}>
-        <span className="material-symbols-outlined">send</span>
-        {saving ? "Submitting..." : "Submit"}
+      <button type="button" className="wk-btn wk-btn--secondary" onClick={onClose}>Cancel</button>
+      <button type="button" className="wk-btn wk-btn--primary" onClick={submit} disabled={saving}>
+        <span className="material-symbols-outlined" aria-hidden="true">send</span>
+        {saving ? "Submitting…" : "Submit"}
       </button>
     </>
   );
   return (
-    <ModalShell
+    <Modal
       icon="task_alt"
-      iconBg="#D1FAE5"
-      iconColor="#059669"
+      labelId="report-title"
       title={`Submit ${labels.submission.toLowerCase()}`}
       sub={activity.title}
       onClose={onClose}
@@ -157,6 +150,6 @@ export default function SubmitReportModal({
       <LocationPicker geo={geo} />
       <EvidenceFields activityType={activityType} report={report} setReport={setReport} />
       <ReportFields report={report} setReport={setReport} fields={fields || []} />
-    </ModalShell>
+    </Modal>
   );
 }

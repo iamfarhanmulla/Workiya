@@ -1,25 +1,10 @@
 "use client";
 
+import { SkeletonRows } from "@/components/DataStates";
 import ActivityBoard from "./ActivityBoard";
 import ActivityTable from "./ActivityTable";
 import PendingReviews from "./PendingReviews";
 import { statusMoves } from "./activityConfig";
-
-const ERROR = { margin: "0 20px 8px", fontSize: 13, color: "#EF4444" };
-
-function Loading({ plural }) {
-  return (
-    <div className="page-placeholder">
-      <span
-        className="material-symbols-outlined page-placeholder-icon"
-        style={{ animation: "spin 1s linear infinite" }}
-      >
-        progress_activity
-      </span>
-      <p>{`Loading ${plural.toLowerCase()}...`}</p>
-    </div>
-  );
-}
 
 function ActivityList({
   view, activities, labels, user, isStaff, actions,
@@ -27,15 +12,17 @@ function ActivityList({
   const emptyLabel = `No ${labels.activities.toLowerCase()} found.`;
   if (view === "list") {
     return (
-      <ActivityTable
-        activities={activities}
-        accountLabel={labels.account}
-        emptyLabel={emptyLabel}
-        isStaff={isStaff}
-        onView={actions.openView}
-        onEdit={actions.openEdit}
-        onDelete={actions.askDelete}
-      />
+      <section className="wk-card wk-results" aria-label={labels.activities}>
+        <ActivityTable
+          activities={activities}
+          accountLabel={labels.account}
+          emptyLabel={emptyLabel}
+          isStaff={isStaff}
+          onView={actions.openView}
+          onEdit={actions.openEdit}
+          onDelete={actions.askDelete}
+        />
+      </section>
     );
   }
   return (
@@ -65,11 +52,14 @@ export default function ActivityContent({
   if (view === "review" && isStaff) {
     return <PendingReviews labels={labels} onReviewed={actions.finish} showToast={showToast} />;
   }
-  if (data.loading) return <Loading plural={labels.activities} />;
+  if (data.loading) return <section className="wk-card"><SkeletonRows rows={6} /></section>;
   return (
     <>
       {data.failed && (
-        <p role="alert" style={ERROR}>{`Failed to load ${labels.activities.toLowerCase()}.`}</p>
+        <div className="wk-banner wk-banner--danger">
+          <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+          <div role="alert">{`Failed to load ${labels.activities.toLowerCase()}.`}</div>
+        </div>
       )}
       <ActivityList
         view={view}
