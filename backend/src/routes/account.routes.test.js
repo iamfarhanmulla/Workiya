@@ -1,18 +1,17 @@
-const mockConnectDb = jest.fn();
-
-jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: mockConnectDb }));
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 jest.mock("../services/audit.service");
 jest.mock("../services/customFields.service");
 
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const request = require("supertest");
+const db = require("../config/db");
 const accountRoutes = require("./account.routes");
 const { authenticate } = require("../middleware/authenticate");
 const { errorHandler } = require("../middleware/errorHandler");
 const customFieldsService = require("../services/customFields.service");
 const {
-  USERS, authCookie, mockPool, rows, affected,
+  USERS, authCookie, rows, affected,
 } = require("../../test/helpers/apiHarness");
 
 // The accounts router behind the real authentication and error handler.
@@ -32,22 +31,8 @@ function call(method, url, user) {
   return user ? req.set("Cookie", authCookie(user)) : req;
 }
 
-function withTransactions(db) {
-  return mockConnectDb().then((pool) => {
-    Object.assign(pool, {
-      transaction: () => ({
-        begin: jest.fn().mockResolvedValue(),
-        commit: jest.fn().mockResolvedValue(),
-        rollback: jest.fn().mockResolvedValue(),
-        request: () => pool.request(),
-      }),
-    });
-    return db;
-  });
-}
-
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
   customFieldsService.validateValues.mockResolvedValue({ ok: true, value: {} });
 });
 
@@ -70,7 +55,7 @@ describe("account routes permissions", () => {
     ["post", "/assignments/transfer", { fromUserId: 1, toUserId: 2 }],
   ])("forbids an EMPLOYEE to %s %s", async (method, url, body) => {
     // Arrange
-    const db = mockPool(mockConnectDb, []);
+    db.reset();
 
     // Act
     const res = await call(method, url, USERS.employee).send(body);
@@ -78,12 +63,12 @@ describe("account routes permissions", () => {
     // Assert
     expect(res.status).toBe(403);
     expect(res.body).toMatchObject({ success: false, errorCode: "FORBIDDEN" });
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it("returns 404 to an EMPLOYEE for an account not assigned to them", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows()]);
+    db.reset([rows()]);
 
     // Act
     const res = await call("get", "/4", USERS.employee);
@@ -91,15 +76,16 @@ describe("account routes permissions", () => {
     // Assert
     expect(res.status).toBe(404);
     expect(res.body).toMatchObject({ success: false, errorCode: "NOT_FOUND" });
-    expect(db.queries[0].text).toContain("aa.UserId = @me");
-    expect(db.queries[0].inputs).toMatchObject({ id: 4, me: 30, scopeCompanyId: 2 });
+    expect(db.calls[0].text).toContain("aa.user_id = @me");
+    expect(db.calls[0].params).toMatchObject({ id: 4, me: 30, scopeCompanyId: 2 });
   });
 
   it("lists an EMPLOYEE's assigned accounts in the standard wrapper", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [
-      { recordsets: [[{ Total: 1 }], [{ Id: 4, CompanyId: 2, Name: "A" }]] },
-      rows({ AccountId: 4, UserId: 30, DisplayName: "Rep" }),
+    db.reset([
+      rows({ total: 1 }),
+      rows({ id: 4, company_id: 2, name: "A" }),
+      rows({ account_id: 4, user_id: 30, display_name: "Rep" }),
     ]);
 
     // Act
@@ -110,7 +96,8 @@ describe("account routes permissions", () => {
     expect(res.body.data).toMatchObject({
       total: 1, page: 1, pageSize: 10, items: [{ id: 4, assignedUsers: [{ userId: 30 }] }],
     });
-    expect(db.queries[0].text).toContain("aa.UserId = @me");
+    expect(db.calls[0].text).toContain("aa.user_id = @me");
+    expect(db.calls[1].params).toMatchObject({ pageSize: 10, offset: 0 });
   });
 });
 
@@ -124,7 +111,7 @@ describe("account routes validation and writes", () => {
     ["post", "/assignments/transfer", { fromUserId: 3, toUserId: 3 }],
   ])("rejects %s %s with VALIDATION_FAILED", async (method, url, body) => {
     // Arrange
-    mockPool(mockConnectDb, []);
+    db.reset();
 
     // Act
     const res = await call(method, url, USERS.manager).send(body);
@@ -136,7 +123,7 @@ describe("account routes validation and writes", () => {
 
   it("creates an account for a MANAGER and returns 201", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 9 }), rows({ Id: 9, CompanyId: 2, Name: "A" })]);
+    db.reset([rows({ id: 9 }), rows({ id: 9, company_id: 2, name: "A" })]);
 
     // Act
     const res = await call("post", "/", USERS.manager).send({ name: " A ", latitude: "12.5" });
@@ -144,7 +131,7 @@ describe("account routes validation and writes", () => {
     // Assert
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ id: 9, name: "A" });
-    expect(db.queries[0].inputs).toMatchObject({ companyId: 2, name: "A", latitude: 12.5 });
+    expect(db.calls[0].params).toMatchObject({ companyId: 2, name: "A", latitude: 12.5 });
   });
 
   it.each([
@@ -153,8 +140,8 @@ describe("account routes validation and writes", () => {
     ["patch", "/4/status", { isActive: true }, "Account activated."],
   ])("%s %s succeeds for staff", async (method, url, body, message) => {
     // Arrange
-    const row = rows({ Id: 4, CompanyId: 2, Name: "B" });
-    mockPool(mockConnectDb, [row, { recordset: [], rowsAffected: [1] }, row]);
+    const row = rows({ id: 4, company_id: 2, name: "B" });
+    db.reset([row, affected(1), row]);
 
     // Act
     const res = await call(method, url, USERS.admin).send(body);
@@ -166,22 +153,23 @@ describe("account routes validation and writes", () => {
 
   it("soft-deletes an account inside a transaction", async () => {
     // Arrange
-    const db = await withTransactions(mockPool(mockConnectDb, [rows({ Id: 4, CompanyId: 2 })]));
+    db.reset([rows({ id: 4, company_id: 2 }), affected(1), affected(1)]);
 
     // Act
     const res = await call("delete", "/4", USERS.manager);
 
     // Assert
     expect(res.status).toBe(200);
-    expect(db.queries.map((q) => q.text).join()).toContain("UPDATE AccountAssignments");
+    expect(db.transactionLog()).toEqual(["BEGIN", "COMMIT"]);
+    expect(db.calls.map((q) => q.text).join()).toContain("UPDATE account_assignments");
   });
 
   it("lists an account's assignments for staff", async () => {
     // Arrange
-    mockPool(mockConnectDb, [
-      rows({ Id: 4, CompanyId: 2 }),
+    db.reset([
+      rows({ id: 4, company_id: 2 }),
       rows({
-        AccountId: 4, UserId: 30, DisplayName: "Rep", RoleCode: "EMPLOYEE",
+        account_id: 4, user_id: 30, display_name: "Rep", role_code: "EMPLOYEE",
       }),
     ]);
 
@@ -197,13 +185,14 @@ describe("account routes validation and writes", () => {
 
   it("replaces an account's assignments in a transaction", async () => {
     // Arrange
-    const db = await withTransactions(mockPool(mockConnectDb, [
-      rows({ Id: 4, CompanyId: 2 }),
-      rows({ Id: 30 }),
+    db.reset([
+      rows({ id: 4, company_id: 2 }),
+      rows({ id: 30 }),
+      rows({ id: 4 }),
       rows(),
       affected(1),
-      rows({ AccountId: 4, UserId: 30, DisplayName: "Rep" }),
-    ]));
+      rows({ account_id: 4, user_id: 30, display_name: "Rep" }),
+    ]);
 
     // Act
     const res = await call("put", "/4/assignments", USERS.manager)
@@ -212,18 +201,22 @@ describe("account routes validation and writes", () => {
     // Assert
     expect(res.status).toBe(200);
     expect(res.body.message).toBe("Assignments saved.");
-    expect(db.queries[3].text).toContain("INSERT INTO AccountAssignments");
-    expect(db.queries[3].inputs).toMatchObject({ account0: 4, user0: 30, visits0: 4 });
+    expect(db.transactionLog()).toEqual(["BEGIN", "COMMIT"]);
+    const insert = db.statements()[4];
+    expect(insert.text).toContain("INSERT INTO account_assignments");
+    expect(insert.params).toMatchObject({ accountIds: [4], userIds: [30], visits: [4] });
   });
 
   it("transfers a rep's accounts and reports how many moved", async () => {
     // Arrange
-    await withTransactions(mockPool(mockConnectDb, [
-      rows({ Id: 30 }),
-      rows({ Id: 31 }),
-      rows({ Id: 1, AccountId: 4, VisitsPerMonth: 2 }),
+    db.reset([
+      rows({ id: 30 }),
+      rows({ id: 31 }),
+      rows({ id: 1, account_id: 4, visits_per_month: 2 }),
       rows(),
-    ]));
+      affected(1),
+      affected(1),
+    ]);
 
     // Act
     const res = await call("post", "/assignments/transfer", USERS.manager)
@@ -232,11 +225,12 @@ describe("account routes validation and writes", () => {
     // Assert
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ data: { moved: 1 }, message: "1 account(s) transferred." });
+    expect(db.transactionLog()).toEqual(["BEGIN", "COMMIT"]);
   });
 
   it("rejects a transfer to a user of another company", async () => {
     // Arrange
-    mockPool(mockConnectDb, [rows({ Id: 30 }), rows()]);
+    db.reset([rows({ id: 30 }), rows()]);
 
     // Act
     const res = await call("post", "/assignments/transfer", USERS.manager)

@@ -57,12 +57,12 @@ function unsupported(message) {
 // Rules a submission cannot meet yet: there is no customer OTP flow, and a submission holds
 // a single photo. Such a type is reported plainly instead of being silently ignored.
 function assertSupportedType(activity) {
-  if (activity.RequiresCustomerOtp) {
+  if (activity.requires_customer_otp) {
     throw unsupported("This activity type requires customer OTP verification, which is not"
       + " available yet. Ask an admin to turn it off for this type.");
   }
-  if (activity.MinPhotos > 1) {
-    throw unsupported(`This activity type requires ${activity.MinPhotos} photos, but a`
+  if (activity.min_photos > 1) {
+    throw unsupported(`This activity type requires ${activity.min_photos} photos, but a`
       + " submission can hold only one. Ask an admin to lower the minimum.");
   }
 }
@@ -72,13 +72,13 @@ function assertTypeRequirements(activity, body) {
   assertSupportedType(activity);
   const hasCheckIn = isSet(body.checkInAtUtc)
     && isSet(body.checkInLatitude) && isSet(body.checkInLongitude);
-  if (activity.RequiresCheckIn && !hasCheckIn) {
+  if (activity.requires_check_in && !hasCheckIn) {
     throw missing("Check-in time and location are required for this activity type.");
   }
-  if (activity.MinPhotos > 0 && !isSet(body.photoUrl)) {
+  if (activity.min_photos > 0 && !isSet(body.photoUrl)) {
     throw missing("A photo is required for this activity type.");
   }
-  if (activity.RequiresSignature && !isSet(body.signatureUrl)) {
+  if (activity.requires_signature && !isSet(body.signatureUrl)) {
     throw missing("A signature is required for this activity type.");
   }
 }
@@ -86,9 +86,9 @@ function assertTypeRequirements(activity, body) {
 // With a geofence on the type, the check-in must be inside the fence. An account without a
 // location cannot be checked, so the submit is refused instead of the fence being skipped.
 function assertInsideGeofence(activity, body) {
-  const fence = activity.GeofenceMeters;
+  const fence = activity.geofence_meters;
   if (!fence) return;
-  if (!isSet(activity.AccountLatitude) || !isSet(activity.AccountLongitude)) {
+  if (!isSet(activity.account_latitude) || !isSet(activity.account_longitude)) {
     throw new AppError(
       422,
       ERROR_CODES.OUTSIDE_GEOFENCE,
@@ -102,8 +102,8 @@ function assertInsideGeofence(activity, body) {
   const distance = distanceMeters(
     body.checkInLatitude,
     body.checkInLongitude,
-    activity.AccountLatitude,
-    activity.AccountLongitude,
+    activity.account_latitude,
+    activity.account_longitude,
   );
   if (distance > fence) {
     throw new AppError(
@@ -157,38 +157,38 @@ async function loadSubmittableActivity(user, activityId) {
     buildScope(user),
   );
   if (!activity) throw activityNotFound();
-  if (activity.AssignedTo !== user.id) throw notAssignee();
-  if (!SUBMITTABLE_STATUSES.has(activity.Status)) throw notSubmittable(activity.Status);
+  if (activity.assigned_to !== user.id) throw notAssignee();
+  if (!SUBMITTABLE_STATUSES.has(activity.status)) throw notSubmittable(activity.status);
   return activity;
 }
 
 async function createSubmission(context, activityId, body) {
   const activity = await loadSubmittableActivity(context.user, activityId);
   assertSubmitRules(activity, body);
-  const answers = await validatedAnswers(activity.CompanyId, body.answers);
+  const answers = await validatedAnswers(activity.company_id, body.answers);
   // The rules run again on the type and account rows locked inside the transaction, so a
   // change to either one while the rep submits cannot slip past them.
   const result = await submissionRepository.createAndCompleteActivity({
-    companyId: activity.CompanyId,
+    companyId: activity.company_id,
     activityId,
     userId: context.user.id,
     values: { ...body, answers },
     verify: (locked) => assertSubmitRules(locked, body),
   });
   if (result.error) throw CREATE_ERRORS[result.error](result);
-  const dto = await reload(result.id, activity.CompanyId);
+  const dto = await reload(result.id, activity.company_id);
   await auditEntry(context, {
     eventType: AUDIT_EVENTS.SUBMISSION_CREATED,
     entityType: "Submission",
     entityId: result.id,
-    companyId: activity.CompanyId,
+    companyId: activity.company_id,
     newValue: dto,
   });
   await auditEntry(context, {
     eventType: AUDIT_EVENTS.ACTIVITY_STATUS_CHANGED,
     entityType: "Activity",
     entityId: activityId,
-    companyId: activity.CompanyId,
+    companyId: activity.company_id,
     oldValue: { status: result.previousStatus },
     newValue: { status: "Completed", submissionId: result.id },
   });

@@ -1,110 +1,108 @@
-const mockConnectDb = jest.fn();
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 
-jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: mockConnectDb }));
-
+const db = require("../config/db");
 const assignmentRepository = require("./accountAssignment.repository");
-const { mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const { rows, affected } = require("../../test/helpers/mockDb");
 
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
 });
 
 describe("accountAssignment.repository reads", () => {
-  it("loads assignments for a page of accounts in one parameterised query", async () => {
+  it("loads assignments for a page of accounts in one array-parameter query", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ AccountId: 1, UserId: 30 })]);
+    db.reset([rows({ account_id: 1, user_id: 30 })]);
 
     // Act
     const result = await assignmentRepository.listByAccountIds([1, 2]);
 
     // Assert
-    expect(result).toEqual([{ AccountId: 1, UserId: 30 }]);
-    expect(db.queries).toHaveLength(1);
-    expect(db.queries[0].text)
-      .toContain("aa.IsDeleted = 0 AND aa.AccountId IN (@account0, @account1)");
-    expect(db.queries[0].inputs).toEqual({ account0: 1, account1: 2 });
+    expect(result).toEqual([{ account_id: 1, user_id: 30 }]);
+    expect(db.calls).toHaveLength(1);
+    const { text, params } = db.calls[0];
+    expect(text).toContain("NOT aa.is_deleted AND aa.account_id = ANY(@accountIds::int[])");
+    expect(text).toContain("AS display_name, r.code AS role_code");
+    expect(params).toEqual({ accountIds: [1, 2] });
   });
 
   it.each([
     ["listByAccountIds", (repo) => repo.listByAccountIds([])],
     ["findAssignableUserIds", (repo) => repo.findAssignableUserIds(2, [])],
   ])("%s skips the database for an empty id list", async (_name, act) => {
-    // Arrange
-    const db = mockPool(mockConnectDb, []);
-
-    // Act
+    // Arrange / Act
     const result = await act(assignmentRepository);
 
     // Assert
     expect(result).toEqual([]);
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
-  it("locks an account's active assignments", async () => {
+  it("locks the account row, then its active assignments", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 1 })]);
+    db.reset([rows({ id: 4 }), rows({ id: 1 })]);
 
     // Act
-    await assignmentRepository.lockActiveForAccount(4);
+    const result = await assignmentRepository.lockActiveForAccount(4);
 
     // Assert
-    expect(db.queries[0].text).toContain("WITH (UPDLOCK, HOLDLOCK)");
-    expect(db.queries[0].text).toContain("AccountId = @accountId AND IsDeleted = 0");
-    expect(db.queries[0].inputs).toEqual({ accountId: 4 });
+    expect(result).toEqual([{ id: 1 }]);
+    const [account, assignments] = db.calls;
+    expect(account.text).toContain("FROM accounts WHERE id = @accountId FOR NO KEY UPDATE");
+    expect(assignments.text).toContain("account_id = @accountId AND NOT is_deleted");
+    expect(assignments.text).toMatch(/FOR UPDATE$/);
+    expect(assignments.params).toEqual({ accountId: 4 });
   });
 
   it("locks a user's active assignments to live accounts of one company", async () => {
-    // Arrange
-    const db = mockPool(mockConnectDb, [rows()]);
-
-    // Act
+    // Arrange / Act
     await assignmentRepository.lockActiveForUser(2, 30);
 
     // Assert
-    const { text, inputs } = db.queries[0];
-    expect(text).toContain("a.IsDeleted = 0");
+    const { text, params } = db.calls[0];
+    expect(text).toContain("NOT a.is_deleted");
     expect(text)
-      .toContain("aa.CompanyId = @companyId AND aa.UserId = @userId AND aa.IsDeleted = 0");
-    expect(inputs).toEqual({ companyId: 2, userId: 30 });
+      .toContain("aa.company_id = @companyId AND aa.user_id = @userId AND NOT aa.is_deleted");
+    expect(text).toContain("FOR UPDATE OF aa");
+    expect(params).toEqual({ companyId: 2, userId: 30 });
   });
 
   it("finds only active EMPLOYEE or MANAGER users of the company", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 30 })]);
+    db.reset([rows({ id: 30 })]);
 
     // Act
     const ids = await assignmentRepository.findAssignableUserIds(2, [30, 99]);
 
     // Assert
     expect(ids).toEqual([30]);
-    const { text, inputs } = db.queries[0];
-    expect(text).toContain("u.CompanyId = @companyId AND u.IsActive = 1 AND u.IsDeleted = 0");
-    expect(text).toContain("r.Code IN (@employeeCode, @managerCode)");
-    expect(inputs).toEqual({
-      companyId: 2, employeeCode: "EMPLOYEE", managerCode: "MANAGER", user0: 30, user1: 99,
+    const { text, params } = db.calls[0];
+    expect(text).toContain("u.company_id = @companyId AND u.is_active AND NOT u.is_deleted");
+    expect(text).toContain("r.code IN (@employeeCode, @managerCode)");
+    expect(params).toEqual({
+      companyId: 2, employeeCode: "EMPLOYEE", managerCode: "MANAGER", userIds: [30, 99],
     });
   });
 
   it.each([
-    [[rows({ Id: 30 })], true],
+    [[rows({ id: 30 })], true],
     [[rows()], false],
   ])("checks company membership of a user", async (responses, expected) => {
     // Arrange
-    const db = mockPool(mockConnectDb, responses);
+    db.reset(responses);
 
     // Act
     const result = await assignmentRepository.isCompanyUser(2, 30);
 
     // Assert
     expect(result).toBe(expected);
-    expect(db.queries[0].inputs).toEqual({ companyId: 2, userId: 30 });
+    expect(db.calls[0].params).toEqual({ companyId: 2, userId: 30 });
   });
 });
 
 describe("accountAssignment.repository writes", () => {
-  it("inserts rows in chunks below the SQL Server parameter limit", async () => {
+  it("inserts any number of rows in one statement from parallel arrays", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(500), affected(1)]);
+    db.reset([affected(501)]);
     const newRows = Array.from({ length: 501 }, (_v, i) => ({
       accountId: i + 1, userId: 30, visitsPerMonth: i === 0 ? 4 : undefined,
     }));
@@ -113,50 +111,62 @@ describe("accountAssignment.repository writes", () => {
     await assignmentRepository.insertMany(2, newRows, 20);
 
     // Assert
-    expect(db.queries).toHaveLength(2);
-    expect(db.queries[0].text).toContain("(@companyId, @account0, @user0, @visits0,");
-    expect(db.queries[0].inputs).toMatchObject({
-      companyId: 2, createdBy: 20, account0: 1, user0: 30, visits0: 4, visits1: null,
-    });
-    expect(db.queries[1].inputs).toMatchObject({ account0: 501 });
+    expect(db.calls).toHaveLength(1);
+    const { text, params } = db.calls[0];
+    expect(text).toContain("unnest(@accountIds::int[], @userIds::int[], @visits::smallint[])");
+    expect(params).toMatchObject({ companyId: 2, createdBy: 20 });
+    expect(params.accountIds).toHaveLength(501);
+    expect(params.visits.slice(0, 2)).toEqual([4, null]);
   });
 
-  it("soft-deletes assignments by id in chunks", async () => {
-    // Arrange
-    const db = mockPool(mockConnectDb, [affected(1000), affected(1)]);
-    const ids = Array.from({ length: 1001 }, (_v, i) => i + 1);
-
-    // Act
-    await assignmentRepository.softDeleteByIds(ids, 20);
+  it.each([
+    ["insertMany", (repo) => repo.insertMany(2, [], 20)],
+    ["softDeleteByIds", (repo) => repo.softDeleteByIds([], 20)],
+  ])("%s skips the database for an empty list", async (_name, act) => {
+    // Arrange / Act
+    await act(assignmentRepository);
 
     // Assert
-    expect(db.queries).toHaveLength(2);
-    expect(db.queries[0].text)
-      .toContain("SET IsDeleted = 1, UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @updatedBy");
-    expect(db.queries[1].inputs).toEqual({ updatedBy: 20, id0: 1001 });
+    expect(db.calls).toHaveLength(0);
+  });
+
+  it("soft-deletes assignments by id in one statement", async () => {
+    // Arrange
+    db.reset([affected(2)]);
+
+    // Act
+    await assignmentRepository.softDeleteByIds([1, 2], 20);
+
+    // Assert
+    const { text, params } = db.calls[0];
+    expect(text).toContain("SET is_deleted = true, updated_at = now(), updated_by = @updatedBy");
+    expect(text).toContain("id = ANY(@ids::int[])");
+    expect(params).toEqual({ updatedBy: 20, ids: [1, 2] });
   });
 
   it("updates the visit target of one active assignment", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(1)]);
+    db.reset([affected(1)]);
 
     // Act
     await assignmentRepository.updateVisits(5, 8, 20);
 
     // Assert
-    expect(db.queries[0].text).toContain("WHERE Id = @id AND IsDeleted = 0");
-    expect(db.queries[0].inputs).toEqual({ id: 5, visitsPerMonth: 8, updatedBy: 20 });
+    expect(db.calls[0].text).toContain("WHERE id = @id AND NOT is_deleted");
+    expect(db.calls[0].params).toEqual({ id: 5, visitsPerMonth: 8, updatedBy: 20 });
   });
 
-  it("ends every active assignment of an account", async () => {
+  it("ends every active assignment of an account on the caller's transaction", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(2)]);
+    const tx = { query: jest.fn().mockResolvedValue(affected(2)) };
 
     // Act
-    await assignmentRepository.softDeleteForAccount(4, 20);
+    await assignmentRepository.softDeleteForAccount(4, 20, tx);
 
     // Assert
-    expect(db.queries[0].text).toContain("WHERE AccountId = @accountId AND IsDeleted = 0");
-    expect(db.queries[0].inputs).toEqual({ accountId: 4, updatedBy: 20 });
+    const [text, params] = tx.query.mock.calls[0];
+    expect(text).toContain("WHERE account_id = @accountId AND NOT is_deleted");
+    expect(params).toEqual({ accountId: 4, updatedBy: 20 });
+    expect(db.query).not.toHaveBeenCalled();
   });
 });

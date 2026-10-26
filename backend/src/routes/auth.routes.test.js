@@ -15,7 +15,12 @@ const {
 
 const XHR = { "X-Requested-With": "XMLHttpRequest" };
 const ADMIN = {
-  Id: 21, CompanyId: 4, RoleId: 2, RoleCode: "ADMIN", RoleName: "Admin", Email: "admin@example.com",
+  id: 21,
+  company_id: 4,
+  role_id: 2,
+  role_code: "ADMIN",
+  role_name: "Admin",
+  email: "admin@example.com",
 };
 
 let tokenStore;
@@ -49,8 +54,8 @@ beforeEach(() => {
 
 function ageRotation(seconds) {
   tokenStore
-    .filter((t) => t.RevokedReason === "ROTATED")
-    .forEach((t) => Object.assign(t, { RevokedAtUtc: new Date(Date.now() - seconds * 1000) }));
+    .filter((t) => t.revoked_reason === "ROTATED")
+    .forEach((t) => Object.assign(t, { revoked_at: new Date(Date.now() - seconds * 1000) }));
 }
 
 describe("POST /api/v1/auth/login", () => {
@@ -89,7 +94,7 @@ describe("POST /api/v1/auth/login", () => {
   it("answers a locked account with the same 401 body as a wrong password", async () => {
     // Arrange
     userRepository.findActiveByEmail
-      .mockResolvedValue(userRow({ LockoutEndUtc: new Date(Date.now() + 60000) }));
+      .mockResolvedValue(userRow({ lockout_end_at: new Date(Date.now() + 60000) }));
     const wrong = await login({ password: "wrong-password" });
 
     // Act
@@ -105,7 +110,7 @@ describe("POST /api/v1/auth/login", () => {
   it("signs in and refreshes a SUPER_ADMIN who has no company", async () => {
     // Arrange
     const superAdmin = userRow({
-      Id: 1, CompanyId: null, RoleId: 1, RoleCode: "SUPER_ADMIN",
+      id: 1, company_id: null, role_id: 1, role_code: "SUPER_ADMIN",
     });
     userRepository.findActiveByEmail.mockResolvedValue(superAdmin);
     userRepository.findActiveById.mockResolvedValue(superAdmin);
@@ -122,7 +127,7 @@ describe("POST /api/v1/auth/login", () => {
     expect(loginResponse.body.data.user)
       .toMatchObject({ companyId: null, roleCode: "SUPER_ADMIN" });
     expect(refreshed.status).toBe(200);
-    expect(tokenStore.map((t) => t.CompanyId)).toEqual([null, null]);
+    expect(tokenStore.map((t) => t.company_id)).toEqual([null, null]);
   });
 
   it("returns 403 CSRF_HEADER_MISSING without X-Requested-With", async () => {
@@ -221,7 +226,7 @@ describe("POST /api/v1/auth/refresh", () => {
     expect(reused.body.errorCode).toBe("AUTH_REFRESH_REUSED");
     expect(cookieHeader(reused, "wk_rt")).toMatch(/Expires=Thu, 01 Jan 1970/);
     expect(afterReuse.status).toBe(401);
-    expect(tokenStore.every((t) => t.RevokedAtUtc)).toBe(true);
+    expect(tokenStore.every((t) => t.revoked_at)).toBe(true);
   });
 
   it("answers a second tab that sends the just-rotated token "
@@ -241,7 +246,7 @@ describe("POST /api/v1/auth/refresh", () => {
     expect(secondTab.status).toBe(200);
     expect(secondTab.body.data.user.id).toBe(21);
     expect(secondTab.headers["set-cookie"]).toBeUndefined();
-    expect(tokenStore.filter((t) => !t.RevokedAtUtc)).toHaveLength(1);
+    expect(tokenStore.filter((t) => !t.revoked_at)).toHaveLength(1);
   });
 
   it("keeps the cookies when the refresh fails for a server reason", async () => {
@@ -284,7 +289,7 @@ describe("POST /api/v1/auth/logout", () => {
     ["wk_at", "wk_rt", "wk_session"].forEach((name) => {
       expect(cookieHeader(response, name)).toMatch(/Expires=Thu, 01 Jan 1970/);
     });
-    expect(tokenStore[0].RevokedReason).toBe("LOGOUT");
+    expect(tokenStore[0].revoked_reason).toBe("LOGOUT");
   });
 
   it("still clears cookies and returns the error when revocation fails", async () => {

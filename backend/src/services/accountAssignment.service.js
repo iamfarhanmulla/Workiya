@@ -50,18 +50,18 @@ async function ensureAssignable(companyId, userIds) {
 
 // Diff between the active rows and the wanted set: rows to end, reps to add, visits to change.
 function planChanges(current, wanted) {
-  const currentByUser = new Map(current.map((row) => [row.UserId, row]));
+  const currentByUser = new Map(current.map((row) => [row.user_id, row]));
   const wantedUsers = new Set(wanted.map((item) => item.userId));
   return {
-    removeIds: current.filter((row) => !wantedUsers.has(row.UserId)).map((row) => row.Id),
+    removeIds: current.filter((row) => !wantedUsers.has(row.user_id)).map((row) => row.id),
     add: wanted.filter((item) => !currentByUser.has(item.userId)),
     change: wanted
       .filter((item) => {
         const row = currentByUser.get(item.userId);
-        return row && (row.VisitsPerMonth ?? null) !== item.visitsPerMonth;
+        return row && (row.visits_per_month ?? null) !== item.visitsPerMonth;
       })
       .map((item) => ({
-        id: currentByUser.get(item.userId).Id, visitsPerMonth: item.visitsPerMonth,
+        id: currentByUser.get(item.userId).id, visitsPerMonth: item.visitsPerMonth,
       })),
   };
 }
@@ -76,8 +76,8 @@ async function applyPlan(plan, account, performedBy, tx) {
     await assignmentRepository.softDeleteByIds(plan.removeIds, performedBy, tx);
   }
   if (plan.add.length > 0) {
-    const rows = plan.add.map((item) => ({ ...item, accountId: account.Id }));
-    await assignmentRepository.insertMany(account.CompanyId, rows, performedBy, tx);
+    const rows = plan.add.map((item) => ({ ...item, accountId: account.id }));
+    await assignmentRepository.insertMany(account.company_id, rows, performedBy, tx);
   }
   await plan.change.reduce(
     (previous, item) => previous.then(() => assignmentRepository.updateVisits(
@@ -101,7 +101,7 @@ function auditEntry(eventType, user, ctx, entry) {
 }
 
 function toAssignmentValue(rows) {
-  return rows.map((row) => ({ userId: row.UserId, visitsPerMonth: row.VisitsPerMonth ?? null }));
+  return rows.map((row) => ({ userId: row.user_id, visitsPerMonth: row.visits_per_month ?? null }));
 }
 
 async function list(user, accountId) {
@@ -113,7 +113,7 @@ async function list(user, accountId) {
 // Replaces the account's set of reps: ends removed rows, adds new ones, updates visit targets.
 async function replace(user, accountId, assignments, ctx) {
   const account = await loadAccount(user, accountId);
-  await ensureAssignable(account.CompanyId, assignments.map((item) => item.userId));
+  await ensureAssignable(account.company_id, assignments.map((item) => item.userId));
   const outcome = await inTransaction(async (tx) => {
     const current = await assignmentRepository.lockActiveForAccount(accountId, tx);
     const plan = planChanges(current, assignments);
@@ -124,7 +124,7 @@ async function replace(user, accountId, assignments, ctx) {
     await auditEntry(AUDIT_EVENTS.ACCOUNT_ASSIGNMENTS_CHANGED, user, ctx, {
       entityType: "Account",
       entityId: accountId,
-      companyId: account.CompanyId,
+      companyId: account.company_id,
       oldValue: toAssignmentValue(outcome.current),
       newValue: assignments,
     });
@@ -137,21 +137,21 @@ async function replace(user, accountId, assignments, ctx) {
 async function moveAssignments(companyId, { fromUserId, toUserId }, performedBy, tx) {
   const fromRows = await assignmentRepository.lockActiveForUser(companyId, fromUserId, tx);
   const toRows = await assignmentRepository.lockActiveForUser(companyId, toUserId, tx);
-  const covered = new Set(toRows.map((row) => row.AccountId));
-  const moving = fromRows.filter((row) => !covered.has(row.AccountId));
+  const covered = new Set(toRows.map((row) => row.account_id));
+  const moving = fromRows.filter((row) => !covered.has(row.account_id));
   if (moving.length > 0) {
     const rows = moving.map((row) => ({
-      accountId: row.AccountId, userId: toUserId, visitsPerMonth: row.VisitsPerMonth ?? null,
+      accountId: row.account_id, userId: toUserId, visitsPerMonth: row.visits_per_month ?? null,
     }));
     await assignmentRepository.insertMany(companyId, rows, performedBy, tx);
   }
   if (fromRows.length > 0) {
-    await assignmentRepository.softDeleteByIds(fromRows.map((row) => row.Id), performedBy, tx);
+    await assignmentRepository.softDeleteByIds(fromRows.map((row) => row.id), performedBy, tx);
   }
   return {
     moved: moving.length,
     skipped: fromRows.length - moving.length,
-    accountIds: fromRows.map((row) => row.AccountId),
+    accountIds: fromRows.map((row) => row.account_id),
   };
 }
 

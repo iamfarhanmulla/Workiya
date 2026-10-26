@@ -6,16 +6,9 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_EMAIL_LENGTH = 320;
 
-function parseOptions(optionsJson) {
-  if (!optionsJson) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(optionsJson);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
+// options_json is jsonb (pg returns it parsed); anything but an array reads as no options.
+function toOptionList(options) {
+  return Array.isArray(options) ? options.map(String) : [];
 }
 
 function isPlainObject(value) {
@@ -64,13 +57,13 @@ const TYPE_HINTS = {
 // Returns { value } for a usable value, {} for an empty optional field, or { error }.
 function checkField(definition, rawValue) {
   if (isEmpty(rawValue)) {
-    return definition.IsRequired ? { error: `${definition.Label} is required.` } : {};
+    return definition.is_required ? { error: `${definition.label} is required.` } : {};
   }
-  const checker = CHECKERS[definition.DataType];
-  const value = checker ? checker(rawValue, parseOptions(definition.OptionsJson)) : undefined;
+  const checker = CHECKERS[definition.data_type];
+  const value = checker ? checker(rawValue, toOptionList(definition.options_json)) : undefined;
   if (value === undefined) {
-    const hint = TYPE_HINTS[definition.DataType] || "a valid value";
-    return { error: `${definition.Label} must be ${hint}.` };
+    const hint = TYPE_HINTS[definition.data_type] || "a valid value";
+    return { error: `${definition.label} must be ${hint}.` };
   }
   return { value };
 }
@@ -87,11 +80,11 @@ function collectValues(definitions, values) {
   const entries = [];
   const errors = [];
   definitions.forEach((definition) => {
-    const outcome = checkField(definition, ownValue(values, definition.FieldKey));
+    const outcome = checkField(definition, ownValue(values, definition.field_key));
     if (outcome.error) {
       errors.push(outcome.error);
     } else if (outcome.value !== undefined) {
-      entries.push([definition.FieldKey, outcome.value]);
+      entries.push([definition.field_key, outcome.value]);
     }
   });
   return { entries, errors };
@@ -101,7 +94,7 @@ function pickEntries(values, keep) {
   return Object.entries(values).filter(([key]) => keep(key));
 }
 
-// Checks custom field values (Accounts.ExtraFields, Submissions.Answers) against the company's
+// Checks custom field values (accounts.extra_fields, submissions.answers) against the company's
 // active definitions. The returned value holds only defined, non-empty keys.
 // options.existing (the stored values, on an update) are kept for fields that are inactive or
 // deleted now, so switching a field off does not wipe its data; when `values` is undefined the
@@ -112,7 +105,7 @@ async function validateValues(companyId, entityType, values, { existing } = {}) 
   }
   const stored = isPlainObject(existing) ? existing : {};
   const definitions = await customFieldRepository.list(companyId, { entityType });
-  const known = new Set(definitions.map((definition) => definition.FieldKey));
+  const known = new Set(definitions.map((definition) => definition.field_key));
   let input = values ?? {};
   if (values === undefined) {
     input = Object.fromEntries(pickEntries(stored, (key) => known.has(key)));
@@ -129,4 +122,4 @@ async function validateValues(companyId, entityType, values, { existing } = {}) 
   return { ok: true, value: Object.fromEntries([...carried, ...entries]) };
 }
 
-module.exports = { validateValues, parseOptions };
+module.exports = { validateValues, toOptionList };

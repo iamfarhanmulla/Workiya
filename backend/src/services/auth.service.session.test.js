@@ -45,7 +45,7 @@ describe("auth.service.refresh", () => {
   it("rejects an expired token", async () => {
     // Arrange
     refreshTokenRepository.findByHash
-      .mockResolvedValue(tokenRecord({ ExpiresAtUtc: new Date(Date.now() - 1) }));
+      .mockResolvedValue(tokenRecord({ expires_at: new Date(Date.now() - 1) }));
 
     // Act
     const promise = authService.refresh({ refreshToken: "old", ...CTX });
@@ -56,9 +56,9 @@ describe("auth.service.refresh", () => {
   });
 
   it.each([
-    ["revoked", { RevokedAtUtc: new Date(), RevokedReason: "LOGOUT" }],
-    ["replaced", { ReplacedByTokenHash: "a".repeat(64) }],
-    ["long-rotated", { RevokedAtUtc: new Date(Date.now() - 31 * 1000), RevokedReason: "ROTATED" }],
+    ["revoked", { revoked_at: new Date(), revoked_reason: "LOGOUT" }],
+    ["replaced", { replaced_by_token_hash: "a".repeat(64) }],
+    ["long-rotated", { revoked_at: new Date(Date.now() - 31 * 1000), revoked_reason: "ROTATED" }],
   ])("revokes the whole family when a %s token is reused", async (_label, overrides) => {
     // Arrange
     refreshTokenRepository.findByHash.mockResolvedValue(tokenRecord(overrides));
@@ -76,9 +76,9 @@ describe("auth.service.refresh", () => {
     + "without new tokens or a family revoke", async () => {
     // Arrange
     const record = tokenRecord({
-      RevokedAtUtc: new Date(Date.now() - 2000),
-      RevokedReason: "ROTATED",
-      ReplacedByTokenHash: "b".repeat(64),
+      revoked_at: new Date(Date.now() - 2000),
+      revoked_reason: "ROTATED",
+      replaced_by_token_hash: "b".repeat(64),
     });
     refreshTokenRepository.findByHash.mockResolvedValue(record);
     userRepository.findActiveById.mockResolvedValue(userRow());
@@ -96,7 +96,7 @@ describe("auth.service.refresh", () => {
   it("rejects a just-rotated token when the user is no longer active", async () => {
     // Arrange
     refreshTokenRepository.findByHash
-      .mockResolvedValue(tokenRecord({ RevokedAtUtc: new Date(), RevokedReason: "ROTATED" }));
+      .mockResolvedValue(tokenRecord({ revoked_at: new Date(), revoked_reason: "ROTATED" }));
     userRepository.findActiveById.mockResolvedValue(null);
 
     // Act
@@ -151,7 +151,8 @@ describe("auth.service.refresh", () => {
     const store = installFakeTokenStore(refreshTokenRepository);
     userRepository.findActiveById.mockResolvedValue(userRow());
     const original = "shared-cookie";
-    store.push({ ...tokenRecord({ Id: 900 }), TokenHash: tokenService.hashRefreshToken(original) });
+    const originalHash = tokenService.hashRefreshToken(original);
+    store.push({ ...tokenRecord({ id: 900 }), token_hash: originalHash });
 
     // Act
     const first = await authService.refresh({ refreshToken: original, ...CTX });
@@ -160,9 +161,9 @@ describe("auth.service.refresh", () => {
     // Assert
     expect(first.refreshToken).toEqual(expect.any(String));
     expect(second.rotatedConcurrently).toBe(true);
-    const live = store.filter((t) => !t.RevokedAtUtc);
+    const live = store.filter((t) => !t.revoked_at);
     expect(live).toHaveLength(1);
-    expect(live[0].TokenHash).toBe(tokenService.hashRefreshToken(first.refreshToken));
+    expect(live[0].token_hash).toBe(tokenService.hashRefreshToken(first.refreshToken));
     expect(refreshTokenRepository.revokeFamily).not.toHaveBeenCalled();
   });
 
@@ -181,7 +182,7 @@ describe("auth.service.refresh", () => {
 
   it("rotates the token, keeping family, persistence and absolute expiry", async () => {
     // Arrange
-    const record = tokenRecord({ IsPersistent: false });
+    const record = tokenRecord({ is_persistent: false });
     refreshTokenRepository.findByHash.mockResolvedValue(record);
     userRepository.findActiveById.mockResolvedValue(userRow());
 
@@ -198,7 +199,7 @@ describe("auth.service.refresh", () => {
         familyId: "fam-1",
         isPersistent: false,
         tokenHash: newHash,
-        expiresAtUtc: record.ExpiresAtUtc,
+        expiresAtUtc: record.expires_at,
       }),
     );
     expect(session.user.id).toBe(11);

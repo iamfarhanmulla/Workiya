@@ -1,107 +1,89 @@
-const { connectDb, sql } = require("../config/db");
+const db = require("../config/db");
 
 const PROFILE_COLUMNS = `
-  u.Id, u.CompanyId, u.RoleId, r.Code AS RoleCode, r.Name AS RoleName,
-  u.Username, u.Email, u.DisplayName, u.FirstName, u.MiddleName, u.LastName,
-  u.PhoneNumber, u.Status`;
+  u.id, u.company_id, u.role_id, r.code AS role_code, r.name AS role_name,
+  u.username, u.email, u.display_name, u.first_name, u.middle_name, u.last_name,
+  u.phone_number, u.status`;
 
-const ACTIVE_USER_FILTER = "u.IsActive = 1 AND u.IsDeleted = 0";
+const ACTIVE_USER_FILTER = "u.is_active AND NOT u.is_deleted";
 
+// users.email is citext, so the lookup is case-insensitive. Emails are unique per company
+// only; the lowest id wins so the answer is stable.
 async function findActiveByEmail(email) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("email", sql.NVarChar(320), email)
-    .query(`
-      SELECT ${PROFILE_COLUMNS},
-        u.PasswordHash, u.PasswordSalt, u.PasswordIterations,
-        u.FailedLoginCount, u.LockoutEndUtc
-      FROM Users u
-      LEFT JOIN Roles r ON r.Id = u.RoleId AND r.IsDeleted = 0
-      WHERE u.Email = @email AND ${ACTIVE_USER_FILTER}
-    `);
-  return result.recordset[0] || null;
+  const { rows } = await db.query(`
+    SELECT ${PROFILE_COLUMNS},
+      u.password_hash, u.password_salt, u.password_iterations,
+      u.failed_login_count, u.lockout_end_at
+    FROM users u
+    LEFT JOIN roles r ON r.id = u.role_id AND NOT r.is_deleted
+    WHERE u.email = @email AND ${ACTIVE_USER_FILTER}
+    ORDER BY u.id
+    LIMIT 1
+  `, { email });
+  return rows[0] || null;
 }
 
 async function findActiveById(id) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("id", sql.Int, id)
-    .query(`
-      SELECT ${PROFILE_COLUMNS}
-      FROM Users u
-      LEFT JOIN Roles r ON r.Id = u.RoleId AND r.IsDeleted = 0
-      WHERE u.Id = @id AND ${ACTIVE_USER_FILTER}
-    `);
-  return result.recordset[0] || null;
+  const { rows } = await db.query(`
+    SELECT ${PROFILE_COLUMNS}
+    FROM users u
+    LEFT JOIN roles r ON r.id = u.role_id AND NOT r.is_deleted
+    WHERE u.id = @id AND ${ACTIVE_USER_FILTER}
+  `, { id });
+  return rows[0] || null;
 }
 
 // The count and the lock decision are made in one UPDATE on the locked row, so parallel
-// wrong-password requests cannot all read the same stale count and skip the lockout.
+// wrong-password requests cannot all read the same stale count and skip the lockout. Every
+// SET expression reads the row as it was before the UPDATE.
 const NEXT_FAILED_COUNT = `CASE
-  WHEN LockoutEndUtc IS NOT NULL AND LockoutEndUtc <= GETUTCDATE() THEN 1
-  ELSE ISNULL(FailedLoginCount, 0) + 1
+  WHEN lockout_end_at IS NOT NULL AND lockout_end_at <= now() THEN 1
+  ELSE failed_login_count + 1
 END`;
 
 async function recordFailedLogin(id, { maxFailedLogins, lockoutMinutes }) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("id", sql.Int, id)
-    .input("maxFailedLogins", sql.Int, maxFailedLogins)
-    .input("lockoutMinutes", sql.Int, lockoutMinutes)
-    .query(`
-      UPDATE Users
-      SET FailedLoginCount = ${NEXT_FAILED_COUNT},
-          LockoutEndUtc = CASE
-            WHEN ${NEXT_FAILED_COUNT}
-              >= @maxFailedLogins THEN DATEADD(minute, @lockoutMinutes, GETUTCDATE())
-            WHEN LockoutEndUtc <= GETUTCDATE() THEN NULL
-            ELSE LockoutEndUtc
-          END,
-          LastFailedLoginUtc = GETUTCDATE()
-      OUTPUT inserted.FailedLoginCount, inserted.LockoutEndUtc
-      WHERE Id = @id
-    `);
-  const row = result.recordset[0];
+  const { rows } = await db.query(`
+    UPDATE users
+    SET failed_login_count = ${NEXT_FAILED_COUNT},
+        lockout_end_at = CASE
+          WHEN ${NEXT_FAILED_COUNT} >= @maxFailedLogins::int
+            THEN now() + make_interval(mins => @lockoutMinutes::int)
+          WHEN lockout_end_at <= now() THEN NULL
+          ELSE lockout_end_at
+        END,
+        last_failed_login_at = now()
+    WHERE id = @id
+    RETURNING failed_login_count, lockout_end_at
+  `, { id, maxFailedLogins, lockoutMinutes });
+  const row = rows[0];
   return {
-    failedLoginCount: row ? row.FailedLoginCount : 0,
-    lockoutEndUtc: row && row.LockoutEndUtc ? new Date(row.LockoutEndUtc) : null,
+    failedLoginCount: row ? row.failed_login_count : 0,
+    lockoutEndUtc: row && row.lockout_end_at ? new Date(row.lockout_end_at) : null,
   };
 }
 
 async function recordSuccessfulLogin(id) {
-  const pool = await connectDb();
-  await pool
-    .request()
-    .input("id", sql.Int, id)
-    .query(`
-      UPDATE Users
-      SET FailedLoginCount = 0,
-          LockoutEndUtc = NULL,
-          LastLoginUtc = GETUTCDATE()
-      WHERE Id = @id
-    `);
+  await db.query(`
+    UPDATE users
+    SET failed_login_count = 0,
+        lockout_end_at = NULL,
+        last_login_at = now()
+    WHERE id = @id
+  `, { id });
 }
 
 async function updatePasswordHash(id, { passwordHash, passwordSalt, passwordIterations }) {
-  const pool = await connectDb();
-  await pool
-    .request()
-    .input("id", sql.Int, id)
-    .input("passwordHash", sql.NVarChar(500), passwordHash)
-    .input("passwordSalt", sql.NVarChar(200), passwordSalt)
-    .input("passwordIterations", sql.Int, passwordIterations)
-    .query(`
-      UPDATE Users
-      SET PasswordHash = @passwordHash,
-          PasswordSalt = @passwordSalt,
-          PasswordIterations = @passwordIterations,
-          UpdatedAtUtc = GETUTCDATE(),
-          UpdatedBy = @id
-      WHERE Id = @id
-    `);
+  await db.query(`
+    UPDATE users
+    SET password_hash = @passwordHash,
+        password_salt = @passwordSalt,
+        password_iterations = @passwordIterations,
+        updated_at = now(),
+        updated_by = @id
+    WHERE id = @id
+  `, {
+    id, passwordHash, passwordSalt, passwordIterations,
+  });
 }
 
 module.exports = {

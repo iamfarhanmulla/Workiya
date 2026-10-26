@@ -6,53 +6,46 @@ function toNumber(value) {
   return value === undefined || value === null ? null : Number(value);
 }
 
-// JSON columns (ExtraFields, Answers) are returned as objects; NULL or broken JSON becomes {}.
-function parseJsonObject(text) {
-  if (text === undefined || text === null || text === "") {
-    return {};
-  }
-  try {
-    const parsed = JSON.parse(text);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
+// jsonb columns (answers) arrive as parsed values; anything but a JSON object reads as {}.
+function toJsonObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
 function toLatestSubmission(row) {
-  if (row.LatestSubmissionId === undefined || row.LatestSubmissionId === null) {
+  if (row.latest_submission_id === undefined || row.latest_submission_id === null) {
     return null;
   }
   return {
-    id: row.LatestSubmissionId,
-    reviewStatus: row.LatestSubmissionReviewStatus,
-    submittedAtUtc: toIso(row.LatestSubmissionSubmittedAtUtc),
+    id: row.latest_submission_id,
+    reviewStatus: row.latest_submission_review_status,
+    submittedAtUtc: toIso(row.latest_submission_submitted_at),
   };
 }
 
+// Maps an activities row (snake_case) to the API shape (camelCase, ISO UTC dates).
 function toActivityDto(row) {
   return {
-    id: row.Id,
-    companyId: row.CompanyId,
-    activityTypeId: row.ActivityTypeId,
-    activityTypeName: row.ActivityTypeName ?? null,
-    accountId: row.AccountId,
-    accountName: row.AccountName ?? null,
-    assignedTo: row.AssignedTo,
-    assignedToName: row.AssignedToName ?? null,
-    assignedBy: row.AssignedBy,
-    assignedByName: row.AssignedByName ?? null,
-    title: row.Title,
-    description: row.Description ?? null,
-    status: row.Status,
-    priority: row.Priority,
-    dueAtUtc: toIso(row.DueAtUtc),
-    completedAtUtc: toIso(row.CompletedAtUtc),
-    createdAtUtc: toIso(row.CreatedAtUtc),
+    id: row.id,
+    companyId: row.company_id,
+    activityTypeId: row.activity_type_id,
+    activityTypeName: row.activity_type_name ?? null,
+    accountId: row.account_id,
+    accountName: row.account_name ?? null,
+    assignedTo: row.assigned_to,
+    assignedToName: row.assigned_to_name ?? null,
+    assignedBy: row.assigned_by,
+    assignedByName: row.assigned_by_name ?? null,
+    title: row.title,
+    description: row.description ?? null,
+    status: row.status,
+    priority: row.priority,
+    dueAtUtc: toIso(row.due_at),
+    completedAtUtc: toIso(row.completed_at),
+    createdAtUtc: toIso(row.created_at),
     latestSubmission: toLatestSubmission(row),
   };
 }
 
 module.exports = {
-  toActivityDto, toIso, toNumber, parseJsonObject,
+  toActivityDto, toIso, toNumber, toJsonObject,
 };

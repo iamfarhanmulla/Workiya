@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "seed": "node src/config/seed.js",
-    "migrate": "node src/config/migrate.js",
+    "seed": "node scripts/seed-super-admin.js",
     "test": "jest",
+    "test:integration": "jest --config jest.integration.config.js",
     "test:coverage": "jest --coverage",
     "keys:generate": "node scripts/generate-jwt-keys.js",
-    "db:sql": "node scripts/run-sql-migration.js",
+    "db:migrate": "node scripts/run-pg-migration.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

@@ -1,110 +1,98 @@
-const { connectDb, sql } = require("../config/db");
+const db = require("../config/db");
 
-const COLUMNS = `Id, CompanyId, EntityType, FieldKey, Label, DataType, IsRequired,
-  OptionsJson, SortOrder, IsActive`;
+const COLUMNS = `id, company_id, entity_type, field_key, label, data_type, is_required,
+  options_json, sort_order, is_active`;
 
+// jsonb text for the options list: pg would send a JS array as a PostgreSQL array instead.
 function serializeOptions(options) {
   return Array.isArray(options) ? JSON.stringify(options) : null;
 }
 
+// Values of the columns an update may change (also bound on insert).
+function editableParams(field) {
+  return {
+    label: field.label,
+    isRequired: Boolean(field.isRequired),
+    optionsJson: serializeOptions(field.options),
+    sortOrder: field.sortOrder,
+    isActive: Boolean(field.isActive),
+  };
+}
+
 async function list(companyId, { entityType = null, includeInactive = false } = {}) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("entityType", sql.NVarChar(30), entityType)
-    .input("includeInactive", sql.Bit, includeInactive ? 1 : 0)
-    .query(`
-      SELECT ${COLUMNS}
-      FROM CustomFieldDefinitions
-      WHERE CompanyId = @companyId AND IsDeleted = 0
-        AND (@entityType IS NULL OR EntityType = @entityType)
-        AND (@includeInactive = 1 OR IsActive = 1)
-      ORDER BY SortOrder, Label
-    `);
-  return result.recordset;
+  const params = { companyId };
+  const clauses = ["company_id = @companyId", "NOT is_deleted"];
+  if (entityType) {
+    params.entityType = entityType;
+    clauses.push("entity_type = @entityType");
+  }
+  if (!includeInactive) {
+    clauses.push("is_active");
+  }
+  const { rows } = await db.query(
+    `SELECT ${COLUMNS}
+     FROM custom_field_definitions
+     WHERE ${clauses.join(" AND ")}
+     ORDER BY sort_order, label, id`,
+    params,
+  );
+  return rows;
 }
 
 async function findById(companyId, id) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("id", sql.Int, id)
-    .query(`
-      SELECT ${COLUMNS}
-      FROM CustomFieldDefinitions
-      WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0
-    `);
-  return result.recordset[0] || null;
+  const { rows } = await db.query(
+    `SELECT ${COLUMNS}
+     FROM custom_field_definitions
+     WHERE id = @id AND company_id = @companyId AND NOT is_deleted`,
+    { companyId, id },
+  );
+  return rows[0] || null;
 }
 
 async function insert(companyId, field, userId) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("entityType", sql.NVarChar(30), field.entityType)
-    .input("fieldKey", sql.NVarChar(50), field.fieldKey)
-    .input("label", sql.NVarChar(100), field.label)
-    .input("dataType", sql.NVarChar(20), field.dataType)
-    .input("isRequired", sql.Bit, field.isRequired ? 1 : 0)
-    .input("optionsJson", sql.NVarChar(sql.MAX), serializeOptions(field.options))
-    .input("sortOrder", sql.Int, field.sortOrder)
-    .input("isActive", sql.Bit, field.isActive ? 1 : 0)
-    .input("userId", sql.Int, userId)
-    .query(`
-      INSERT INTO CustomFieldDefinitions
-        (CompanyId, EntityType, FieldKey, Label, DataType, IsRequired, OptionsJson, SortOrder,
-         IsActive, CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, IsDeleted)
-      OUTPUT INSERTED.Id, INSERTED.CompanyId, INSERTED.EntityType, INSERTED.FieldKey,
-        INSERTED.Label, INSERTED.DataType, INSERTED.IsRequired, INSERTED.OptionsJson,
-        INSERTED.SortOrder, INSERTED.IsActive
-      VALUES
-        (@companyId, @entityType, @fieldKey, @label, @dataType, @isRequired, @optionsJson,
-         @sortOrder, @isActive, GETUTCDATE(), @userId, GETUTCDATE(), @userId, 0)
-    `);
-  return result.recordset[0];
+  const { rows } = await db.query(
+    `INSERT INTO custom_field_definitions
+       (company_id, entity_type, field_key, label, data_type, is_required, options_json,
+        sort_order, is_active, created_by, updated_by)
+     VALUES
+       (@companyId, @entityType, @fieldKey, @label, @dataType, @isRequired,
+        @optionsJson::jsonb, @sortOrder, @isActive, @userId, @userId)
+     RETURNING ${COLUMNS}`,
+    {
+      ...editableParams(field),
+      companyId,
+      entityType: field.entityType,
+      fieldKey: field.fieldKey,
+      dataType: field.dataType,
+      userId,
+    },
+  );
+  return rows[0];
 }
 
 async function update(companyId, id, field, userId) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("id", sql.Int, id)
-    .input("label", sql.NVarChar(100), field.label)
-    .input("isRequired", sql.Bit, field.isRequired ? 1 : 0)
-    .input("optionsJson", sql.NVarChar(sql.MAX), serializeOptions(field.options))
-    .input("sortOrder", sql.Int, field.sortOrder)
-    .input("isActive", sql.Bit, field.isActive ? 1 : 0)
-    .input("userId", sql.Int, userId)
-    .query(`
-      UPDATE CustomFieldDefinitions SET
-        Label = @label, IsRequired = @isRequired, OptionsJson = @optionsJson,
-        SortOrder = @sortOrder, IsActive = @isActive,
-        UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId
-      OUTPUT INSERTED.Id, INSERTED.CompanyId, INSERTED.EntityType, INSERTED.FieldKey,
-        INSERTED.Label, INSERTED.DataType, INSERTED.IsRequired, INSERTED.OptionsJson,
-        INSERTED.SortOrder, INSERTED.IsActive
-      WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0
-    `);
-  return result.recordset[0] || null;
+  const { rows } = await db.query(
+    `UPDATE custom_field_definitions SET
+       label = @label, is_required = @isRequired, options_json = @optionsJson::jsonb,
+       sort_order = @sortOrder, is_active = @isActive,
+       updated_at = now(), updated_by = @userId
+     WHERE id = @id AND company_id = @companyId AND NOT is_deleted
+     RETURNING ${COLUMNS}`,
+    {
+      ...editableParams(field), companyId, id, userId,
+    },
+  );
+  return rows[0] || null;
 }
 
 async function softDelete(companyId, id, userId) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("id", sql.Int, id)
-    .input("userId", sql.Int, userId)
-    .query(`
-      UPDATE CustomFieldDefinitions SET
-        IsDeleted = 1, IsActive = 0, UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId
-      WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0
-    `);
-  return result.rowsAffected[0] > 0;
+  const { rowCount } = await db.query(
+    `UPDATE custom_field_definitions SET
+       is_deleted = true, is_active = false, updated_at = now(), updated_by = @userId
+     WHERE id = @id AND company_id = @companyId AND NOT is_deleted`,
+    { companyId, id, userId },
+  );
+  return rowCount > 0;
 }
 
 module.exports = {

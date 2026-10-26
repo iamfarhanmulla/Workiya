@@ -1,15 +1,9 @@
-const mockConnectDb = jest.fn();
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 
-jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: mockConnectDb }));
-
+const db = require("../config/db");
 const accountRepository = require("./account.repository");
-const {
-  USERS, mockPool, rows, affected,
-} = require("../../test/helpers/apiHarness");
-
-function paged(total, ...recordset) {
-  return { recordsets: [[{ Total: total }], recordset], recordset: [{ Total: total }] };
-}
+const { rows, affected } = require("../../test/helpers/mockDb");
+const { USERS } = require("../../test/helpers/apiHarness");
 
 const FIELDS = {
   name: "City Clinic",
@@ -27,38 +21,41 @@ const FIELDS = {
 };
 
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
 });
 
 describe("account.repository list", () => {
   it("limits an EMPLOYEE to their company and their active assignments", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [paged(1, { Id: 5 })]);
+    db.reset([rows({ total: 1 }), rows({ id: 5 })]);
     const scope = { user: USERS.employee, companyId: null, assignedUserId: 30 };
 
     // Act
     const result = await accountRepository.list(scope, {
-      page: 2, pageSize: 10, search: "50%_off", isActive: null,
+      page: 2, pageSize: 10, search: "50%_off\\", isActive: null,
     });
 
     // Assert
-    expect(result).toEqual({ total: 1, rows: [{ Id: 5 }] });
-    const { text, inputs } = db.queries[0];
-    expect(text).toContain("a.IsDeleted = 0");
-    expect(text).toContain("a.CompanyId = @scopeCompanyId");
-    expect(text).toContain("aa.AccountId = a.Id AND aa.IsDeleted = 0 AND aa.UserId = @me");
-    expect(text).toContain("OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY");
-    expect(inputs).toMatchObject({
-      scopeCompanyId: 2, me: 30, offset: 10, pageSize: 10, search: "%50[%][_]off%",
+    expect(result).toEqual({ total: 1, rows: [{ id: 5 }] });
+    const [count, page] = db.calls;
+    expect(count.text).toMatch(/^SELECT COUNT\(\*\) AS total FROM accounts a WHERE/);
+    expect(page.text).toContain("NOT a.is_deleted");
+    expect(page.text).toContain("a.company_id = @scopeCompanyId");
+    expect(page.text).toContain("aa.account_id = a.id AND NOT aa.is_deleted AND aa.user_id = @me");
+    expect(page.text).toContain("a.name ILIKE @search");
+    expect(page.text).toContain("ORDER BY a.name, a.id");
+    expect(page.text).toContain("LIMIT @pageSize OFFSET @offset");
+    expect(page.params).toMatchObject({
+      scopeCompanyId: 2, me: 30, offset: 10, pageSize: 10, search: "%50\\%\\_off\\\\%",
     });
-    expect(text).not.toContain("50%_off");
+    expect(page.text).not.toContain("50%_off");
   });
 
   it(
     "lets SUPER_ADMIN filter by one company and by active flag without assignment scoping",
     async () => {
       // Arrange
-      const db = mockPool(mockConnectDb, [paged(0)]);
+      db.reset([rows({ total: 0 }), rows()]);
       const scope = { user: USERS.superAdmin, companyId: 7, assignedUserId: null };
 
       // Act
@@ -68,160 +65,120 @@ describe("account.repository list", () => {
 
       // Assert
       expect(result).toEqual({ total: 0, rows: [] });
-      const { text, inputs } = db.queries[0];
-      expect(text).toContain("a.CompanyId = @filterCompanyId");
-      expect(text).toContain("a.IsActive = @isActive");
+      const { text, params } = db.calls[1];
+      expect(text).toContain("TRUE");
+      expect(text).toContain("a.company_id = @filterCompanyId");
+      expect(text).toContain("a.is_active = @isActive");
       expect(text).not.toContain("@me");
       expect(text).not.toContain("@search");
-      expect(inputs).toMatchObject({ filterCompanyId: 7, isActive: false, offset: 0 });
+      expect(params).toMatchObject({ filterCompanyId: 7, isActive: false, offset: 0 });
+      expect(params).not.toHaveProperty("scopeCompanyId");
     },
   );
 });
 
 describe("account.repository findById", () => {
   it.each([
-    [[rows({ Id: 3 })], { Id: 3 }],
+    [[rows({ id: 3 })], { id: 3 }],
     [[rows()], null],
   ])("returns the scoped row or null", async (responses, expected) => {
     // Arrange
-    const db = mockPool(mockConnectDb, responses);
+    db.reset(responses);
 
     // Act
     const row = await accountRepository.findById(3, { user: USERS.manager });
 
     // Assert
     expect(row).toEqual(expected);
-    expect(db.queries[0].text).toContain("a.Id = @id AND a.IsDeleted = 0");
-    expect(db.queries[0].inputs).toMatchObject({ id: 3, scopeCompanyId: 2 });
+    expect(db.calls[0].text).toContain("a.id = @id AND NOT a.is_deleted");
+    expect(db.calls[0].params).toEqual({ id: 3, scopeCompanyId: 2 });
   });
 
   it("runs on the caller's transaction when one is given", async () => {
     // Arrange
-    const fakeRequest = {
-      input: jest.fn().mockReturnThis(),
-      query: jest.fn().mockResolvedValue(rows()),
-    };
-    const tx = { request: jest.fn(() => fakeRequest) };
+    const tx = { query: jest.fn().mockResolvedValue(rows()) };
 
     // Act
     await accountRepository.findById(3, { user: USERS.superAdmin }, tx);
 
     // Assert
-    expect(tx.request).toHaveBeenCalledTimes(1);
-    expect(mockConnectDb).not.toHaveBeenCalled();
+    expect(tx.query).toHaveBeenCalledTimes(1);
+    expect(db.query).not.toHaveBeenCalled();
   });
 });
 
 describe("account.repository writes", () => {
-  it("inserts an account with audit columns and serialized extra fields", async () => {
+  it("inserts an account with audit columns and extra fields as a jsonb object", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 9 })]);
+    db.reset([rows({ id: 9 })]);
 
     // Act
     const id = await accountRepository.insert(2, FIELDS, 20);
 
     // Assert
     expect(id).toBe(9);
-    expect(db.queries[0].text).toContain("OUTPUT INSERTED.Id");
-    expect(db.queries[0].text).toContain("GETUTCDATE(), @userId, GETUTCDATE(), @userId");
-    expect(db.queries[0].inputs).toMatchObject({
+    const { text, params } = db.calls[0];
+    expect(text).toContain("RETURNING id");
+    expect(text).toContain("@extraFields, @userId, @userId");
+    expect(params).toMatchObject({
       companyId: 2,
       userId: 20,
       name: "City Clinic",
       latitude: 18.52,
-      extraFields: "{\"tier\":\"A\"}",
+      extraFields: { tier: "A" },
     });
   });
 
   it("stores no extra fields as NULL", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 9 })]);
+    db.reset([rows({ id: 9 })]);
 
     // Act
     await accountRepository.insert(2, { ...FIELDS, extraFields: {} }, 20);
 
     // Assert
-    expect(db.queries[0].inputs.extraFields).toBeNull();
+    expect(db.calls[0].params.extraFields).toBeNull();
   });
 
   it.each([
-    ["update", (repo) => repo.update(4, 2, FIELDS, 20), "Name = @name"],
-    ["setStatus", (repo) => repo.setStatus(4, 2, false, 20), "IsActive = @isActive"],
-    ["softDelete", (repo) => repo.softDelete(4, 2, 20), "IsDeleted = 1"],
-  ])("%s targets one live account of the company and stamps UpdatedBy", async (
+    ["update", (repo) => repo.update(4, 2, FIELDS, 20), "name = @name"],
+    ["setStatus", (repo) => repo.setStatus(4, 2, false, 20), "is_active = @isActive"],
+    ["softDelete", (repo) => repo.softDelete(4, 2, 20), "is_deleted = true"],
+  ])("%s targets one live account of the company and stamps updated_by", async (
     _name,
     act,
     fragment,
   ) => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(1)]);
+    db.reset([affected(1)]);
 
     // Act
     const count = await act(accountRepository);
 
     // Assert
     expect(count).toBe(1);
-    const { text, inputs } = db.queries[0];
+    const { text, params } = db.calls[0];
     expect(text).toContain(fragment);
-    expect(text).toContain("WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0");
-    expect(text).toContain("UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId");
-    expect(inputs).toMatchObject({ id: 4, companyId: 2, userId: 20 });
+    expect(text).toContain("WHERE id = @id AND company_id = @companyId AND NOT is_deleted");
+    expect(text).toContain("updated_at = now(), updated_by = @userId");
+    expect(params).toMatchObject({ id: 4, companyId: 2, userId: 20 });
   });
 });
 
 describe("account.repository withTransaction", () => {
-  function fakeTransaction(overrides = {}) {
-    const tx = {
-      begin: jest.fn().mockResolvedValue(),
-      commit: jest.fn().mockResolvedValue(),
-      rollback: jest.fn().mockResolvedValue(),
-      ...overrides,
-    };
-    mockConnectDb.mockResolvedValue({ transaction: () => tx });
-    return tx;
-  }
-
-  it("commits and returns the work's result", async () => {
+  it("delegates to the shared transaction helper", async () => {
     // Arrange
-    const tx = fakeTransaction();
+    const work = async (tx) => {
+      await accountRepository.softDelete(4, 2, 20, tx);
+      return "done";
+    };
 
     // Act
-    const result = await accountRepository.withTransaction(async (t) => (t === tx ? "done" : "x"));
+    const result = await accountRepository.withTransaction(work);
 
     // Assert
     expect(result).toBe("done");
-    expect(tx.begin).toHaveBeenCalled();
-    expect(tx.commit).toHaveBeenCalled();
-    expect(tx.rollback).not.toHaveBeenCalled();
-  });
-
-  it("rolls back and rethrows when the work fails", async () => {
-    // Arrange
-    const tx = fakeTransaction();
-    const error = new Error("boom");
-
-    // Act
-    const run = accountRepository.withTransaction(async () => {
-      throw error;
-    });
-
-    // Assert
-    await expect(run).rejects.toBe(error);
-    expect(tx.rollback).toHaveBeenCalled();
-    expect(tx.commit).not.toHaveBeenCalled();
-  });
-
-  it("still rethrows the original error when the rollback itself fails", async () => {
-    // Arrange
-    fakeTransaction({ rollback: jest.fn().mockRejectedValue(new Error("aborted")) });
-    const error = new Error("boom");
-
-    // Act
-    const run = accountRepository.withTransaction(async () => {
-      throw error;
-    });
-
-    // Assert
-    await expect(run).rejects.toBe(error);
+    expect(db.withTransaction).toHaveBeenCalledWith(work);
+    expect(db.transactionLog()).toEqual(["BEGIN", "COMMIT"]);
   });
 });

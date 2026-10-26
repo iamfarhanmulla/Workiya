@@ -5,7 +5,9 @@ const ENV_KEYS = [
   "COOKIE_DOMAIN",
   "TRUST_PROXY_HOPS",
   "PASSWORD_REHASH_ON_LOGIN",
-  "PASSWORD_REHASH_SHARED_DB_ACK",
+  "DATABASE_URL",
+  "DATABASE_URL_DIRECT",
+  "DATABASE_URL_TEST",
   "JWT_PRIVATE_KEY",
   "JWT_PUBLIC_KEY",
   "JWT_PRIVATE_KEY_PATH",
@@ -117,22 +119,44 @@ describe("config/env", () => {
     expect(readPublic).toThrow(/points to a missing file/);
   });
 
-  it("refuses to rehash passwords in the shared Users table without an explicit "
-    + "acknowledgement", () => {
+  it("upgrades password hashes at login by default, now that users is Workiya-only", () => {
     // Arrange / Act
-    const load = () => loadConfig({ PASSWORD_REHASH_ON_LOGIN: "true" });
-
-    // Assert
-    expect(load).toThrow(/PASSWORD_REHASH_SHARED_DB_ACK/);
-  });
-
-  it("enables rehashing when the shared-DB acknowledgement is set", () => {
-    // Arrange / Act
-    const config = loadConfig({
-      PASSWORD_REHASH_ON_LOGIN: "true", PASSWORD_REHASH_SHARED_DB_ACK: "true",
-    });
+    const config = loadConfig({});
 
     // Assert
     expect(config.auth.passwordRehashOnLogin).toBe(true);
+  });
+
+  it("turns password rehashing off only for an explicit false", () => {
+    // Arrange / Act
+    const config = loadConfig({ PASSWORD_REHASH_ON_LOGIN: "false" });
+
+    // Assert
+    expect(config.auth.passwordRehashOnLogin).toBe(false);
+  });
+
+  it("reads the pooled, direct and test database URLs", () => {
+    // Arrange / Act
+    const config = loadConfig({
+      DATABASE_URL: "postgresql://pooled",
+      DATABASE_URL_DIRECT: "postgresql://direct",
+      DATABASE_URL_TEST: "postgresql://test",
+    });
+
+    // Assert
+    expect(config.database).toEqual({
+      url: "postgresql://pooled",
+      directUrl: "postgresql://direct",
+      testUrl: "postgresql://test",
+    });
+  });
+
+  it("defaults missing database URLs to empty strings", () => {
+    // Arrange / Act
+    const config = loadConfig({});
+
+    // Assert
+    expect(config.database).toEqual({ url: "", directUrl: "", testUrl: "" });
+    expect(config).not.toHaveProperty("mssql");
   });
 });

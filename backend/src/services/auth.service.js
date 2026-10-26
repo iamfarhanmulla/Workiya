@@ -29,7 +29,7 @@ function refreshInvalid() {
 }
 
 function isLocked(row, now) {
-  return Boolean(row.LockoutEndUtc) && new Date(row.LockoutEndUtc) > now;
+  return Boolean(row.lockout_end_at) && new Date(row.lockout_end_at) > now;
 }
 
 // Unknown emails burn the same hash cost as the scheme real users are stored with.
@@ -50,7 +50,7 @@ function audit(eventType, ctx, fields = {}) {
 }
 
 function userAuditFields(row) {
-  return { entityId: row.Id, companyId: row.CompanyId, performedBy: row.Id };
+  return { entityId: row.id, companyId: row.company_id, performedBy: row.id };
 }
 
 function refreshExpiry(isPersistent, now) {
@@ -84,7 +84,7 @@ async function issueSession(user, {
 }
 
 async function handleFailedPassword(row, ctx) {
-  const { failedLoginCount, lockoutEndUtc } = await userRepository.recordFailedLogin(row.Id, {
+  const { failedLoginCount, lockoutEndUtc } = await userRepository.recordFailedLogin(row.id, {
     maxFailedLogins: config.auth.maxFailedLogins,
     lockoutMinutes: config.auth.lockoutMinutes,
   });
@@ -106,7 +106,7 @@ async function rehashIfNeeded(row, password, ctx) {
     return;
   }
   const hashed = await passwordService.hashPassword(password);
-  await userRepository.updatePasswordHash(row.Id, hashed);
+  await userRepository.updatePasswordHash(row.id, hashed);
   await audit(AUDIT_EVENTS.AUTH_PASSWORD_REHASHED, ctx, {
     ...userAuditFields(row),
     oldValue: { algorithm: "PBKDF2-SHA256" },
@@ -142,7 +142,7 @@ async function login({
   }
 
   await rehashIfNeeded(row, password, ctx);
-  await userRepository.recordSuccessfulLogin(row.Id);
+  await userRepository.recordSuccessfulLogin(row.id);
   const isPersistent = rememberMe === true;
   const { session } = await issueSession(toUserDto(row), {
     refreshToken: tokenService.generateRefreshToken(),
@@ -158,12 +158,12 @@ async function login({
 }
 
 async function handleReuse(record, ctx) {
-  await refreshTokenRepository.revokeFamily(record.FamilyId, "REUSE_DETECTED");
+  await refreshTokenRepository.revokeFamily(record.family_id, "REUSE_DETECTED");
   await audit(AUDIT_EVENTS.AUTH_REFRESH_REUSE_DETECTED, ctx, {
-    entityId: record.UserId,
-    companyId: record.CompanyId,
-    performedBy: record.UserId,
-    newValue: { familyId: record.FamilyId },
+    entityId: record.user_id,
+    companyId: record.company_id,
+    performedBy: record.user_id,
+    newValue: { familyId: record.family_id },
   });
   throw new AppError(
     401,
@@ -173,10 +173,10 @@ async function handleReuse(record, ctx) {
 }
 
 function isRecentRotation(record) {
-  if (record.RevokedReason !== ROTATED || !record.RevokedAtUtc) {
+  if (record.revoked_reason !== ROTATED || !record.revoked_at) {
     return false;
   }
-  const revokedForMs = Date.now() - new Date(record.RevokedAtUtc).getTime();
+  const revokedForMs = Date.now() - new Date(record.revoked_at).getTime();
   return revokedForMs < config.refresh.reuseGraceSeconds * 1000;
 }
 
@@ -196,17 +196,17 @@ async function concurrentRefresh(userId) {
 async function rotate(record, user, ctx) {
   const { tokenId, session } = await issueSession(user, {
     refreshToken: tokenService.generateRefreshToken(),
-    familyId: record.FamilyId,
-    isPersistent: Boolean(record.IsPersistent),
-    expiresAtUtc: new Date(record.ExpiresAtUtc),
+    familyId: record.family_id,
+    isPersistent: Boolean(record.is_persistent),
+    expiresAtUtc: new Date(record.expires_at),
     ctx,
   });
   const newHash = tokenService.hashRefreshToken(session.refreshToken);
-  if (await refreshTokenRepository.revoke(record.Id, ROTATED, newHash)) {
+  if (await refreshTokenRepository.revoke(record.id, ROTATED, newHash)) {
     return session;
   }
   await refreshTokenRepository.revoke(tokenId, "RACE_LOST");
-  return concurrentRefresh(record.UserId);
+  return concurrentRefresh(record.user_id);
 }
 
 async function refresh({ refreshToken, ip, userAgent }) {
@@ -219,16 +219,16 @@ async function refresh({ refreshToken, ip, userAgent }) {
   if (!record) {
     throw refreshInvalid();
   }
-  if (record.RevokedAtUtc || record.ReplacedByTokenHash) {
-    return isRecentRotation(record) ? concurrentRefresh(record.UserId) : handleReuse(record, ctx);
+  if (record.revoked_at || record.replaced_by_token_hash) {
+    return isRecentRotation(record) ? concurrentRefresh(record.user_id) : handleReuse(record, ctx);
   }
-  if (new Date(record.ExpiresAtUtc) <= new Date()) {
+  if (new Date(record.expires_at) <= new Date()) {
     throw refreshInvalid();
   }
 
-  const row = await userRepository.findActiveById(record.UserId);
+  const row = await userRepository.findActiveById(record.user_id);
   if (!row) {
-    await refreshTokenRepository.revokeFamily(record.FamilyId, "USER_INACTIVE");
+    await refreshTokenRepository.revokeFamily(record.family_id, "USER_INACTIVE");
     throw refreshInvalid();
   }
   return rotate(record, toUserDto(row), ctx);
@@ -243,11 +243,11 @@ async function logout({ refreshToken, ip, userAgent }) {
   if (!record) {
     return;
   }
-  await refreshTokenRepository.revokeFamily(record.FamilyId, "LOGOUT");
+  await refreshTokenRepository.revokeFamily(record.family_id, "LOGOUT");
   await audit(AUDIT_EVENTS.AUTH_LOGOUT, { ip, userAgent }, {
-    entityId: record.UserId,
-    companyId: record.CompanyId,
-    performedBy: record.UserId,
+    entityId: record.user_id,
+    companyId: record.company_id,
+    performedBy: record.user_id,
   });
 }
 

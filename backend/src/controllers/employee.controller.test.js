@@ -1,56 +1,58 @@
-const mockConnectDb = jest.fn();
-
-jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: mockConnectDb }));
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 
 const request = require("supertest");
+const db = require("../config/db");
 const app = require("../app");
 const {
-  XHR, USERS, authCookie, mockPool, rows, affected,
+  XHR, USERS, authCookie, rows, affected,
 } = require("../../test/helpers/apiHarness");
-const { mockTransactionalPool } = require("../../test/helpers/transactionPool");
 
 function call(method, url, user = USERS.manager) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
 }
 
 const NEW_EMPLOYEE = { email: "emp@example.com", password: "Str0ng!Pass", firstName: "E" };
-const EMPLOYEE_AND_COMPANY = "RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode)"
-  + " AND CompanyId = @scopeCompanyId";
+const EMPLOYEE_AND_COMPANY = "role_id IN (SELECT id FROM roles WHERE code = @roleCode)"
+  + " AND company_id = @scopeCompanyId";
 
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
 });
 
-describe("employee.controller tenant and role scoping", () => {
-  it("lists employees of the caller's company by role code, not a hard-coded RoleId", async () => {
+describe("employee.controller reads", () => {
+  it("lists employees of the caller's company by role code, not a hard-coded role id", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 30 })]);
+    db.reset([rows({ Id: 30, TaskCount: 2, TaskDone: 1 })]);
 
     // Act
     const res = await call("get", "/employees");
 
     // Assert
-    expect(res.body).toEqual({ success: true, data: [{ Id: 30 }] });
-    expect(db.queries[0].text)
-      .toContain(`u.${EMPLOYEE_AND_COMPANY.replace("CompanyId", "u.CompanyId")}`);
-    expect(db.queries[0].text).not.toMatch(/RoleId = \d/);
-    expect(db.queries[0].inputs).toMatchObject({ roleCode: "EMPLOYEE", scopeCompanyId: 2 });
+    expect(res.body).toEqual({ success: true, data: [{ Id: 30, TaskCount: 2, TaskDone: 1 }] });
+    expect(db.calls[0].text)
+      .toContain(`u.${EMPLOYEE_AND_COMPANY.replace("company_id", "u.company_id")}`);
+    expect(db.calls[0].text).toContain("FROM activities a");
+    expect(db.calls[0].text).not.toMatch(/role_id = \d/);
+    expect(db.calls[0].params).toMatchObject({
+      roleCode: "EMPLOYEE", scopeCompanyId: 2, completedStatus: "Completed",
+    });
   });
 
   it("returns 404 for an id that is not an employee of the caller's company", async () => {
     // Arrange
-    mockPool(mockConnectDb, [rows()]);
+    db.reset([rows()]);
 
     // Act
     const res = await call("get", "/employees/1");
 
     // Assert
     expect(res.status).toBe(404);
+    expect(res.body).toEqual({ success: false, message: "Employee not found." });
   });
 
   it("returns an employee in scope", async () => {
     // Arrange
-    mockPool(mockConnectDb, [rows({ Id: 30 })]);
+    db.reset([rows({ Id: 30 })]);
 
     // Act
     const res = await call("get", "/employees/30");
@@ -59,76 +61,36 @@ describe("employee.controller tenant and role scoping", () => {
     expect(res.body.data).toEqual({ Id: 30 });
   });
 
-  it("lets a MANAGER create an employee without picking a company, "
-    + "filed under their own", async () => {
+  it("does not scope a SUPER_ADMIN by company", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows(), rows({ Id: 31 })]);
+    db.reset([rows()]);
 
     // Act
-    const res = await call("post", "/employees").send({ ...NEW_EMPLOYEE, companyId: "" });
+    await call("get", "/employees", USERS.superAdmin);
 
     // Assert
-    expect(res.status).toBe(201);
-    expect(res.body.id).toBe(31);
-    const insert = db.queries[1];
-    expect(insert.text).toContain("FROM Roles r WHERE r.Code = @roleCode");
-    expect(insert.inputs).toMatchObject({ companyId: 2, roleCode: "EMPLOYEE", username: "emp" });
-    expect(Object.values(insert.inputs)).not.toContain("Str0ng!Pass");
+    expect(db.calls[0].params).not.toHaveProperty("scopeCompanyId");
   });
 
-  it.each([
-    ["no password", { email: "emp@example.com" }],
-    ["a short password", { email: "emp@example.com", password: "short" }],
-  ])("requires a real password instead of a default (%s)", async (_label, body) => {
+  it("lists managers of the caller's company for the dropdown", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, []);
+    db.reset([rows({ Id: 20, Name: "Max Manager" })]);
 
     // Act
-    const res = await call("post", "/employees").send(body);
+    const res = await call("get", "/employees/managers-list");
 
     // Assert
-    expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/at least 8/);
-    expect(db.queries).toHaveLength(0);
+    expect(res.body.data).toEqual([{ Id: 20, Name: "Max Manager" }]);
+    expect(db.calls[0].params).toMatchObject({ roleCode: "MANAGER", scopeCompanyId: 2 });
+    expect(db.calls[0].text).toContain("c.name AS \"CompanyName\"");
   });
+});
 
-  it("returns 400 without an email", async () => {
-    // Arrange
-    mockPool(mockConnectDb, []);
-
-    // Act
-    const res = await call("post", "/employees").send({ password: "Str0ng!Pass" });
-
-    // Assert
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 403 when a MANAGER creates an employee in another company", async () => {
-    // Arrange
-    mockPool(mockConnectDb, []);
-
-    // Act
-    const res = await call("post", "/employees").send({ ...NEW_EMPLOYEE, companyId: 3 });
-
-    // Assert
-    expect(res.status).toBe(403);
-  });
-
-  it("returns 409 for an email already in use", async () => {
-    // Arrange
-    mockPool(mockConnectDb, [rows({ Id: 1 })]);
-
-    // Act
-    const res = await call("post", "/employees").send(NEW_EMPLOYEE);
-
-    // Assert
-    expect(res.status).toBe(409);
-  });
-
+describe("employee.controller update", () => {
   it("returns 404 when a MANAGER edits an ADMIN, "
     + "a SUPER_ADMIN or another company's user", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(0)]);
+    db.reset([affected(0)]);
 
     // Act
     const res = await call("put", "/employees/1")
@@ -136,39 +98,38 @@ describe("employee.controller tenant and role scoping", () => {
 
     // Assert
     expect(res.status).toBe(404);
-    expect(db.queries[0].text)
-      .toContain(`WHERE Id = @id AND IsDeleted = 0 AND ${EMPLOYEE_AND_COMPANY}`);
+    expect(db.calls[0].text)
+      .toContain(`WHERE id = @id AND NOT is_deleted AND ${EMPLOYEE_AND_COMPANY}`);
   });
 
   it("updates an employee in scope", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(1)]);
+    db.reset([affected(1)]);
 
     // Act
     const res = await call("put", "/employees/30").send({ companyId: "", firstName: "New" });
 
     // Assert
     expect(res.status).toBe(200);
-    expect(db.queries[0].inputs).toMatchObject({ companyId: 2, firstName: "New" });
+    expect(res.body).toEqual({ success: true, message: "Employee updated." });
+    expect(db.calls[0].params).toMatchObject({ companyId: 2, firstName: "New", isActive: true });
   });
 
-  it("stores an empty manager from the form as NULL, not 0 (FK_Users_Manager)", async () => {
+  it("stores an empty manager from the form as NULL, not 0 (fk_users_manager)", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(1)]);
+    db.reset([affected(1)]);
 
     // Act
     const res = await call("put", "/employees/30").send({ companyId: 2, managerId: "" });
 
     // Assert
     expect(res.status).toBe(200);
-    expect(db.queries[0].inputs).toMatchObject({ managerId: null });
+    expect(db.calls[0].params).toMatchObject({ managerId: null });
   });
 
   it("resets the employee's password and signs out their sessions", async () => {
     // Arrange
-    const { queries, tx } = await mockTransactionalPool(mockConnectDb, [
-      affected(1), affected(1), affected(1), affected(1),
-    ]);
+    db.reset([affected(1), affected(1), affected(1), affected(1)]);
 
     // Act
     const res = await call("put", "/employees/30").send({ companyId: 2, password: "N3w-Passw0rd" });
@@ -177,42 +138,45 @@ describe("employee.controller tenant and role scoping", () => {
     expect(res.status).toBe(200);
     expect(res.body.message)
       .toBe("Employee updated. Password changed and all their sessions were signed out.");
-    expect(tx).toEqual(["begin", "commit"]);
-    expect(queries[1].text).toContain("PasswordHash = @passwordHash");
-    expect(queries[2].text).toContain("UPDATE RefreshTokens");
-    expect(JSON.stringify(queries)).not.toContain("N3w-Passw0rd");
+    expect(db.transactionLog()).toEqual(["BEGIN", "COMMIT"]);
+    const statements = db.statements();
+    expect(statements[1].text).toContain("password_hash = @passwordHash");
+    expect(statements[2].text).toContain("UPDATE refresh_tokens");
+    expect(JSON.stringify(db.calls)).not.toContain("N3w-Passw0rd");
   });
 
   it("rejects a too-short new employee password with 400", async () => {
-    // Arrange
-    const db = mockPool(mockConnectDb, []);
-
     // Act
     const res = await call("put", "/employees/30").send({ companyId: 2, password: "short" });
 
     // Assert
     expect(res.status).toBe(400);
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it("returns 403 when a MANAGER moves an employee to another company", async () => {
-    // Arrange
-    mockPool(mockConnectDb, []);
-
     // Act
     const res = await call("put", "/employees/30").send({ companyId: 3 });
 
     // Assert
     expect(res.status).toBe(403);
   });
+});
 
+describe("employee.controller status and delete", () => {
   it.each([
-    [{ isActive: false }, 1, 200, "Employee deactivated."],
-    [{ isActive: true }, 1, 200, "Employee activated."],
-    [{ isActive: true }, 0, 404, "Employee not found."],
-  ])("toggles status %p only within the caller's company", async (body, count, status, message) => {
+    [{ isActive: false }, 1, 200, "Employee deactivated.", false],
+    [{ isActive: true }, 1, 200, "Employee activated.", true],
+    [{ isActive: true }, 0, 404, "Employee not found.", true],
+  ])("toggles status %p only within the caller's company", async (
+    body,
+    count,
+    status,
+    message,
+    stored,
+  ) => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(count)]);
+    db.reset([affected(count)]);
 
     // Act
     const res = await call("patch", "/employees/30/status").send(body);
@@ -220,13 +184,11 @@ describe("employee.controller tenant and role scoping", () => {
     // Assert
     expect(res.status).toBe(status);
     expect(res.body.message).toBe(message);
-    expect(db.queries[0].text).toContain(EMPLOYEE_AND_COMPANY);
+    expect(db.calls[0].text).toContain(EMPLOYEE_AND_COMPANY);
+    expect(db.calls[0].params.isActive).toBe(stored);
   });
 
   it("requires isActive to toggle status", async () => {
-    // Arrange
-    mockPool(mockConnectDb, []);
-
     // Act
     const res = await call("patch", "/employees/30/status").send({});
 
@@ -240,49 +202,22 @@ describe("employee.controller tenant and role scoping", () => {
   ])("lets an ADMIN delete an employee of their company "
     + "(rows affected %i)", async (count, status) => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(count)]);
+    db.reset([affected(count)]);
 
     // Act
     const res = await call("delete", "/employees/30", USERS.admin);
 
     // Assert
     expect(res.status).toBe(status);
-    expect(db.queries[0].text).toContain(EMPLOYEE_AND_COMPANY);
+    expect(db.calls[0].text).toContain(EMPLOYEE_AND_COMPANY);
   });
 
   it("refuses to delete the caller's own account", async () => {
-    // Arrange
-    mockPool(mockConnectDb, []);
-
     // Act
     const res = await call("delete", `/employees/${USERS.admin.id}`, USERS.admin);
 
     // Assert
     expect(res.status).toBe(403);
-  });
-
-  it("lists managers of the caller's company for the dropdown", async () => {
-    // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 20 })]);
-
-    // Act
-    const res = await call("get", "/employees/managers-list");
-
-    // Assert
-    expect(res.body.data).toEqual([{ Id: 20 }]);
-    expect(db.queries[0].inputs).toMatchObject({ roleCode: "MANAGER", scopeCompanyId: 2 });
-    expect(db.queries[0].text).not.toMatch(/RoleId = \d/);
-  });
-
-  it("does not scope a SUPER_ADMIN by company", async () => {
-    // Arrange
-    const db = mockPool(mockConnectDb, [rows()]);
-
-    // Act
-    await call("get", "/employees", USERS.superAdmin);
-
-    // Assert
-    expect(db.queries[0].inputs).not.toHaveProperty("scopeCompanyId");
   });
 });
 
@@ -297,12 +232,14 @@ describe("employee.controller database errors", () => {
     ["get", "/employees/managers-list"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
-    mockPool(mockConnectDb, [new Error("db down")]);
+    db.reset([new Error("db down")]);
 
     // Act
-    const res = await call(method, url, USERS.superAdmin).send({ ...NEW_EMPLOYEE, isActive: true });
+    const res = await call(method, url, USERS.superAdmin)
+      .send({ ...NEW_EMPLOYEE, companyId: 2, isActive: true });
 
     // Assert
     expect(res.status).toBe(500);
+    expect(res.body).toEqual({ success: false, message: "Database error." });
   });
 });

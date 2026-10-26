@@ -41,7 +41,7 @@ describe("auth.service.login", () => {
 
     // Assert
     expect(session.user).toMatchObject({ id: 11, roleCode: "MANAGER", email: "mgr@example.com" });
-    expect(session.user).not.toHaveProperty("PasswordHash");
+    expect(session.user).not.toHaveProperty("password_hash");
     expect(session.isPersistent).toBe(false);
     expect(tokenService.verifyAccessToken(session.accessToken).sub).toBe("11");
     expect(userRepository.recordSuccessfulLogin).toHaveBeenCalledWith(11);
@@ -97,7 +97,7 @@ describe("auth.service.login", () => {
 
   it("returns 401 and records a failed login for a wrong password", async () => {
     // Arrange
-    userRepository.findActiveByEmail.mockResolvedValue(userRow({ FailedLoginCount: 1 }));
+    userRepository.findActiveByEmail.mockResolvedValue(userRow({ failed_login_count: 1 }));
     userRepository.recordFailedLogin
       .mockResolvedValue({ failedLoginCount: 2, lockoutEndUtc: null });
 
@@ -120,7 +120,7 @@ describe("auth.service.login", () => {
   it("uses the count and lockout decided by the database, not the stale row", async () => {
     // Arrange
     const lockoutEndUtc = new Date(Date.now() + 15 * 60 * 1000);
-    userRepository.findActiveByEmail.mockResolvedValue(userRow({ FailedLoginCount: 0 }));
+    userRepository.findActiveByEmail.mockResolvedValue(userRow({ failed_login_count: 0 }));
     userRepository.recordFailedLogin.mockResolvedValue({ failedLoginCount: 5, lockoutEndUtc });
 
     // Act
@@ -153,7 +153,7 @@ describe("auth.service.login", () => {
   it("answers a locked account like a wrong password, after the same hash work", async () => {
     // Arrange
     const future = new Date(Date.now() + 60 * 1000);
-    userRepository.findActiveByEmail.mockResolvedValue(userRow({ LockoutEndUtc: future }));
+    userRepository.findActiveByEmail.mockResolvedValue(userRow({ lockout_end_at: future }));
     const verifySpy = jest.spyOn(passwordService, "verifyPassword");
 
     // Act
@@ -172,10 +172,10 @@ describe("auth.service.login", () => {
     verifySpy.mockRestore();
   });
 
-  it("signs in a SUPER_ADMIN without a company and stores a NULL CompanyId", async () => {
+  it("signs in a SUPER_ADMIN without a company and stores a NULL company_id", async () => {
     // Arrange
     userRepository.findActiveByEmail
-      .mockResolvedValue(userRow({ CompanyId: null, RoleCode: "SUPER_ADMIN" }));
+      .mockResolvedValue(userRow({ company_id: null, role_code: "SUPER_ADMIN" }));
 
     // Act
     const session = await authService.login({
@@ -209,7 +209,7 @@ describe("auth.service.login", () => {
     config.auth.passwordRehashOnLogin = true;
     const hashed = await passwordService.hashPassword(PASSWORD);
     userRepository.findActiveByEmail.mockResolvedValue(
-      userRow({ PasswordHash: hashed.passwordHash, PasswordSalt: "", PasswordIterations: 0 }),
+      userRow({ password_hash: hashed.passwordHash, password_salt: "", password_iterations: 0 }),
     );
 
     // Act

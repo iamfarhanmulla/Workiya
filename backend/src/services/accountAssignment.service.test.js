@@ -11,7 +11,7 @@ const assignmentService = require("./accountAssignment.service");
 const { USERS } = require("../../test/helpers/apiHarness");
 
 const CTX = { ipAddress: "10.0.0.1", userAgent: "jest" };
-const ACCOUNT = { Id: 4, CompanyId: 2 };
+const ACCOUNT = { id: 4, company_id: 2 };
 
 beforeEach(() => {
   accountRepository.withTransaction.mockImplementation((work) => work("tx"));
@@ -25,7 +25,11 @@ describe("accountAssignment.service list", () => {
     // Arrange
     assignmentRepository.listByAccountIds.mockResolvedValue([
       {
-        AccountId: 4, UserId: 30, DisplayName: "Rep A", RoleCode: "EMPLOYEE", VisitsPerMonth: 2,
+        account_id: 4,
+        user_id: 30,
+        display_name: "Rep A",
+        role_code: "EMPLOYEE",
+        visits_per_month: 2,
       },
     ]);
 
@@ -74,9 +78,9 @@ describe("accountAssignment.service replace", () => {
       // Arrange
       assignmentRepository.findAssignableUserIds.mockResolvedValue([30, 31, 32]);
       assignmentRepository.lockActiveForAccount.mockResolvedValue([
-        { Id: 1, UserId: 30, VisitsPerMonth: 2 },
-        { Id: 2, UserId: 31, VisitsPerMonth: null },
-        { Id: 3, UserId: 33, VisitsPerMonth: 4 },
+        { id: 1, user_id: 30, visits_per_month: 2 },
+        { id: 2, user_id: 31, visits_per_month: null },
+        { id: 3, user_id: 33, visits_per_month: 4 },
       ]);
       const wanted = [
         { userId: 30, visitsPerMonth: 2 },
@@ -110,7 +114,7 @@ describe("accountAssignment.service replace", () => {
     // Arrange
     assignmentRepository.findAssignableUserIds.mockResolvedValue([30]);
     assignmentRepository.lockActiveForAccount.mockResolvedValue([
-      { Id: 1, UserId: 30, VisitsPerMonth: null },
+      { id: 1, user_id: 30, visits_per_month: null },
     ]);
 
     // Act
@@ -136,10 +140,10 @@ describe("accountAssignment.service transfer", () => {
     // Arrange
     assignmentRepository.lockActiveForUser
       .mockResolvedValueOnce([
-        { Id: 1, AccountId: 4, VisitsPerMonth: 2 },
-        { Id: 2, AccountId: 5, VisitsPerMonth: null },
+        { id: 1, account_id: 4, visits_per_month: 2 },
+        { id: 2, account_id: 5, visits_per_month: null },
       ])
-      .mockResolvedValueOnce([{ Id: 9, AccountId: 5, VisitsPerMonth: 1 }]);
+      .mockResolvedValueOnce([{ id: 9, account_id: 5, visits_per_month: 1 }]);
 
     // Act
     const result = await assignmentService.transfer(USERS.manager, BODY, CTX);
@@ -175,10 +179,10 @@ describe("accountAssignment.service transfer", () => {
   it("returns 409 CONFLICT when a parallel change inserted the same pair first", async () => {
     // Arrange
     assignmentRepository.lockActiveForUser
-      .mockResolvedValueOnce([{ Id: 1, AccountId: 4, VisitsPerMonth: 2 }])
+      .mockResolvedValueOnce([{ id: 1, account_id: 4, visits_per_month: 2 }])
       .mockResolvedValueOnce([]);
     assignmentRepository.insertMany.mockRejectedValue(Object.assign(new Error("dup"), {
-      number: 2601,
+      code: "23505",
     }));
 
     // Act

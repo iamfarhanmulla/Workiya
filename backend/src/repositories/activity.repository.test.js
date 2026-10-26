@@ -1,36 +1,31 @@
-const mockConnectDb = jest.fn();
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 
-jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: mockConnectDb }));
-
+const db = require("../config/db");
 const activityRepository = require("./activity.repository");
-const { mockPool, rows, affected } = require("../../test/helpers/apiHarness");
+const { rows, affected } = require("../../test/helpers/mockDb");
 
 const COMPANY_SCOPE = { companyId: 2, unrestricted: false, userId: null };
 const EMPLOYEE_SCOPE = { companyId: 2, unrestricted: false, userId: 30 };
 const ALL_SCOPE = { companyId: null, unrestricted: true, userId: null };
 
-function paged(total, ...recordset) {
-  return { recordsets: [[{ Total: total }], recordset], recordset: [{ Total: total }] };
-}
-
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
 });
 
 describe("activity.repository helpers", () => {
-  it("escapes LIKE wildcards so a search is literal", () => {
+  it("escapes LIKE wildcards and the escape character so a search is literal", () => {
     // Arrange / Act
     const pattern = activityRepository.likePattern("50%_[x]\\");
 
     // Assert
-    expect(pattern).toBe("%50\\%\\_\\[x]\\\\%");
+    expect(pattern).toBe("%50\\%\\_[x]\\\\%");
   });
 });
 
 describe("activity.repository.list", () => {
-  it("binds every filter as a parameter and pages with OFFSET/FETCH", async () => {
+  it("binds every filter as a parameter and pages with OFFSET/LIMIT", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [paged(3, { Id: 1 })]);
+    db.reset([rows({ total: 3 }), rows({ id: 1 })]);
     const dateFrom = new Date("2026-10-01T00:00:00Z");
 
     // Act
@@ -46,9 +41,9 @@ describe("activity.repository.list", () => {
     });
 
     // Assert
-    expect(page).toEqual({ total: 3, rows: [{ Id: 1 }] });
-    const [{ text, inputs }] = db.queries;
-    expect(inputs).toEqual({
+    expect(page).toEqual({ total: 3, rows: [{ id: 1 }] });
+    const [count, pageQuery] = db.calls;
+    const filters = {
       scopeCompanyId: 2,
       scopeUserId: 30,
       status: "Pending",
@@ -57,48 +52,54 @@ describe("activity.repository.list", () => {
       dateFrom,
       dateTo: dateFrom,
       search: "%rao' OR 1=1%",
-      offset: 10,
-      pageSize: 10,
-    });
-    expect(text).toContain("a.AssignedTo = @scopeUserId");
-    expect(text).toContain("OUTER APPLY");
-    expect(text).toContain("ORDER BY s.SubmittedAtUtc DESC");
-    expect(text).not.toContain("rao'");
+    };
+    expect(count.params).toEqual(filters);
+    expect(pageQuery.params).toEqual({ ...filters, offset: 10, pageSize: 10 });
+    expect(count.text).not.toContain("LATERAL");
+    expect(pageQuery.text).toContain("a.assigned_to = @scopeUserId");
+    expect(pageQuery.text).toContain("LEFT JOIN LATERAL");
+    expect(pageQuery.text).toContain("ORDER BY s.submitted_at DESC, s.id DESC");
+    expect(pageQuery.text).toContain("a.title ILIKE @search ESCAPE '\\'");
+    expect(pageQuery.text).toContain("OFFSET @offset LIMIT @pageSize");
+    expect(db.calls.map((call) => call.text).join()).not.toContain("rao'");
   });
 
   it("does not filter by company for an unrestricted SUPER_ADMIN scope", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [paged(0)]);
+    db.reset([rows({ total: 0 }), rows()]);
 
     // Act
-    await activityRepository.list(ALL_SCOPE, { page: 1, pageSize: 50 });
+    const page = await activityRepository.list(ALL_SCOPE, { page: 1, pageSize: 50 });
 
     // Assert
-    expect(db.queries[0].inputs).toEqual({ offset: 0, pageSize: 50 });
-    expect(db.queries[0].text).not.toContain("@scopeCompanyId");
+    expect(page).toEqual({ total: 0, rows: [] });
+    expect(db.calls[0].params).toEqual({});
+    expect(db.calls[1].params).toEqual({ offset: 0, pageSize: 50 });
+    expect(db.calls[1].text).not.toContain("@scopeCompanyId");
   });
 });
 
-describe("activity.repository single-row operations", () => {
+describe("activity.repository reads", () => {
   it("finds one activity in scope or returns null", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 5 }), rows()]);
+    db.reset([rows({ id: 5 }), rows()]);
 
     // Act
     const found = await activityRepository.findById(5, COMPANY_SCOPE);
     const missing = await activityRepository.findById(6, COMPANY_SCOPE);
 
     // Assert
-    expect(found).toEqual({ Id: 5 });
+    expect(found).toEqual({ id: 5 });
     expect(missing).toBeNull();
-    expect(db.queries[0].inputs).toEqual({ id: 5, scopeCompanyId: 2 });
+    expect(db.calls[0].params).toEqual({ id: 5, scopeCompanyId: 2 });
+    expect(db.calls[0].text).toContain("NOT a.is_deleted");
   });
 
   it("checks every reference against the activity's company and assignee roles", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [
-      rows({ AccountOk: 1, ActivityTypeOk: 1, AssigneeOk: 1 }),
-      rows({ AccountOk: 1, ActivityTypeOk: 0, AssigneeOk: 1 }),
+    db.reset([
+      rows({ account_ok: true, activity_type_ok: true, assignee_ok: true }),
+      rows({ account_ok: true, activity_type_ok: false, assignee_ok: true }),
       rows(),
     ]);
 
@@ -111,7 +112,7 @@ describe("activity.repository single-row operations", () => {
 
     // Assert
     expect([okAll, badType, noRow]).toEqual([true, false, false]);
-    expect(db.queries[0].inputs).toEqual({
+    expect(db.calls[0].params).toEqual({
       companyId: 2,
       accountId: 3,
       activityTypeId: 1,
@@ -119,13 +120,15 @@ describe("activity.repository single-row operations", () => {
       employeeCode: "EMPLOYEE",
       managerCode: "MANAGER",
     });
-    expect(db.queries[1].inputs).toMatchObject({ accountId: null, assignedTo: null });
-    expect(db.queries[0].text).toContain("r.Code IN (@employeeCode, @managerCode)");
+    expect(db.calls[1].params).toMatchObject({ accountId: null, assignedTo: null });
+    expect(db.calls[0].text).toContain("r.code IN (@employeeCode, @managerCode)");
   });
+});
 
+describe("activity.repository writes", () => {
   it("inserts a Pending activity with audit columns and returns its id", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 77 })]);
+    db.reset([rows({ id: 77 })]);
 
     // Act
     const id = await activityRepository.insert(2, {
@@ -139,15 +142,16 @@ describe("activity.repository single-row operations", () => {
 
     // Assert
     expect(id).toBe(77);
-    expect(db.queries[0].inputs).toMatchObject({
-      companyId: 2, userId: 20, description: null, dueAtUtc: new Date("2026-10-30T09:00:00Z"),
+    expect(db.calls[0].params).toMatchObject({
+      companyId: 2, userId: 20, description: null, dueAt: new Date("2026-10-30T09:00:00Z"),
     });
-    expect(db.queries[0].text).toMatch(/N'Pending', @priority, @dueAtUtc, @userId, @userId/);
+    expect(db.calls[0].text).toMatch(/'Pending', @priority, @dueAt, @userId, @userId\)/);
+    expect(db.calls[0].text).toContain("RETURNING id");
   });
 
-  it("updates fields, status and soft delete with UpdatedAtUtc/UpdatedBy", async () => {
+  it("updates fields, status and soft delete with updated_at/updated_by", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [affected(1), affected(0), affected(1)]);
+    db.reset([affected(1), affected(0), affected(1)]);
 
     // Act
     const updated = await activityRepository.update(5, 2, {
@@ -163,12 +167,16 @@ describe("activity.repository single-row operations", () => {
 
     // Assert
     expect([updated, moved, deleted]).toEqual([1, 0, 1]);
-    db.queries.forEach(({ text }) => {
-      expect(text).toContain("UpdatedAtUtc = GETUTCDATE()");
-      expect(text).toContain("UpdatedBy = @userId");
-      expect(text).toContain("IsDeleted = 0");
+    db.calls.forEach(({ text }) => {
+      expect(text).toContain("updated_at = now()");
+      expect(text).toContain("updated_by = @userId");
+      expect(text).toContain("NOT is_deleted");
     });
-    expect(db.queries[1].text).toContain("Status = @fromStatus");
-    expect(db.queries[2].text).toContain("SET IsDeleted = 1");
+    expect(db.calls[0].params).toMatchObject({ dueAt: null, description: null });
+    expect(db.calls[1].text).toContain("status = @fromStatus");
+    expect(db.calls[1].params).toEqual({
+      id: 5, companyId: 2, fromStatus: "Pending", toStatus: "InProgress", userId: 30,
+    });
+    expect(db.calls[2].text).toContain("SET is_deleted = true");
   });
 });

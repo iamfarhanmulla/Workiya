@@ -17,7 +17,7 @@ const QUERY = {
   page: 1, pageSize: 50, search: null, isActive: null,
 };
 const ROW = {
-  Id: 4, CompanyId: 2, Name: "City Clinic", IsActive: true, ExtraFields: "{\"tier\":\"A\"}",
+  id: 4, company_id: 2, name: "City Clinic", is_active: true, extra_fields: { tier: "A" },
 };
 const BODY = { name: "City Clinic", city: "Pune", extraFields: { tier: "A" } };
 
@@ -67,13 +67,13 @@ describe("account.service read scoping", () => {
 
   it("groups one assignments query into each account of the page", async () => {
     // Arrange
-    accountRepository.list.mockResolvedValue({ total: 2, rows: [ROW, { ...ROW, Id: 5 }] });
+    accountRepository.list.mockResolvedValue({ total: 2, rows: [ROW, { ...ROW, id: 5 }] });
     assignmentRepository.listByAccountIds.mockResolvedValue([
       {
-        AccountId: 4, UserId: 30, DisplayName: "Rep A", VisitsPerMonth: 2,
+        account_id: 4, user_id: 30, display_name: "Rep A", visits_per_month: 2,
       },
       {
-        AccountId: 4, UserId: 31, DisplayName: "Rep B", VisitsPerMonth: null,
+        account_id: 4, user_id: 31, display_name: "Rep B", visits_per_month: null,
       },
     ]);
 
@@ -148,7 +148,7 @@ describe("account.service writes", () => {
     // Arrange
     accountRepository.findById
       .mockResolvedValueOnce(ROW)
-      .mockResolvedValueOnce({ ...ROW, Name: "New" });
+      .mockResolvedValueOnce({ ...ROW, name: "New" });
     accountRepository.update.mockResolvedValue(1);
 
     // Act
