@@ -28,8 +28,8 @@ describe("password.service", () => {
 
     it("rejects a PBKDF2 row with an empty hash or salt", async () => {
       // Arrange
-      const emptyHash = legacyPbkdf2Row("x", { PasswordHash: "" });
-      const emptySalt = legacyPbkdf2Row("x", { PasswordSalt: "" });
+      const emptyHash = legacyPbkdf2Row("x", { password_hash: "" });
+      const emptySalt = legacyPbkdf2Row("x", { password_salt: "" });
 
       // Act
       const results = await Promise.all([
@@ -44,7 +44,7 @@ describe("password.service", () => {
     it("accepts and rejects Argon2id hashes", async () => {
       // Arrange
       const hashed = await passwordService.hashPassword("Argon#Pass1");
-      const row = { PasswordHash: hashed.passwordHash, PasswordSalt: "", PasswordIterations: 0 };
+      const row = { password_hash: hashed.passwordHash, password_salt: "", password_iterations: 0 };
 
       // Act
       const good = await passwordService.verifyPassword(row, "Argon#Pass1");
@@ -57,7 +57,7 @@ describe("password.service", () => {
 
     it("returns false for a malformed Argon2 hash instead of throwing", async () => {
       // Arrange
-      const row = { PasswordHash: "$argon2id$broken", PasswordSalt: "", PasswordIterations: 0 };
+      const row = { password_hash: "$argon2id$broken", password_salt: "", password_iterations: 0 };
 
       // Act
       const result = await passwordService.verifyPassword(row, "anything");
@@ -68,7 +68,7 @@ describe("password.service", () => {
 
     it("returns false when the row has no usable scheme or input is missing", async () => {
       // Arrange
-      const unknownScheme = { PasswordHash: "abc", PasswordSalt: "", PasswordIterations: 0 };
+      const unknownScheme = { password_hash: "abc", password_salt: "", password_iterations: 0 };
 
       // Act
       const results = await Promise.all([
@@ -105,7 +105,7 @@ describe("password.service", () => {
       // Arrange
       const legacy = legacyPbkdf2Row("x");
       const modern = {
-        PasswordHash: "$argon2id$v=19$...", PasswordSalt: "", PasswordIterations: 0,
+        password_hash: "$argon2id$v=19$...", password_salt: "", password_iterations: 0,
       };
 
       // Act
@@ -143,24 +143,6 @@ describe("password.service", () => {
       expect(result).toBe(false);
       expect(argonSpy).not.toHaveBeenCalled();
       argonSpy.mockRestore();
-    });
-  });
-
-  describe("hashForSharedUsersTable", () => {
-    it("produces a PBKDF2 row that verifyPassword accepts", async () => {
-      // Arrange
-      const hashed = passwordService.hashForSharedUsersTable("Str0ng!Pass");
-
-      // Act
-      const ok = await passwordService.verifyPassword({
-        PasswordHash: hashed.passwordHash,
-        PasswordSalt: hashed.passwordSalt,
-        PasswordIterations: hashed.passwordIterations,
-      }, "Str0ng!Pass");
-
-      // Assert
-      expect(ok).toBe(true);
-      expect(hashed.passwordIterations).toBe(10000);
     });
   });
 

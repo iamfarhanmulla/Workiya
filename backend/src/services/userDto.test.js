@@ -29,7 +29,7 @@ describe("toUserDto", () => {
 
   it("returns null role fields when the row has no role join", () => {
     // Arrange
-    const row = userRow({ RoleCode: undefined, RoleName: "" });
+    const row = userRow({ role_code: undefined, role_name: "" });
 
     // Act
     const dto = toUserDto(row);

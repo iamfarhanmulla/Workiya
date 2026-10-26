@@ -1,22 +1,22 @@
-const { toAccountDto, toAssignmentDto, parseExtraFields } = require("./account.dto");
+const { toAccountDto, toAssignmentDto, toExtraFields } = require("./account.dto");
 
 describe("account.dto", () => {
-  it("maps a row to camelCase with parsed extra fields, numbers and ISO dates", () => {
+  it("maps a snake_case row to camelCase with numbers and ISO dates", () => {
     // Arrange
     const row = {
-      Id: 4,
-      CompanyId: 2,
-      Name: "City Clinic",
-      Latitude: "18.5200000",
-      Longitude: null,
-      ExtraFields: "{\"tier\":\"A\"}",
-      IsActive: 1,
-      CreatedAtUtc: new Date("2026-10-21T10:00:00Z"),
-      UpdatedAtUtc: null,
+      id: 4,
+      company_id: 2,
+      name: "City Clinic",
+      latitude: 18.52,
+      longitude: null,
+      extra_fields: { tier: "A" },
+      is_active: true,
+      created_at: new Date("2026-10-21T10:00:00Z"),
+      updated_at: null,
     };
 
     // Act
-    const dto = toAccountDto(row, [{ UserId: 30, DisplayName: "Rep", VisitsPerMonth: 3 }]);
+    const dto = toAccountDto(row, [{ user_id: 30, display_name: "Rep", visits_per_month: 3 }]);
 
     // Assert
     expect(dto).toEqual({
@@ -43,13 +43,12 @@ describe("account.dto", () => {
 
   it.each([
     [null, {}],
-    ["not json", {}],
-    ["[1,2]", {}],
-    ["\"text\"", {}],
-    ["{\"a\":1}", { a: 1 }],
-  ])("parses extra fields %p as an object", (text, expected) => {
+    [[1, 2], {}],
+    ["text", {}],
+    [{ a: 1 }, { a: 1 }],
+  ])("reads extra fields %p as an object", (value, expected) => {
     // Arrange / Act
-    const result = parseExtraFields(text);
+    const result = toExtraFields(value);
 
     // Assert
     expect(result).toEqual(expected);
@@ -58,7 +57,7 @@ describe("account.dto", () => {
   it("maps an assignment row with its role", () => {
     // Arrange
     const row = {
-      UserId: 30, DisplayName: "Rep", VisitsPerMonth: null, RoleCode: null,
+      user_id: 30, display_name: "Rep", visits_per_month: null, role_code: null,
     };
 
     // Act

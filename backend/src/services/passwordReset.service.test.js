@@ -67,7 +67,7 @@ describe("passwordReset.service readNewPassword", () => {
 });
 
 describe("passwordReset.service resetPassword", () => {
-  it("stores a hash (never the plain password) and audits without the password", async () => {
+  it("stores an Argon2id hash (never the plain password) and audits without it", async () => {
     // Arrange
     userPasswordRepository.resetPassword.mockResolvedValue({ updated: true, revokedSessions: 2 });
 
@@ -77,9 +77,11 @@ describe("passwordReset.service resetPassword", () => {
     // Assert
     expect(result).toEqual({ updated: true, revokedSessions: 2 });
     const entry = userPasswordRepository.resetPassword.mock.calls[0][0];
-    expect(entry).toMatchObject({ userId: 7, updatedBy: 1, passwordIterations: 10000 });
+    expect(entry).toMatchObject({
+      userId: 7, updatedBy: 1, passwordSalt: "", passwordIterations: 0,
+    });
+    expect(entry.passwordHash).toMatch(/^\$argon2id\$/);
     expect(entry.passwordHash).not.toBe("N3w-Passw0rd");
-    expect(entry.passwordSalt).toEqual(expect.any(String));
     const audit = auditService.log.mock.calls[0][0];
     expect(audit).toMatchObject({
       eventType: "USER_PASSWORD_RESET",

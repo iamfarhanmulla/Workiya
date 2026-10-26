@@ -1,4 +1,4 @@
-const { parseOptions } = require("./customFields.service");
+const { toOptionList } = require("./customFields.service");
 
 const TERM_DEFAULTS = Object.freeze({
   "account.singular": "Account",
@@ -14,8 +14,8 @@ const TERM_KEYS = Object.freeze(Object.keys(TERM_DEFAULTS));
 function toTerminologyDto(rows) {
   const labels = { ...TERM_DEFAULTS };
   rows.forEach((row) => {
-    if (TERM_KEYS.includes(row.TermKey)) {
-      labels[row.TermKey] = row.Label;
+    if (TERM_KEYS.includes(row.term_key)) {
+      labels[row.term_key] = row.label;
     }
   });
   return labels;
@@ -23,29 +23,29 @@ function toTerminologyDto(rows) {
 
 function toCustomFieldDto(row) {
   return {
-    id: row.Id,
-    entityType: row.EntityType,
-    fieldKey: row.FieldKey,
-    label: row.Label,
-    dataType: row.DataType,
-    isRequired: Boolean(row.IsRequired),
-    options: row.OptionsJson ? parseOptions(row.OptionsJson) : null,
-    sortOrder: row.SortOrder,
-    isActive: Boolean(row.IsActive),
+    id: row.id,
+    entityType: row.entity_type,
+    fieldKey: row.field_key,
+    label: row.label,
+    dataType: row.data_type,
+    isRequired: Boolean(row.is_required),
+    options: row.options_json ? toOptionList(row.options_json) : null,
+    sortOrder: row.sort_order,
+    isActive: Boolean(row.is_active),
   };
 }
 
 function toActivityTypeDto(row) {
   return {
-    id: row.Id,
-    code: row.Code,
-    name: row.Name,
-    requiresCheckIn: Boolean(row.RequiresCheckIn),
-    geofenceMeters: row.GeofenceMeters ?? null,
-    minPhotos: row.MinPhotos,
-    requiresSignature: Boolean(row.RequiresSignature),
-    requiresCustomerOtp: Boolean(row.RequiresCustomerOtp),
-    isActive: Boolean(row.IsActive),
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    requiresCheckIn: Boolean(row.requires_check_in),
+    geofenceMeters: row.geofence_meters ?? null,
+    minPhotos: row.min_photos,
+    requiresSignature: Boolean(row.requires_signature),
+    requiresCustomerOtp: Boolean(row.requires_customer_otp),
+    isActive: Boolean(row.is_active),
   };
 }
 

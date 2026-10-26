@@ -1,22 +1,19 @@
 const { Router: mockRouter } = require("express");
 const request = require("supertest");
 
-const mockConnectDb = jest.fn();
-
-jest.mock("../config/db", () => ({
-  sql: jest.requireActual("mssql"),
-  connectDb: mockConnectDb,
-}));
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 jest.mock("../services/audit.service", () => ({ log: jest.fn() }));
 // Routers owned by other modules: stubbed so these tests only exercise /settings.
 jest.mock("./account.routes", () => mockRouter(), { virtual: true });
 jest.mock("./activity.routes", () => mockRouter(), { virtual: true });
 jest.mock("./submission.routes", () => mockRouter(), { virtual: true });
 
+const db = require("../config/db");
 const app = require("../app");
 const auditService = require("../services/audit.service");
-const { XHR, USERS, authCookie } = require("../../test/helpers/apiHarness");
-const { mockTransactionalPool, allInputs } = require("../../test/helpers/transactionPool");
+const {
+  XHR, USERS, authCookie, rows, affected,
+} = require("../../test/helpers/apiHarness");
 
 const URL = "/api/v1/settings/terminology";
 
@@ -27,14 +24,13 @@ function send(method, url, user, body) {
 
 describe("settings routes: terminology", () => {
   beforeEach(() => {
-    mockConnectDb.mockReset();
+    db.reset();
+    auditService.log.mockClear();
   });
 
   it("lets an EMPLOYEE read their company's labels with defaults", async () => {
     // Arrange
-    const db = await mockTransactionalPool(mockConnectDb, [
-      { recordset: [{ TermKey: "account.plural", Label: "Doctors" }] },
-    ]);
+    db.reset([rows({ term_key: "account.plural", label: "Doctors" })]);
 
     // Act
     const res = await send("get", URL, USERS.employee);
@@ -44,12 +40,12 @@ describe("settings routes: terminology", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data["account.plural"]).toBe("Doctors");
     expect(res.body.data["account.singular"]).toBe("Account");
-    expect(db.queries[0].inputs.companyId).toBe(2);
+    expect(db.calls[0].params.companyId).toBe(2);
   });
 
   it("returns 403 when an EMPLOYEE updates labels", async () => {
     // Arrange
-    const db = await mockTransactionalPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("put", URL, USERS.employee, { labels: { "account.plural": "Doctors" } });
@@ -57,12 +53,12 @@ describe("settings routes: terminology", () => {
     // Assert
     expect(res.status).toBe(403);
     expect(res.body.errorCode).toBe("FORBIDDEN");
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it("returns 403 when an ADMIN of company 2 asks for company 3", async () => {
     // Arrange
-    const db = await mockTransactionalPool(mockConnectDb);
+    db.reset();
 
     // Act
     const read = await send("get", `${URL}?companyId=3`, USERS.admin);
@@ -74,12 +70,12 @@ describe("settings routes: terminology", () => {
     expect(read.status).toBe(403);
     expect(write.status).toBe(403);
     expect(write.body.errorCode).toBe("FORBIDDEN");
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it("returns 400 COMPANY_REQUIRED when SUPER_ADMIN omits companyId", async () => {
     // Arrange
-    await mockTransactionalPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("get", URL, USERS.superAdmin);
@@ -96,7 +92,7 @@ describe("settings routes: terminology", () => {
     [{}],
   ])("rejects an invalid body %p", async (body) => {
     // Arrange
-    const db = await mockTransactionalPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("put", URL, USERS.admin, body);
@@ -104,14 +100,12 @@ describe("settings routes: terminology", () => {
     // Assert
     expect(res.status).toBe(400);
     expect(res.body.errorCode).toBe("VALIDATION_FAILED");
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
-  it("saves labels for SUPER_ADMIN's chosen company in one transaction", async () => {
+  it("saves every label for SUPER_ADMIN's chosen company in one statement", async () => {
     // Arrange
-    const db = await mockTransactionalPool(mockConnectDb, [
-      { recordset: [] }, { rowsAffected: [1] }, { rowsAffected: [1] },
-    ]);
+    db.reset([rows(), affected(2)]);
 
     // Act
     const res = await send("put", URL, USERS.superAdmin, {
@@ -121,25 +115,28 @@ describe("settings routes: terminology", () => {
     // Assert
     expect(res.status).toBe(200);
     expect(res.body.data["account.plural"]).toBe("Doctors");
-    expect(db.tx).toEqual(["begin", "commit"]);
-    expect(allInputs(db.queries)).toContainEqual({ name: "companyId", value: 3 });
-    expect(allInputs(db.queries)).toContainEqual({ name: "userId", value: USERS.superAdmin.id });
+    expect(db.calls).toHaveLength(2);
+    expect(db.calls[1].text).toContain("ON CONFLICT (company_id, term_key)");
+    expect(db.calls[1].params).toEqual({
+      companyId: 3,
+      userId: USERS.superAdmin.id,
+      termKeys: ["account.singular", "account.plural"],
+      labels: ["Doctor", "Doctors"],
+    });
     expect(auditService.log).toHaveBeenCalledWith(expect.objectContaining({
       eventType: "TERMINOLOGY_UPDATED", companyId: 3, performedBy: 1,
     }));
   });
 
-  it("rolls back when a label fails to save", async () => {
+  it("returns 500 and writes no audit entry when the labels fail to save", async () => {
     // Arrange
-    const responses = [{ recordset: [] }, new Error("db down")];
-    const db = await mockTransactionalPool(mockConnectDb, responses);
+    db.reset([rows(), new Error("db down")]);
 
     // Act
     const res = await send("put", URL, USERS.admin, { labels: { "account.plural": "Doctors" } });
 
     // Assert
     expect(res.status).toBe(500);
-    expect(db.tx).toEqual(["begin", "rollback"]);
     expect(auditService.log).not.toHaveBeenCalled();
   });
 });

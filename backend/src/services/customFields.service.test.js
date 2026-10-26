@@ -1,27 +1,27 @@
 jest.mock("../repositories/customField.repository", () => ({ list: jest.fn() }));
 
 const customFieldRepository = require("../repositories/customField.repository");
-const { validateValues, parseOptions } = require("./customFields.service");
+const { validateValues, toOptionList } = require("./customFields.service");
 
 function definition(fieldKey, dataType, extra = {}) {
   return {
-    FieldKey: fieldKey,
-    Label: extra.Label || fieldKey,
-    DataType: dataType,
-    IsRequired: extra.IsRequired || false,
-    OptionsJson: extra.OptionsJson || null,
+    field_key: fieldKey,
+    label: extra.label || fieldKey,
+    data_type: dataType,
+    is_required: extra.is_required || false,
+    options_json: extra.options_json || null,
   };
 }
 
-const COLORS = JSON.stringify(["Red", "Green", "Blue"]);
+const COLORS = ["Red", "Green", "Blue"];
 
 const ALL_TYPES = [
   definition("note", "TEXT"),
   definition("beds", "NUMBER"),
   definition("since", "DATE"),
   definition("vip", "BOOLEAN"),
-  definition("color", "SELECT", { OptionsJson: COLORS }),
-  definition("colors", "MULTI_SELECT", { OptionsJson: COLORS }),
+  definition("color", "SELECT", { options_json: COLORS }),
+  definition("colors", "MULTI_SELECT", { options_json: COLORS }),
   definition("phone", "PHONE"),
   definition("mail", "EMAIL"),
 ];
@@ -94,7 +94,7 @@ describe("customFields.service.validateValues", () => {
   it.each([undefined, null, "", []])("requires a required field (value %p)", async (value) => {
     // Arrange
     customFieldRepository.list.mockResolvedValue([
-      definition("spec", "TEXT", { Label: "Speciality", IsRequired: true }),
+      definition("spec", "TEXT", { label: "Speciality", is_required: true }),
     ]);
 
     // Act
@@ -128,8 +128,8 @@ describe("customFields.service.validateValues", () => {
   it("joins several errors into one message", async () => {
     // Arrange
     customFieldRepository.list.mockResolvedValue([
-      definition("a", "NUMBER", { Label: "A" }),
-      definition("b", "BOOLEAN", { Label: "B", IsRequired: true }),
+      definition("a", "NUMBER", { label: "A" }),
+      definition("b", "BOOLEAN", { label: "B", is_required: true }),
     ]);
 
     // Act
@@ -139,10 +139,10 @@ describe("customFields.service.validateValues", () => {
     expect(result).toEqual({ ok: false, message: "A must be a number. B is required." });
   });
 
-  it("rejects every value for a SELECT field with broken or unknown options and type", async () => {
+  it("rejects every value for non-list SELECT options or an unknown type", async () => {
     // Arrange
     customFieldRepository.list.mockResolvedValue([
-      definition("pick", "SELECT", { OptionsJson: "not json" }),
+      definition("pick", "SELECT", { options_json: { not: "a list" } }),
       definition("odd", "UNKNOWN_TYPE"),
     ]);
 
@@ -234,16 +234,15 @@ describe("customFields.service.validateValues with prototype-like keys", () => {
   });
 });
 
-describe("customFields.service.parseOptions", () => {
+describe("customFields.service.toOptionList", () => {
   it.each([
     [null, []],
-    ["", []],
-    ["{\"a\":1}", []],
-    ["[1,\"b\"]", ["1", "b"]],
-    ["oops", []],
-  ])("parseOptions(%p) is %p", (input, expected) => {
+    ["[\"a\"]", []],
+    [{ a: 1 }, []],
+    [[1, "b"], ["1", "b"]],
+  ])("toOptionList(%p) is %p", (input, expected) => {
     // Arrange / Act
-    const result = parseOptions(input);
+    const result = toOptionList(input);
 
     // Assert
     expect(result).toEqual(expected);

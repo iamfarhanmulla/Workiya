@@ -46,20 +46,9 @@ function lazyKey(base64Name, pathName) {
   };
 }
 
-// The shared Users table is also read by another system that only understands PBKDF2.
-function readRehashFlag() {
-  if (process.env.PASSWORD_REHASH_ON_LOGIN !== "true") {
-    return false;
-  }
-  if (process.env.PASSWORD_REHASH_SHARED_DB_ACK !== "true") {
-    throw new Error(
-      "PASSWORD_REHASH_ON_LOGIN=true rewrites hashes in the shared Users table. "
-      + "Set PASSWORD_REHASH_SHARED_DB_ACK=true only after every system using that table "
-      + "can verify Argon2id.",
-    );
-  }
-  return true;
-}
+// Users are Workiya-only, so legacy PBKDF2 hashes are upgraded to Argon2id at login unless
+// PASSWORD_REHASH_ON_LOGIN=false.
+const passwordRehashOnLogin = process.env.PASSWORD_REHASH_ON_LOGIN !== "false";
 
 // Unset NODE_ENV fails closed: only an explicit development/test value turns off Secure cookies.
 const nodeEnv = process.env.NODE_ENV || "production";
@@ -92,14 +81,14 @@ const config = Object.freeze({
   auth: Object.freeze({
     maxFailedLogins: 5,
     lockoutMinutes: 15,
-    passwordRehashOnLogin: readRehashFlag(),
+    passwordRehashOnLogin,
   }),
-  mssql: Object.freeze({
-    server: process.env.MSSQL_SERVER || "",
-    database: process.env.MSSQL_DATABASE || "",
-    user: process.env.MSSQL_USER || "",
-    password: process.env.MSSQL_PASSWORD || "",
-    trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERTIFICATE === "true",
+  // DATABASE_URL: pooled URL used by the API. DATABASE_URL_DIRECT: direct URL for migrations
+  // and the data copy. DATABASE_URL_TEST: separate database used only by integration tests.
+  database: Object.freeze({
+    url: process.env.DATABASE_URL || "",
+    directUrl: process.env.DATABASE_URL_DIRECT || "",
+    testUrl: process.env.DATABASE_URL_TEST || "",
   }),
 });
 

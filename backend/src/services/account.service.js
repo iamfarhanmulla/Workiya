@@ -4,7 +4,7 @@ const auditService = require("./audit.service");
 const customFieldsService = require("./customFields.service");
 const { requireCompanyId } = require("./companyContext");
 const { isSuperAdmin, resolveCompanyId } = require("./tenantScope");
-const { toAccountDto, parseExtraFields } = require("./dto/account.dto");
+const { toAccountDto, toExtraFields } = require("./dto/account.dto");
 const AppError = require("../utils/AppError");
 const { ERROR_CODES } = require("../constants/errorCodes");
 const { AUDIT_EVENTS } = require("../constants/auditEvents");
@@ -39,18 +39,18 @@ function writeScope(user) {
 function groupByAccount(assignmentRows) {
   const groups = new Map();
   assignmentRows.forEach((row) => {
-    const group = groups.get(row.AccountId) || [];
+    const group = groups.get(row.account_id) || [];
     group.push(row);
-    groups.set(row.AccountId, group);
+    groups.set(row.account_id, group);
   });
   return groups;
 }
 
 // One assignments query for the whole page, grouped per account in memory.
 async function withAssignments(rows) {
-  const assignmentRows = await assignmentRepository.listByAccountIds(rows.map((row) => row.Id));
+  const assignmentRows = await assignmentRepository.listByAccountIds(rows.map((row) => row.id));
   const groups = groupByAccount(assignmentRows);
-  return rows.map((row) => toAccountDto(row, groups.get(row.Id) || []));
+  return rows.map((row) => toAccountDto(row, groups.get(row.id) || []));
 }
 
 async function loadAccount(id, scope) {
@@ -135,18 +135,18 @@ async function update(user, id, body, ctx) {
   const scope = writeScope(user);
   const before = await loadAccount(id, scope);
   const extraFields = await checkedExtraFields(
-    before.CompanyId,
+    before.company_id,
     body.extraFields,
-    parseExtraFields(before.ExtraFields),
+    toExtraFields(before.extra_fields),
   );
   const fields = profileFields(body, extraFields);
-  if (await accountRepository.update(id, before.CompanyId, fields, user.id) === 0) {
+  if (await accountRepository.update(id, before.company_id, fields, user.id) === 0) {
     throw new AppError(404, ERROR_CODES.NOT_FOUND, "Account not found.");
   }
   const dto = await loadDto(id, scope);
   await audit(AUDIT_EVENTS.ACCOUNT_UPDATED, user, ctx, {
     entityId: id,
-    companyId: before.CompanyId,
+    companyId: before.company_id,
     oldValue: snapshot(toAccountDto(before)),
     newValue: snapshot(dto),
   });
@@ -156,13 +156,13 @@ async function update(user, id, body, ctx) {
 async function setStatus(user, id, isActive, ctx) {
   const scope = writeScope(user);
   const before = await loadAccount(id, scope);
-  if (await accountRepository.setStatus(id, before.CompanyId, isActive, user.id) === 0) {
+  if (await accountRepository.setStatus(id, before.company_id, isActive, user.id) === 0) {
     throw new AppError(404, ERROR_CODES.NOT_FOUND, "Account not found.");
   }
   await audit(AUDIT_EVENTS.ACCOUNT_STATUS_CHANGED, user, ctx, {
     entityId: id,
-    companyId: before.CompanyId,
-    oldValue: { isActive: Boolean(before.IsActive) },
+    companyId: before.company_id,
+    oldValue: { isActive: Boolean(before.is_active) },
     newValue: { isActive },
   });
   return loadDto(id, scope);
@@ -172,11 +172,11 @@ async function setStatus(user, id, isActive, ctx) {
 async function remove(user, id, ctx) {
   const before = await loadAccount(id, writeScope(user));
   await accountRepository.withTransaction(async (tx) => {
-    await accountRepository.softDelete(id, before.CompanyId, user.id, tx);
+    await accountRepository.softDelete(id, before.company_id, user.id, tx);
     await assignmentRepository.softDeleteForAccount(id, user.id, tx);
   });
   await audit(AUDIT_EVENTS.ACCOUNT_DELETED, user, ctx, {
-    entityId: id, companyId: before.CompanyId, oldValue: snapshot(toAccountDto(before)),
+    entityId: id, companyId: before.company_id, oldValue: snapshot(toAccountDto(before)),
   });
 }
 

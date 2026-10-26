@@ -18,10 +18,9 @@ function readNewPassword(body) {
   return { password: value, error: null };
 }
 
-// Stored in the shared Users format (PBKDF2), the same as accounts created in the app, so the
-// other system that shares dbo.Users can still verify it. The password itself is never logged.
+// Stored as Argon2id, like every new password. The password itself is never logged.
 async function resetPassword(actor, userId, password, req) {
-  const hashed = passwordService.hashForSharedUsersTable(password);
+  const hashed = await passwordService.hashPassword(password);
   const result = await userPasswordRepository.resetPassword({
     userId: Number(userId),
     passwordHash: hashed.passwordHash,

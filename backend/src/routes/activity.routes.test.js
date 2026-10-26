@@ -1,33 +1,28 @@
 const request = require("supertest");
 
-const mockConnectDb = jest.fn();
-
-jest.mock("../config/db", () => ({
-  sql: jest.requireActual("mssql"),
-  connectDb: mockConnectDb,
-  getPool: mockConnectDb,
-}));
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 jest.mock("../services/audit.service", () => ({ log: jest.fn().mockResolvedValue(undefined) }));
 
+const db = require("../config/db");
 const app = require("../app");
 const {
-  XHR, USERS, authCookie, mockPool, rows, affected,
+  XHR, USERS, authCookie, rows, affected,
 } = require("../../test/helpers/apiHarness");
 
 const NOW = new Date("2026-10-21T10:00:00.000Z");
 
 function activityRow(overrides = {}) {
   return {
-    Id: 5,
-    CompanyId: 2,
-    ActivityTypeId: 1,
-    AccountId: 3,
-    AssignedTo: USERS.employee.id,
-    AssignedBy: USERS.manager.id,
-    Title: "Visit",
-    Status: "Pending",
-    Priority: "Medium",
-    CreatedAtUtc: NOW,
+    id: 5,
+    company_id: 2,
+    activity_type_id: 1,
+    account_id: 3,
+    assigned_to: USERS.employee.id,
+    assigned_by: USERS.manager.id,
+    title: "Visit",
+    status: "Pending",
+    priority: "Medium",
+    created_at: NOW,
     ...overrides,
   };
 }
@@ -42,20 +37,20 @@ function send(method, path, user) {
 }
 
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
 });
 
 describe("activity route permissions", () => {
   it("requires a login", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("get", "/api/v1/activities");
 
     // Assert
     expect(res.status).toBe(401);
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it.each([
@@ -64,7 +59,7 @@ describe("activity route permissions", () => {
     ["delete", "/api/v1/activities/5"],
   ])("returns 403 when an EMPLOYEE calls %s %s", async (method, path) => {
     // Arrange
-    const db = mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send(method, path, USERS.employee).send(NEW_ACTIVITY);
@@ -72,12 +67,12 @@ describe("activity route permissions", () => {
     // Assert
     expect(res.status).toBe(403);
     expect(res.body).toMatchObject({ success: false, errorCode: "FORBIDDEN", data: null });
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it.each(["/api/v1/doctors", "/api/v1/tasks"])("no longer serves %s", async (path) => {
     // Arrange
-    mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("get", path, USERS.admin);
@@ -90,8 +85,8 @@ describe("activity route permissions", () => {
 describe("GET /api/v1/activities", () => {
   it("shows an EMPLOYEE only activities assigned to them, in the API wrapper", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [
-      { recordsets: [[{ Total: 1 }], [activityRow()]] },
+    db.reset([
+      rows({ total: 1 }), rows(activityRow()),
     ]);
 
     // Act
@@ -107,14 +102,14 @@ describe("GET /api/v1/activities", () => {
       },
     });
     expect(res.body.timestamp).toEqual(expect.any(String));
-    expect(db.queries[0].inputs).toMatchObject({
+    expect(db.calls[0].params).toMatchObject({
       scopeCompanyId: 2, scopeUserId: USERS.employee.id, status: "Pending",
     });
   });
 
   it("lets SUPER_ADMIN narrow to one company and refuses ADMIN another company", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [{ recordsets: [[{ Total: 0 }], []] }]);
+    db.reset([rows({ total: 0 }), rows()]);
 
     // Act
     const superRes = await send("get", "/api/v1/activities?companyId=7", USERS.superAdmin);
@@ -122,13 +117,13 @@ describe("GET /api/v1/activities", () => {
 
     // Assert
     expect(superRes.status).toBe(200);
-    expect(db.queries[0].inputs).toEqual({ scopeCompanyId: 7, offset: 0, pageSize: 50 });
+    expect(db.calls[1].params).toEqual({ scopeCompanyId: 7, offset: 0, pageSize: 50 });
     expect(adminRes.status).toBe(403);
   });
 
   it("rejects bad query values with 400 VALIDATION_FAILED", async () => {
     // Arrange
-    mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("get", "/api/v1/activities?pageSize=500", USERS.manager);
@@ -140,7 +135,7 @@ describe("GET /api/v1/activities", () => {
 
   it("turns date-only filters into whole UTC days", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [{ recordsets: [[{ Total: 0 }], []] }]);
+    db.reset([rows({ total: 0 }), rows()]);
 
     // Act
     const res = await send(
@@ -151,16 +146,16 @@ describe("GET /api/v1/activities", () => {
 
     // Assert
     expect(res.status).toBe(200);
-    expect(db.queries[0].inputs).toMatchObject({
+    expect(db.calls[0].params).toMatchObject({
       dateFrom: new Date("2026-10-01T00:00:00.000Z"),
       dateTo: new Date("2026-10-31T23:59:59.999Z"),
     });
-    expect(db.queries[0].inputs).not.toHaveProperty("search");
+    expect(db.calls[0].params).not.toHaveProperty("search");
   });
 
   it("returns one activity to its assignee", async () => {
     // Arrange
-    mockPool(mockConnectDb, [rows(activityRow())]);
+    db.reset([rows(activityRow())]);
 
     // Act
     const res = await send("get", "/api/v1/activities/5", USERS.employee);
@@ -172,24 +167,24 @@ describe("GET /api/v1/activities", () => {
 
   it("returns 404 for an activity that is not the employee's", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows()]);
+    db.reset([rows()]);
 
     // Act
     const res = await send("get", "/api/v1/activities/5", USERS.employee);
 
     // Assert
     expect(res.status).toBe(404);
-    expect(db.queries[0].inputs).toMatchObject({ id: 5, scopeUserId: USERS.employee.id });
+    expect(db.calls[0].params).toMatchObject({ id: 5, scopeUserId: USERS.employee.id });
   });
 });
 
 describe("POST /api/v1/activities", () => {
   it("uses the signed-in user as AssignedBy and their company, ignoring body values", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [
-      rows({ AccountOk: 1, ActivityTypeOk: 1, AssigneeOk: 1 }),
-      rows({ Id: 77 }),
-      rows(activityRow({ Id: 77 })),
+    db.reset([
+      rows({ account_ok: true, activity_type_ok: true, assignee_ok: true }),
+      rows({ id: 77 }),
+      rows(activityRow({ id: 77 })),
     ]);
 
     // Act
@@ -199,15 +194,15 @@ describe("POST /api/v1/activities", () => {
     // Assert
     expect(res.status).toBe(201);
     expect(res.body.data.id).toBe(77);
-    expect(db.queries[1].inputs).toMatchObject({
+    expect(db.calls[1].params).toMatchObject({
       companyId: USERS.manager.companyId, userId: USERS.manager.id, priority: "Medium",
     });
-    expect(Object.values(db.queries[1].inputs)).not.toContain(999);
+    expect(Object.values(db.calls[1].params)).not.toContain(999);
   });
 
   it("refuses a MANAGER creating in another company", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("post", "/api/v1/activities", USERS.manager)
@@ -215,12 +210,12 @@ describe("POST /api/v1/activities", () => {
 
     // Assert
     expect(res.status).toBe(403);
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it("returns 400 CROSS_COMPANY_REFERENCE for a foreign account or assignee", async () => {
     // Arrange
-    mockPool(mockConnectDb, [rows({ AccountOk: 0, ActivityTypeOk: 1, AssigneeOk: 1 })]);
+    db.reset([rows({ account_ok: false, activity_type_ok: true, assignee_ok: true })]);
 
     // Act
     const res = await send("post", "/api/v1/activities", USERS.admin).send(NEW_ACTIVITY);
@@ -232,7 +227,7 @@ describe("POST /api/v1/activities", () => {
 
   it("validates the body", async () => {
     // Arrange
-    mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("post", "/api/v1/activities", USERS.admin)
@@ -248,8 +243,8 @@ describe("POST /api/v1/activities", () => {
 describe("activity updates", () => {
   it("lets staff edit an activity", async () => {
     // Arrange
-    mockPool(mockConnectDb, [
-      rows(activityRow()), affected(1), rows(activityRow({ Title: "New" })),
+    db.reset([
+      rows(activityRow()), affected(1), rows(activityRow({ title: "New" })),
     ]);
 
     // Act
@@ -262,8 +257,8 @@ describe("activity updates", () => {
 
   it("lets an EMPLOYEE start their own activity", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [
-      rows(activityRow()), affected(1), rows(activityRow({ Status: "InProgress" })),
+    db.reset([
+      rows(activityRow()), affected(1), rows(activityRow({ status: "InProgress" })),
     ]);
 
     // Act
@@ -273,12 +268,12 @@ describe("activity updates", () => {
     // Assert
     expect(res.status).toBe(200);
     expect(res.body.message).toBe("Activity moved to InProgress.");
-    expect(db.queries[1].inputs).toMatchObject({ fromStatus: "Pending", toStatus: "InProgress" });
+    expect(db.calls[1].params).toMatchObject({ fromStatus: "Pending", toStatus: "InProgress" });
   });
 
   it("returns 422 when an EMPLOYEE marks an activity Completed", async () => {
     // Arrange
-    mockPool(mockConnectDb, [rows(activityRow({ Status: "InProgress" }))]);
+    db.reset([rows(activityRow({ status: "InProgress" }))]);
 
     // Act
     const res = await send("patch", "/api/v1/activities/5/status", USERS.employee)
@@ -291,7 +286,7 @@ describe("activity updates", () => {
 
   it("soft deletes for staff", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows(activityRow()), affected(1)]);
+    db.reset([rows(activityRow()), affected(1)]);
 
     // Act
     const res = await send("delete", "/api/v1/activities/5", USERS.admin);
@@ -299,6 +294,6 @@ describe("activity updates", () => {
     // Assert
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ success: true, data: null, message: "Activity deleted." });
-    expect(db.queries[1].text).toContain("SET IsDeleted = 1");
+    expect(db.calls[1].text).toContain("SET is_deleted = true");
   });
 });

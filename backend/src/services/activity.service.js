@@ -1,4 +1,5 @@
 const activityRepository = require("../repositories/activity.repository");
+const { isForeignKeyViolation } = require("../repositories/sqlErrors");
 const audit = require("./audit.service");
 const { requireCompanyId } = require("./companyContext");
 const { isSuperAdmin, resolveCompanyId, toId } = require("./tenantScope");
@@ -47,8 +48,8 @@ function auditActivity(eventType, context, { row, oldValue, newValue }) {
   return audit.log({
     eventType,
     entityType: ENTITY_TYPE,
-    entityId: row.Id,
-    companyId: row.CompanyId,
+    entityId: row.id,
+    companyId: row.company_id,
     performedBy: context.user.id,
     oldValue,
     newValue,
@@ -65,16 +66,33 @@ async function requireActivity(user, id) {
   return row;
 }
 
+function crossCompanyReference() {
+  return new AppError(
+    400,
+    ERROR_CODES.CROSS_COMPANY_REFERENCE,
+    "Account, activity type and assignee must be active and belong to the activity's company.",
+  );
+}
+
 async function assertReferences(companyId, references) {
   if (Object.values(references).every((value) => value === null || value === undefined)) {
     return;
   }
   if (!(await activityRepository.checkReferences(companyId, references))) {
-    throw new AppError(
-      400,
-      ERROR_CODES.CROSS_COMPANY_REFERENCE,
-      "Account, activity type and assignee must be active and belong to the activity's company.",
-    );
+    throw crossCompanyReference();
+  }
+}
+
+// The (company_id, ...) foreign keys also tie account, type and assignee to the activity's
+// company; a write they reject is reported like a failed reference check.
+async function writeWithReferences(write) {
+  try {
+    return await write();
+  } catch (err) {
+    if (isForeignKeyViolation(err)) {
+      throw crossCompanyReference();
+    }
+    throw err;
   }
 }
 
@@ -102,10 +120,12 @@ async function createActivity(context, body) {
   const { companyId: requestedCompanyId, ...fields } = body;
   const companyId = requireCompanyId(context.user, requestedCompanyId);
   await assertReferences(companyId, fields);
-  const id = await activityRepository.insert(companyId, fields, context.user.id);
+  const id = await writeWithReferences(
+    () => activityRepository.insert(companyId, fields, context.user.id),
+  );
   const dto = toActivityDto(await reload(id, companyId));
   await auditActivity(AUDIT_EVENTS.ACTIVITY_CREATED, context, {
-    row: { Id: id, CompanyId: companyId }, oldValue: null, newValue: dto,
+    row: { id, company_id: companyId }, oldValue: null, newValue: dto,
   });
   return dto;
 }
@@ -113,13 +133,13 @@ async function createActivity(context, body) {
 function mergeFields(existing, body) {
   const pick = (key, column) => (body[key] !== undefined ? body[key] : existing[column]);
   return {
-    activityTypeId: pick("activityTypeId", "ActivityTypeId"),
-    accountId: pick("accountId", "AccountId"),
-    assignedTo: pick("assignedTo", "AssignedTo"),
-    title: pick("title", "Title"),
-    description: pick("description", "Description"),
-    priority: pick("priority", "Priority"),
-    dueAtUtc: pick("dueAtUtc", "DueAtUtc"),
+    activityTypeId: pick("activityTypeId", "activity_type_id"),
+    accountId: pick("accountId", "account_id"),
+    assignedTo: pick("assignedTo", "assigned_to"),
+    title: pick("title", "title"),
+    description: pick("description", "description"),
+    priority: pick("priority", "priority"),
+    dueAtUtc: pick("dueAtUtc", "due_at"),
   };
 }
 
@@ -128,20 +148,23 @@ function mergeFields(existing, body) {
 function changedReferences(existing, fields) {
   const changed = (key, column) => (fields[key] !== existing[column] ? fields[key] : null);
   return {
-    accountId: changed("accountId", "AccountId"),
-    activityTypeId: changed("activityTypeId", "ActivityTypeId"),
-    assignedTo: changed("assignedTo", "AssignedTo"),
+    accountId: changed("accountId", "account_id"),
+    activityTypeId: changed("activityTypeId", "activity_type_id"),
+    assignedTo: changed("assignedTo", "assigned_to"),
   };
 }
 
 async function updateActivity(context, id, body) {
   const existing = await requireActivity(context.user, id);
   const fields = mergeFields(existing, body);
-  await assertReferences(existing.CompanyId, changedReferences(existing, fields));
-  if (!(await activityRepository.update(id, existing.CompanyId, fields, context.user.id))) {
+  await assertReferences(existing.company_id, changedReferences(existing, fields));
+  const updated = await writeWithReferences(
+    () => activityRepository.update(id, existing.company_id, fields, context.user.id),
+  );
+  if (!updated) {
     throw notFound();
   }
-  const dto = toActivityDto(await reload(id, existing.CompanyId));
+  const dto = toActivityDto(await reload(id, existing.company_id));
   await auditActivity(AUDIT_EVENTS.ACTIVITY_UPDATED, context, {
     row: existing, oldValue: toActivityDto(existing), newValue: dto,
   });
@@ -150,31 +173,31 @@ async function updateActivity(context, id, body) {
 
 async function changeActivityStatus(context, id, status) {
   const existing = await requireActivity(context.user, id);
-  if (!canTransition(context.user.roleCode, existing.Status, status)) {
+  if (!canTransition(context.user.roleCode, existing.status, status)) {
     throw new AppError(
       422,
       ERROR_CODES.INVALID_STATUS_TRANSITION,
-      `You cannot move this activity from ${existing.Status} to ${status}.`,
+      `You cannot move this activity from ${existing.status} to ${status}.`,
     );
   }
   const moved = await activityRepository.updateStatus(
     id,
-    existing.CompanyId,
-    { fromStatus: existing.Status, toStatus: status },
+    existing.company_id,
+    { fromStatus: existing.status, toStatus: status },
     context.user.id,
   );
   if (!moved) {
     throw new AppError(409, ERROR_CODES.CONFLICT, "The activity just changed. Reload and retry.");
   }
   await auditActivity(AUDIT_EVENTS.ACTIVITY_STATUS_CHANGED, context, {
-    row: existing, oldValue: { status: existing.Status }, newValue: { status },
+    row: existing, oldValue: { status: existing.status }, newValue: { status },
   });
-  return toActivityDto(await reload(id, existing.CompanyId));
+  return toActivityDto(await reload(id, existing.company_id));
 }
 
 async function deleteActivity(context, id) {
   const existing = await requireActivity(context.user, id);
-  if (!(await activityRepository.softDelete(id, existing.CompanyId, context.user.id))) {
+  if (!(await activityRepository.softDelete(id, existing.company_id, context.user.id))) {
     throw notFound();
   }
   await auditActivity(AUDIT_EVENTS.ACTIVITY_DELETED, context, {

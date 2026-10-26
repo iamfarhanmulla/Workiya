@@ -1,12 +1,6 @@
 const request = require("supertest");
 
-const mockConnectDb = jest.fn();
-
-jest.mock("../config/db", () => ({
-  sql: jest.requireActual("mssql"),
-  connectDb: mockConnectDb,
-  getPool: mockConnectDb,
-}));
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 jest.mock("../services/audit.service", () => ({ log: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("../services/customFields.service", () => ({
   validateValues: jest.fn(async (_companyId, _entityType, values) => ({
@@ -14,13 +8,14 @@ jest.mock("../services/customFields.service", () => ({
   })),
 }));
 
+const db = require("../config/db");
 const app = require("../app");
 const {
-  XHR, USERS, authCookie, mockPool, rows, affected,
+  XHR, USERS, authCookie, rows, affected,
 } = require("../../test/helpers/apiHarness");
-
-const NOW = new Date("2026-10-21T10:00:00.000Z");
-const ACCOUNT = { lat: 19.076, lon: 72.8777 };
+const {
+  ACCOUNT, activityContext, submissionRow,
+} = require("../../test/helpers/fieldWorkFixtures");
 
 // Check-in times must be recent (within the last 7 days, not in the future).
 const CHECKED_IN_AT = new Date(Date.now() - 60 * 60 * 1000);
@@ -33,44 +28,21 @@ const CHECK_IN = {
 };
 
 function activityForSubmit(overrides = {}) {
-  return rows({
-    Id: 5,
-    CompanyId: 2,
-    AssignedTo: USERS.employee.id,
-    Status: "InProgress",
-    RequiresCheckIn: true,
-    GeofenceMeters: 100,
-    MinPhotos: 0,
-    RequiresSignature: false,
-    AccountLatitude: ACCOUNT.lat,
-    AccountLongitude: ACCOUNT.lon,
-    ...overrides,
-  });
+  return rows(activityContext(overrides));
 }
 
-function submissionRow(overrides = {}) {
-  return rows({
-    Id: 40,
-    CompanyId: 2,
-    ActivityId: 5,
-    SubmittedBy: USERS.employee.id,
-    ReviewStatus: "Pending",
-    SubmittedAtUtc: NOW,
-    ...overrides,
-  });
+function savedSubmission(overrides = {}) {
+  return rows(submissionRow(overrides));
 }
 
-// Adds pool.transaction() to the fake pool; its requests share the pool's response queue.
-async function withTransaction(db) {
-  const pool = await mockConnectDb();
-  const transaction = {
-    begin: jest.fn().mockResolvedValue(undefined),
-    commit: jest.fn().mockResolvedValue(undefined),
-    rollback: jest.fn().mockResolvedValue(undefined),
-    request: () => pool.request(),
-  };
-  pool.transaction = () => transaction;
-  return { ...db, transaction };
+// The activity row locked by a submit, then its type rules and open submissions.
+function lockedForSubmit(openSubmissions) {
+  return [
+    rows({
+      status: "InProgress", assigned_to: USERS.employee.id, activity_type_id: 1, account_id: 3,
+    }),
+    activityForSubmit({ open_submissions: openSubmissions }),
+  ];
 }
 
 function send(method, path, user) {
@@ -78,18 +50,15 @@ function send(method, path, user) {
 }
 
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
 });
 
 describe("POST /api/v1/activities/:id/submissions", () => {
   it("saves the submission and completes the activity", async () => {
     // Arrange
-    const db = await withTransaction(mockPool(mockConnectDb, [
-      activityForSubmit(),
-      rows({ Status: "InProgress", AssignedTo: USERS.employee.id, OpenSubmissions: 0 }),
-      rows({ Id: 40 }),
-      submissionRow(),
-    ]));
+    db.reset([
+      activityForSubmit(), ...lockedForSubmit(0), rows({ id: 40 }), affected(1), savedSubmission(),
+    ]);
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -98,13 +67,13 @@ describe("POST /api/v1/activities/:id/submissions", () => {
     // Assert
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ success: true, data: { id: 40, reviewStatus: "Pending" } });
-    expect(db.transaction.commit).toHaveBeenCalled();
-    expect(db.queries[2].inputs).toMatchObject({ rating: 5, answers: "{\"met\":true}" });
+    expect(db.transactionLog()).toEqual(["BEGIN", "COMMIT"]);
+    expect(db.statements()[3].params).toMatchObject({ rating: 5, answers: "{\"met\":true}" });
   });
 
   it("returns 404 when an EMPLOYEE submits an activity that is not theirs", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows()]);
+    db.reset([rows()]);
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -112,12 +81,12 @@ describe("POST /api/v1/activities/:id/submissions", () => {
 
     // Assert
     expect(res.status).toBe(404);
-    expect(db.queries[0].inputs).toMatchObject({ scopeUserId: USERS.employee.id });
+    expect(db.calls[0].params).toMatchObject({ scopeUserId: USERS.employee.id });
   });
 
   it("returns 403 when staff submit an activity assigned to someone else", async () => {
     // Arrange
-    mockPool(mockConnectDb, [activityForSubmit()]);
+    db.reset([activityForSubmit()]);
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.manager)
@@ -129,7 +98,7 @@ describe("POST /api/v1/activities/:id/submissions", () => {
 
   it("returns 422 OUTSIDE_GEOFENCE with the distance", async () => {
     // Arrange
-    mockPool(mockConnectDb, [activityForSubmit()]);
+    db.reset([activityForSubmit()]);
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -141,12 +110,9 @@ describe("POST /api/v1/activities/:id/submissions", () => {
     expect(res.body.message).toMatch(/\d+ m from the account/);
   });
 
-  it("returns 409 CONFLICT for a double submit and rolls back", async () => {
+  it("returns 409 CONFLICT for a double submit without inserting", async () => {
     // Arrange
-    const db = await withTransaction(mockPool(mockConnectDb, [
-      activityForSubmit(),
-      rows({ Status: "InProgress", AssignedTo: USERS.employee.id, OpenSubmissions: 1 }),
-    ]));
+    db.reset([activityForSubmit(), ...lockedForSubmit(1)]);
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -155,12 +121,12 @@ describe("POST /api/v1/activities/:id/submissions", () => {
     // Assert
     expect(res.status).toBe(409);
     expect(res.body.errorCode).toBe("CONFLICT");
-    expect(db.transaction.rollback).toHaveBeenCalled();
+    expect(db.statements().map((call) => call.text).join()).not.toContain("INSERT");
   });
 
   it("rejects unsafe URLs and unpaired coordinates", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -170,12 +136,12 @@ describe("POST /api/v1/activities/:id/submissions", () => {
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/photoUrl/);
     expect(res.body.message).toMatch(/checkInLongitude/);
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it("rejects a check-out before the check-in", async () => {
     // Arrange
-    mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -197,7 +163,7 @@ describe("submission body checks", () => {
     ["https:///evil.example"],
   ])("rejects the off-site or unsafe URL %p", async (url) => {
     // Arrange
-    const db = mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -206,7 +172,7 @@ describe("submission body checks", () => {
     // Assert
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch("signatureUrl: Must be an http(s) URL or a /path.");
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it.each([
@@ -214,7 +180,7 @@ describe("submission body checks", () => {
     ["older than 7 days", -8 * 24 * HOUR_MS, /Cannot be more than 7 days ago/],
   ])("rejects a check-in time %s", async (_label, offset, message) => {
     // Arrange
-    const db = mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("post", "/api/v1/activities/5/submissions", USERS.employee)
@@ -223,16 +189,14 @@ describe("submission body checks", () => {
     // Assert
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(message);
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 });
 
 describe("submission reads and review", () => {
   it("lists only the employee's own submissions", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [
-      { recordsets: [[{ Total: 1 }], submissionRow().recordset] },
-    ]);
+    db.reset([rows({ total: 1 }), savedSubmission()]);
 
     // Act
     const res = await send("get", "/api/v1/submissions?reviewStatus=Pending", USERS.employee);
@@ -240,14 +204,14 @@ describe("submission reads and review", () => {
     // Assert
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ total: 1, items: [{ id: 40 }] });
-    expect(db.queries[0].inputs).toMatchObject({
+    expect(db.calls[0].params).toMatchObject({
       scopeUserId: USERS.employee.id, reviewStatus: "Pending",
     });
   });
 
   it("returns one submission", async () => {
     // Arrange
-    mockPool(mockConnectDb, [submissionRow()]);
+    db.reset([savedSubmission({ answers: null })]);
 
     // Act
     const res = await send("get", "/api/v1/submissions/40", USERS.manager);
@@ -259,7 +223,7 @@ describe("submission reads and review", () => {
 
   it("returns 403 when an EMPLOYEE reviews", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("patch", "/api/v1/submissions/40/review", USERS.employee)
@@ -267,18 +231,19 @@ describe("submission reads and review", () => {
 
     // Assert
     expect(res.status).toBe(403);
-    expect(db.queries).toHaveLength(0);
+    expect(db.calls).toHaveLength(0);
   });
 
   it("lets a MANAGER reject, re-opening the activity", async () => {
     // Arrange
-    const db = await withTransaction(mockPool(mockConnectDb, [
+    db.reset([
       rows({
-        CompanyId: 2, ActivityId: 5, ReviewStatus: "Pending", ActivityStatus: "Completed",
+        company_id: 2, activity_id: 5, review_status: "Pending", activity_status: "Completed",
       }),
       affected(1),
-      submissionRow({ ReviewStatus: "Rejected", ReviewComment: "Redo" }),
-    ]));
+      affected(1),
+      savedSubmission({ review_status: "Rejected", review_comment: "Redo" }),
+    ]);
 
     // Act
     const res = await send("patch", "/api/v1/submissions/40/review", USERS.manager)
@@ -288,14 +253,15 @@ describe("submission reads and review", () => {
     expect(res.status).toBe(200);
     expect(res.body.message).toBe("Submission rejected.");
     expect(res.body.data).toMatchObject({ reviewStatus: "Rejected", reviewComment: "Redo" });
-    expect(db.transaction.commit).toHaveBeenCalled();
+    expect(db.transactionLog()).toEqual(["BEGIN", "COMMIT"]);
+    expect(db.statements()[2].text).toContain("status = 'InProgress'");
   });
 
   it("returns 422 when reviewing a submission that is not Pending", async () => {
     // Arrange
-    await withTransaction(mockPool(mockConnectDb, [
-      rows({ CompanyId: 2, ActivityId: 5, ReviewStatus: "Approved" }),
-    ]));
+    db.reset([
+      rows({ company_id: 2, activity_id: 5, review_status: "Approved" }),
+    ]);
 
     // Act
     const res = await send("patch", "/api/v1/submissions/40/review", USERS.admin)
@@ -308,7 +274,7 @@ describe("submission reads and review", () => {
 
   it("validates the review status", async () => {
     // Arrange
-    mockPool(mockConnectDb);
+    db.reset();
 
     // Act
     const res = await send("patch", "/api/v1/submissions/40/review", USERS.admin)

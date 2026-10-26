@@ -4,38 +4,41 @@ const TEST_PASSWORD = "Correct#Pass1";
 const HOUR_MS = 60 * 60 * 1000;
 const credentials = legacyPbkdf2Row(TEST_PASSWORD);
 
+// A users row as user.repository returns it (snake_case columns).
 function userRow(overrides = {}) {
   return {
-    Id: 11,
-    CompanyId: 2,
-    RoleId: 4,
-    RoleCode: "MANAGER",
-    RoleName: "Manager",
-    Username: "mgr",
-    Email: "mgr@example.com",
-    DisplayName: "Mgr",
-    FirstName: "M",
-    MiddleName: null,
-    LastName: "G",
-    PhoneNumber: null,
-    Status: 1,
-    FailedLoginCount: 0,
-    LockoutEndUtc: null,
+    id: 11,
+    company_id: 2,
+    role_id: 4,
+    role_code: "MANAGER",
+    role_name: "Manager",
+    username: "mgr",
+    email: "mgr@example.com",
+    display_name: "Mgr",
+    first_name: "M",
+    middle_name: null,
+    last_name: "G",
+    phone_number: null,
+    status: 1,
+    failed_login_count: 0,
+    lockout_end_at: null,
     ...credentials,
     ...overrides,
   };
 }
 
+// A refresh_tokens row as refreshToken.repository returns it.
 function tokenRecord(overrides = {}) {
   return {
-    Id: 100,
-    UserId: 11,
-    CompanyId: 2,
-    FamilyId: "fam-1",
-    IsPersistent: true,
-    ExpiresAtUtc: new Date(Date.now() + HOUR_MS),
-    RevokedAtUtc: null,
-    ReplacedByTokenHash: null,
+    id: 100,
+    user_id: 11,
+    company_id: 2,
+    family_id: "fam-1",
+    is_persistent: true,
+    expires_at: new Date(Date.now() + HOUR_MS),
+    revoked_at: null,
+    revoked_reason: null,
+    replaced_by_token_hash: null,
     ...overrides,
   };
 }
@@ -47,35 +50,36 @@ function installFakeTokenStore(repository) {
     const id = nextId;
     nextId += 1;
     store.push({
-      Id: id,
-      UserId: token.userId,
-      CompanyId: token.companyId,
-      TokenHash: token.tokenHash,
-      FamilyId: token.familyId,
-      IsPersistent: token.isPersistent,
-      ExpiresAtUtc: token.expiresAtUtc,
-      RevokedAtUtc: null,
-      ReplacedByTokenHash: null,
+      id,
+      user_id: token.userId,
+      company_id: token.companyId,
+      token_hash: token.tokenHash,
+      family_id: token.familyId,
+      is_persistent: token.isPersistent,
+      expires_at: token.expiresAtUtc,
+      revoked_at: null,
+      revoked_reason: null,
+      replaced_by_token_hash: null,
     });
     return id;
   });
   repository.findByHash.mockImplementation(
-    async (hash) => store.find((t) => t.TokenHash === hash) || null,
+    async (hash) => store.find((t) => t.token_hash === hash) || null,
   );
   repository.revoke.mockImplementation(async (id, reason, replacedBy) => {
-    const token = store.find((t) => t.Id === id && !t.RevokedAtUtc);
+    const token = store.find((t) => t.id === id && !t.revoked_at);
     if (!token) {
       return false;
     }
     Object.assign(token, {
-      RevokedAtUtc: new Date(), RevokedReason: reason, ReplacedByTokenHash: replacedBy,
+      revoked_at: new Date(), revoked_reason: reason, replaced_by_token_hash: replacedBy,
     });
     return true;
   });
   repository.revokeFamily.mockImplementation(async (familyId, reason) => {
     store
-      .filter((t) => t.FamilyId === familyId && !t.RevokedAtUtc)
-      .forEach((t) => Object.assign(t, { RevokedAtUtc: new Date(), RevokedReason: reason }));
+      .filter((t) => t.family_id === familyId && !t.revoked_at)
+      .forEach((t) => Object.assign(t, { revoked_at: new Date(), revoked_reason: reason }));
   });
   return store;
 }

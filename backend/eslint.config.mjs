@@ -12,7 +12,7 @@ import globals from "globals";
 const TEST_FILES = ["**/*.test.js", "test/**/*.js"];
 
 // Command-line tools that legitimately write to stdout/stderr.
-const CLI_FILES = ["src/config/migrate.js", "src/config/seed.js", "scripts/**/*.js"];
+const CLI_FILES = ["src/config/seed.js", "scripts/**/*.js"];
 
 const config = [
   {
@@ -61,7 +61,10 @@ const config = [
       }],
       // devDependencies may only be imported from tests, test helpers, scripts and tooling config.
       "import-x/no-extraneous-dependencies": ["error", {
-        devDependencies: [...TEST_FILES, "scripts/**", "jest.config.js", "eslint.config.mjs"],
+        devDependencies: [
+          ...TEST_FILES, "scripts/**", "jest.config.js", "jest.integration.config.js",
+          "eslint.config.mjs",
+        ],
         optionalDependencies: false,
         peerDependencies: true,
         bundledDependencies: true,

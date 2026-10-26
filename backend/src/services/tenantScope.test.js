@@ -6,17 +6,6 @@ const {
 const SUPER = { id: 1, companyId: null, roleCode: ROLES.SUPER_ADMIN };
 const ADMIN = { id: 2, companyId: 7, roleCode: ROLES.ADMIN };
 
-function fakeRequest() {
-  const inputs = {};
-  return {
-    inputs,
-    input(name, _type, value) {
-      inputs[name] = value;
-      return this;
-    },
-  };
-}
-
 describe("tenantScope", () => {
   it.each([
     [undefined, null],
@@ -55,65 +44,68 @@ describe("tenantScope", () => {
 
   it("does not filter a SUPER_ADMIN", () => {
     // Arrange
-    const request = fakeRequest();
+    const params = {};
 
     // Act
-    const predicates = [companyFilter(request, SUPER, "c"), manageableUserFilter(request, SUPER)];
+    const predicates = [
+      companyFilter(SUPER, "c.company_id", params),
+      manageableUserFilter(SUPER, params),
+    ];
 
     // Assert
-    expect(predicates).toEqual(["1 = 1", "1 = 1"]);
-    expect(request.inputs).toEqual({});
+    expect(predicates).toEqual(["TRUE", "TRUE"]);
+    expect(params).toEqual({});
   });
 
   it("limits other callers to their own company", () => {
     // Arrange
-    const request = fakeRequest();
+    const params = { search: "x" };
 
     // Act
-    const predicate = companyFilter(request, ADMIN, "d.CompanyId");
+    const predicate = companyFilter(ADMIN, "d.company_id", params);
 
     // Assert
-    expect(predicate).toBe("d.CompanyId = @scopeCompanyId");
-    expect(request.inputs).toEqual({ scopeCompanyId: 7 });
+    expect(predicate).toBe("d.company_id = @scopeCompanyId");
+    expect(params).toEqual({ search: "x", scopeCompanyId: 7 });
   });
 
   it("binds NULL for a caller without a company, which matches no row", () => {
     // Arrange
-    const request = fakeRequest();
+    const params = {};
 
     // Act
-    companyFilter(request, { roleCode: ROLES.ADMIN, companyId: null }, "CompanyId");
+    companyFilter({ roleCode: ROLES.ADMIN, companyId: null }, "company_id", params);
 
     // Assert
-    expect(request.inputs.scopeCompanyId).toBeNull();
+    expect(params.scopeCompanyId).toBeNull();
   });
 
   it("keeps SUPER_ADMIN accounts out of reach of other callers", () => {
     // Arrange
-    const request = fakeRequest();
+    const params = {};
 
     // Act
-    const predicate = manageableUserFilter(request, ADMIN, "u.");
+    const predicate = manageableUserFilter(ADMIN, params, "u.");
 
     // Assert
     expect(predicate).toBe(
-      "u.CompanyId = @scopeCompanyId"
-        + " AND u.RoleId NOT IN (SELECT Id FROM Roles WHERE Code = @superAdminCode)",
+      "u.company_id = @scopeCompanyId"
+        + " AND u.role_id NOT IN (SELECT id FROM roles WHERE code = @superAdminCode)",
     );
-    expect(request.inputs).toEqual({ scopeCompanyId: 7, superAdminCode: ROLES.SUPER_ADMIN });
+    expect(params).toEqual({ scopeCompanyId: 7, superAdminCode: ROLES.SUPER_ADMIN });
   });
 
   it("filters by role code with and without a column prefix", () => {
     // Arrange
-    const request = fakeRequest();
+    const params = {};
 
     // Act
-    const unprefixed = roleFilter(request, ROLES.EMPLOYEE);
-    const prefixed = roleFilter(request, ROLES.EMPLOYEE, "u.");
+    const unprefixed = roleFilter(ROLES.EMPLOYEE, params);
+    const prefixed = roleFilter(ROLES.EMPLOYEE, params, "u.");
 
     // Assert
-    expect(unprefixed).toBe("RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode)");
-    expect(prefixed).toBe("u.RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode)");
-    expect(request.inputs).toEqual({ roleCode: ROLES.EMPLOYEE });
+    expect(unprefixed).toBe("role_id IN (SELECT id FROM roles WHERE code = @roleCode)");
+    expect(prefixed).toBe("u.role_id IN (SELECT id FROM roles WHERE code = @roleCode)");
+    expect(params).toEqual({ roleCode: ROLES.EMPLOYEE });
   });
 });

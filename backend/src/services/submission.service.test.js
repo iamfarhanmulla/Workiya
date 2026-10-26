@@ -8,66 +8,15 @@ const audit = require("./audit.service");
 const customFields = require("./customFields.service");
 const submissionService = require("./submission.service");
 const { USERS } = require("../../test/helpers/apiHarness");
-
-const NOW = new Date("2026-10-21T10:00:00.000Z");
-const ACCOUNT = { lat: 19.076, lon: 72.8777 };
-
-function activityContext(overrides = {}) {
-  return {
-    Id: 5,
-    CompanyId: 2,
-    AssignedTo: USERS.employee.id,
-    Status: "InProgress",
-    Title: "Visit",
-    RequiresCheckIn: true,
-    GeofenceMeters: 100,
-    MinPhotos: 0,
-    RequiresSignature: false,
-    AccountLatitude: ACCOUNT.lat,
-    AccountLongitude: ACCOUNT.lon,
-    ...overrides,
-  };
-}
-
-function submissionRow(overrides = {}) {
-  return {
-    Id: 40,
-    CompanyId: 2,
-    ActivityId: 5,
-    ActivityTitle: "Visit",
-    AccountName: "Dr. Rao",
-    SubmittedBy: USERS.employee.id,
-    SubmittedByName: "Emp",
-    CheckInAtUtc: NOW,
-    CheckInLatitude: ACCOUNT.lat,
-    CheckInLongitude: ACCOUNT.lon,
-    CheckOutAtUtc: null,
-    CheckOutLatitude: null,
-    CheckOutLongitude: null,
-    PhotoUrl: null,
-    SignatureUrl: null,
-    Notes: "ok",
-    Rating: 4,
-    Answers: "{\"met\":true}",
-    ReviewStatus: "Pending",
-    ReviewedBy: null,
-    ReviewedByName: null,
-    ReviewedAtUtc: null,
-    ReviewComment: null,
-    SubmittedAtUtc: NOW,
-    ...overrides,
-  };
-}
+const {
+  NOW, ACCOUNT, activityContext, submissionRow, context,
+} = require("../../test/helpers/fieldWorkFixtures");
 
 const CHECK_IN = {
   checkInAtUtc: NOW.toISOString(),
   checkInLatitude: ACCOUNT.lat,
   checkInLongitude: ACCOUNT.lon,
 };
-
-function context(user = USERS.employee) {
-  return { user, ip: "10.0.0.1", userAgent: "jest" };
-}
 
 beforeEach(() => {
   audit.log.mockResolvedValue(undefined);
@@ -138,7 +87,7 @@ describe("submission.service.createSubmission", () => {
     async (status) => {
       // Arrange
       submissionRepository.findActivityForSubmission.mockResolvedValue(
-        activityContext({ Status: status }),
+        activityContext({ status }),
       );
 
       // Act
@@ -167,8 +116,8 @@ describe("submission.service.createSubmission", () => {
   });
 
   it.each([
-    [{ MinPhotos: 1 }, /photo/],
-    [{ RequiresSignature: true }, /signature/],
+    [{ min_photos: 1 }, /photo/],
+    [{ requires_signature: true }, /signature/],
   ])("enforces the type's evidence rule %o", async (rule, message) => {
     // Arrange
     submissionRepository.findActivityForSubmission.mockResolvedValue(activityContext(rule));
@@ -183,8 +132,8 @@ describe("submission.service.createSubmission", () => {
   });
 
   it.each([
-    [{ RequiresCustomerOtp: true }, /customer OTP/],
-    [{ MinPhotos: 3 }, /requires 3 photos/],
+    [{ requires_customer_otp: true }, /customer OTP/],
+    [{ min_photos: 3 }, /requires 3 photos/],
   ])("returns 422 for a type rule a submission cannot meet %o", async (rule, message) => {
     // Arrange
     submissionRepository.findActivityForSubmission.mockResolvedValue(activityContext(rule));
@@ -222,7 +171,7 @@ describe("submission.service.createSubmission", () => {
   it("requires a check-in location for a geofence even without RequiresCheckIn", async () => {
     // Arrange
     submissionRepository.findActivityForSubmission.mockResolvedValue(
-      activityContext({ RequiresCheckIn: false }),
+      activityContext({ requires_check_in: false }),
     );
 
     // Act
@@ -235,7 +184,7 @@ describe("submission.service.createSubmission", () => {
   it("refuses a geofenced submit when the account has no coordinates", async () => {
     // Arrange
     submissionRepository.findActivityForSubmission.mockResolvedValue(activityContext({
-      AccountLatitude: null, AccountLongitude: null,
+      account_latitude: null, account_longitude: null,
     }));
 
     // Act
@@ -254,7 +203,7 @@ describe("submission.service.createSubmission", () => {
     // Arrange
     submissionRepository.findActivityForSubmission.mockResolvedValue(activityContext());
     submissionRepository.createAndCompleteActivity.mockImplementation(async ({ verify }) => {
-      verify(activityContext({ AccountLatitude: ACCOUNT.lat + 0.01 }));
+      verify(activityContext({ account_latitude: ACCOUNT.lat + 0.01 }));
       return { id: 40 };
     });
 
@@ -269,10 +218,13 @@ describe("submission.service.createSubmission", () => {
   it("needs no account location when the type has no geofence", async () => {
     // Arrange
     submissionRepository.findActivityForSubmission.mockResolvedValue(activityContext({
-      RequiresCheckIn: false, GeofenceMeters: null, AccountLatitude: null, AccountLongitude: null,
+      requires_check_in: false,
+      geofence_meters: null,
+      account_latitude: null,
+      account_longitude: null,
     }));
     submissionRepository.createAndCompleteActivity.mockResolvedValue({ id: 40 });
-    submissionRepository.findById.mockResolvedValue(submissionRow({ Answers: null }));
+    submissionRepository.findById.mockResolvedValue(submissionRow({ answers: null }));
 
     // Act
     const dto = await submissionService.createSubmission(context(), 5, { notes: "x" });
@@ -326,157 +278,5 @@ describe("submission.service.createSubmission", () => {
 
     // Assert
     await expect(result).rejects.toMatchObject({ status: 404 });
-  });
-});
-
-describe("submission.service.reviewSubmission", () => {
-  it("approves a pending submission and audits the review only", async () => {
-    // Arrange
-    submissionRepository.review.mockResolvedValue({
-      companyId: 2, activityId: 5, activityStatus: "Completed",
-    });
-    submissionRepository.findById.mockResolvedValue(submissionRow({
-      ReviewStatus: "Approved", ReviewedBy: USERS.manager.id, ReviewedAtUtc: NOW,
-    }));
-
-    // Act
-    const dto = await submissionService.reviewSubmission(context(USERS.manager), 40, {
-      status: "Approved",
-    });
-
-    // Assert
-    expect(submissionRepository.review).toHaveBeenCalledWith({
-      id: 40,
-      scope: { companyId: 2, unrestricted: false, userId: null },
-      status: "Approved",
-      comment: undefined,
-      userId: USERS.manager.id,
-    });
-    expect(dto).toMatchObject({ reviewStatus: "Approved", reviewedAtUtc: NOW.toISOString() });
-    expect(audit.log).toHaveBeenCalledTimes(1);
-    expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
-      eventType: "SUBMISSION_REVIEWED",
-      newValue: { reviewStatus: "Approved", comment: null },
-    }));
-  });
-
-  it("re-opens the activity (InProgress) when rejecting and audits that change", async () => {
-    // Arrange
-    submissionRepository.review.mockResolvedValue({
-      companyId: 2, activityId: 5, activityStatus: "Completed", reopened: true,
-    });
-    submissionRepository.findById.mockResolvedValue(submissionRow({ ReviewStatus: "Rejected" }));
-
-    // Act
-    await submissionService.reviewSubmission(context(USERS.admin), 40, {
-      status: "Rejected", comment: "Blurry photo",
-    });
-
-    // Assert
-    expect(audit.log).toHaveBeenLastCalledWith(expect.objectContaining({
-      eventType: "ACTIVITY_STATUS_CHANGED",
-      entityId: 5,
-      oldValue: { status: "Completed" },
-      newValue: { status: "InProgress", rejectedSubmissionId: 40 },
-    }));
-  });
-
-  it("audits no activity change when a rejection leaves a cancelled activity alone", async () => {
-    // Arrange
-    submissionRepository.review.mockResolvedValue({
-      companyId: 2, activityId: 5, activityStatus: "Cancelled", reopened: false,
-    });
-    submissionRepository.findById.mockResolvedValue(submissionRow({ ReviewStatus: "Rejected" }));
-
-    // Act
-    await submissionService.reviewSubmission(context(USERS.admin), 40, { status: "Rejected" });
-
-    // Assert
-    expect(audit.log).toHaveBeenCalledTimes(1);
-    expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
-      eventType: "SUBMISSION_REVIEWED",
-    }));
-  });
-
-  it("returns 403 when the reviewer submitted the submission", async () => {
-    // Arrange
-    submissionRepository.review.mockResolvedValue({ error: "SELF_REVIEW" });
-
-    // Act
-    const result = submissionService.reviewSubmission(context(USERS.manager), 40, {
-      status: "Approved",
-    });
-
-    // Assert
-    await expect(result).rejects.toMatchObject({
-      status: 403, errorCode: "FORBIDDEN", message: "You cannot review your own submission.",
-    });
-    expect(audit.log).not.toHaveBeenCalled();
-  });
-
-  it("returns 422 when the submission was already reviewed", async () => {
-    // Arrange
-    submissionRepository.review.mockResolvedValue({ error: "STATUS", status: "Approved" });
-
-    // Act
-    const result = submissionService.reviewSubmission(context(USERS.manager), 40, {
-      status: "Rejected",
-    });
-
-    // Assert
-    await expect(result).rejects.toMatchObject({
-      status: 422,
-      errorCode: "INVALID_STATUS_TRANSITION",
-      message: expect.stringMatching(/already Approved/),
-    });
-    expect(audit.log).not.toHaveBeenCalled();
-  });
-
-  it("returns 404 when the submission is not in the caller's company", async () => {
-    // Arrange
-    submissionRepository.review.mockResolvedValue({ error: "NOT_FOUND" });
-
-    // Act
-    const result = submissionService.reviewSubmission(context(USERS.manager), 40, {
-      status: "Approved",
-    });
-
-    // Assert
-    await expect(result).rejects.toMatchObject({ status: 404 });
-  });
-});
-
-describe("submission.service reads", () => {
-  it("lists only the employee's own submissions", async () => {
-    // Arrange
-    submissionRepository.list.mockResolvedValue({ total: 1, rows: [submissionRow()] });
-
-    // Act
-    const page = await submissionService.listSubmissions(USERS.employee, {
-      page: 2, pageSize: 10, reviewStatus: "Pending",
-    });
-
-    // Assert
-    expect(submissionRepository.list).toHaveBeenCalledWith(
-      { companyId: 2, unrestricted: false, userId: USERS.employee.id },
-      { page: 2, pageSize: 10, reviewStatus: "Pending" },
-    );
-    expect(page).toMatchObject({ total: 1, page: 2, pageSize: 10 });
-    expect(page.items[0]).toMatchObject({ id: 40, checkInLatitude: ACCOUNT.lat });
-  });
-
-  it("returns a submission or 404", async () => {
-    // Arrange
-    submissionRepository.findById
-      .mockResolvedValueOnce(submissionRow({ Answers: "not json" }))
-      .mockResolvedValueOnce(null);
-
-    // Act
-    const dto = await submissionService.getSubmission(USERS.manager, 40);
-    const missing = submissionService.getSubmission(USERS.employee, 41);
-
-    // Assert
-    expect(dto.answers).toEqual({});
-    await expect(missing).rejects.toMatchObject({ status: 404 });
   });
 });

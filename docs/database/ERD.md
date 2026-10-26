@@ -1,184 +1,182 @@
 # Workiya database: entity relationship diagram
 
-Database `dbTest_VSE` (SQL Server 2017), shared with another system. This diagram covers the
-tables Workiya uses. Other tables in the same database (`Tenants`, `UserRoles`, `UserConfigs`,
-`UserType`, `Genders`, `SniffTest`, `SniffJoin`) belong to that system and are not shown.
+PostgreSQL 18 with PostGIS (Neon), owned by Workiya alone. The schema is created by the
+migrations in `backend/db/postgres/`. The old SQL Server design (the shared `dbTest_VSE`
+database) is kept for history in `backend/db/sqlserver-archive/`, and
+`docs/database/postgres-migration-plan.md` records the move.
 
-| Group | Tables | Status |
-|---|---|---|
-| Identity and tenancy | Companies, Roles, Users | Existing |
-| Auth and audit | RefreshTokens, AuditLogs, SchemaMigrations | Existing (migration 20261016120000) |
-| Company settings | CompanyTerminology, CustomFieldDefinitions, ActivityTypes | **New** (migration 20261021100000) |
-| Field work | Accounts, AccountAssignments, Activities, Submissions | **New**, with temporal history tables (AccountAssignments: migration 20261021110000) |
-| Old pharma tables | Doctors, Tasks, TaskFeedback | Backup only; the code stops using them |
+| Group | Tables |
+|---|---|
+| Reference data | genders, roles |
+| Identity and tenancy | companies, users |
+| Auth and audit | refresh_tokens, audit_logs (append-only), schema_migrations |
+| Company settings | company_terminology, custom_field_definitions, activity_types |
+| Field work | accounts, account_assignments, activities, submissions, each with a `<table>_history` table |
 
-Only key columns are drawn. `erd.html` in this folder lists every column.
+Naming: tables are plural snake_case, columns snake_case, and times are `timestamptz` (UTC)
+named `*_at`. Every table has `created_at`, `updated_at`, `created_by`, `updated_by` and
+`is_deleted` (soft delete); `audit_logs` has only `created_at` and `created_by`.
+
+Only key columns are drawn. `erd.html` in this folder still shows the SQL Server design.
 
 ```mermaid
 erDiagram
-  Companies ||--o{ Users : "employs (CompanyId)"
-  Roles ||--o{ Users : "role (RoleId)"
-  Users |o--o{ Users : "manages (ManagerId)"
-  Users ||--o{ RefreshTokens : "sessions"
-  Companies |o--o{ RefreshTokens : "company"
-  Users |o..o{ AuditLogs : "performed by (no FK)"
+  companies ||--o{ users : "employs (company_id)"
+  roles |o--o{ users : "role (role_id)"
+  genders |o--o{ users : "gender (gender_id)"
+  users |o--o{ users : "manages (manager_id)"
+  users ||--o{ refresh_tokens : "sessions"
+  companies |o--o{ refresh_tokens : "company"
+  users |o..o{ audit_logs : "performed by (no FK)"
 
-  Companies ||--o{ CompanyTerminology : "labels"
-  Companies ||--o{ CustomFieldDefinitions : "extra fields"
-  Companies ||--o{ ActivityTypes : "visit rules"
-  Companies ||--o{ Accounts : "owns"
-  Accounts ||--o{ AccountAssignments : "covered by"
-  Users ||--o{ AccountAssignments : "covers"
-  Accounts ||--o{ Activities : "visited in"
-  ActivityTypes ||--o{ Activities : "type of"
-  Users ||--o{ Activities : "assigned to / by"
-  Activities ||--o{ Submissions : "proof"
-  Users ||--o{ Submissions : "submitted / reviewed by"
+  companies ||--o{ company_terminology : "labels"
+  companies ||--o{ custom_field_definitions : "extra fields"
+  companies ||--o{ activity_types : "visit rules"
+  companies ||--o{ accounts : "owns"
+  accounts ||--o{ account_assignments : "covered by"
+  users ||--o{ account_assignments : "covers (same company)"
+  accounts ||--o{ activities : "visited in"
+  activity_types ||--o{ activities : "type of"
+  users ||--o{ activities : "assigned to (same company) / by"
+  activities ||--o{ submissions : "proof"
+  users ||--o{ submissions : "submitted (same company) / reviewed by"
 
-  Companies |o--o{ Doctors : "old"
-  Doctors ||--o{ Tasks : "old"
-  Tasks ||--o{ TaskFeedback : "old"
-  Accounts |o..o| Doctors : "LegacyDoctorId (copy link)"
-  Activities |o..o| Tasks : "LegacyTaskId (copy link)"
-  Submissions |o..o| TaskFeedback : "LegacyTaskFeedbackId"
+  accounts ||..o{ accounts_history : "old versions"
+  account_assignments ||..o{ account_assignments_history : "old versions"
+  activities ||..o{ activities_history : "old versions"
+  submissions ||..o{ submissions_history : "old versions"
 
-  Companies {
-    int Id PK
-    nvarchar Name
-    nvarchar Key UK
-    nvarchar Plan
-    bit IsActive
+  companies {
+    integer id PK
+    varchar name
+    varchar key UK
+    varchar plan
+    boolean is_active
   }
-  Roles {
-    int Id PK
-    nvarchar Name
-    nvarchar Code UK "SUPER_ADMIN, ADMIN, MANAGER, EMPLOYEE"
+  roles {
+    integer id PK
+    varchar name
+    varchar code UK "SUPER_ADMIN, ADMIN, MANAGER, EMPLOYEE"
   }
-  Users {
-    int Id PK
-    int CompanyId FK
-    int RoleId FK
-    int ManagerId FK
-    nvarchar Email
-    nvarchar PasswordHash "PBKDF2 or Argon2id"
-    int FailedLoginCount
-    datetimeoffset LockoutEndUtc
+  genders {
+    integer id PK
+    varchar code UK
   }
-  RefreshTokens {
-    bigint Id PK
-    int UserId FK
-    int CompanyId FK
-    char TokenHash UK "SHA-256 of the token"
-    uniqueidentifier FamilyId
-    datetime2 ExpiresAtUtc
-    datetime2 RevokedAtUtc
+  users {
+    integer id PK
+    integer company_id FK
+    integer role_id FK
+    integer manager_id FK
+    citext email "unique per company among active rows"
+    varchar password_hash "PBKDF2 or Argon2id"
+    integer failed_login_count
+    timestamptz lockout_end_at
   }
-  AuditLogs {
-    bigint Id PK
-    nvarchar EventType
-    nvarchar EntityType
-    nvarchar EntityId
-    int PerformedBy
-    datetime2 PerformedAtUtc
+  refresh_tokens {
+    bigint id PK
+    integer user_id FK
+    integer company_id FK
+    char token_hash UK "SHA-256 of the token"
+    uuid family_id
+    timestamptz expires_at
+    timestamptz revoked_at
   }
-  CompanyTerminology {
-    int Id PK
-    int CompanyId FK
-    nvarchar TermKey "account.singular, activity.plural ..."
-    nvarchar Label "Doctor, Shop, Visit ..."
+  audit_logs {
+    bigint id PK
+    varchar event_type
+    varchar entity_type
+    varchar entity_id
+    integer performed_by
+    timestamptz performed_at
+    jsonb old_value
+    jsonb new_value
   }
-  CustomFieldDefinitions {
-    int Id PK
-    int CompanyId FK
-    nvarchar EntityType "ACCOUNT or SUBMISSION"
-    nvarchar FieldKey "specialization"
-    nvarchar Label "Specialization"
-    nvarchar DataType "TEXT, NUMBER, SELECT ..."
-    bit IsRequired
+  company_terminology {
+    integer id PK
+    integer company_id FK
+    varchar term_key "account.singular, activity.plural ..."
+    varchar label "Doctor, Shop, Visit ..."
   }
-  ActivityTypes {
-    int Id PK
-    int CompanyId FK
-    nvarchar Code "DOCTOR_VISIT"
-    int GeofenceMeters
-    tinyint MinPhotos
-    bit RequiresSignature
-    bit RequiresCustomerOtp
+  custom_field_definitions {
+    integer id PK
+    integer company_id FK
+    varchar entity_type "ACCOUNT or SUBMISSION"
+    varchar field_key "specialization"
+    varchar data_type "TEXT, NUMBER, SELECT ..."
+    boolean is_required
+    jsonb options_json "SELECT options"
   }
-  Accounts {
-    int Id PK
-    int CompanyId FK
-    nvarchar Name
-    nvarchar Address
-    decimal Latitude
-    decimal Longitude
-    nvarchar ExtraFields "JSON, company's own fields"
-    int LegacyDoctorId
+  activity_types {
+    integer id PK
+    integer company_id FK
+    varchar code "DOCTOR_VISIT"
+    integer geofence_meters
+    smallint min_photos
+    boolean requires_signature
+    boolean requires_customer_otp
   }
-  AccountAssignments {
-    int Id PK
-    int CompanyId FK
-    int AccountId FK
-    int UserId FK "the rep"
-    tinyint VisitsPerMonth "planned visits"
+  accounts {
+    integer id PK
+    integer company_id FK
+    varchar name "trigram index"
+    numeric latitude
+    numeric longitude
+    jsonb extra_fields "object, company's own fields"
+    timestamptz valid_from
   }
-  Activities {
-    int Id PK
-    int CompanyId FK
-    int ActivityTypeId FK
-    int AccountId FK
-    int AssignedTo FK
-    int AssignedBy FK
-    nvarchar Status "Pending ... Missed"
-    datetime2 DueAtUtc
-    int LegacyTaskId
+  account_assignments {
+    integer id PK
+    integer company_id FK
+    integer account_id FK
+    integer user_id FK "the rep"
+    smallint visits_per_month "planned visits"
+    timestamptz valid_from
   }
-  Submissions {
-    int Id PK
-    int CompanyId FK
-    int ActivityId FK
-    int SubmittedBy FK
-    datetime2 CheckInAtUtc
-    decimal CheckInLatitude
-    nvarchar PhotoUrl
-    datetime2 CustomerOtpVerifiedAtUtc
-    nvarchar Answers "JSON, company's own questions"
-    nvarchar ReviewStatus "Pending, Approved, Rejected"
+  activities {
+    integer id PK
+    integer company_id FK
+    integer activity_type_id FK
+    integer account_id FK
+    integer assigned_to FK
+    integer assigned_by FK
+    varchar status "Pending ... Missed"
+    timestamptz due_at
+    timestamptz valid_from
   }
-  Doctors {
-    int Id PK
-    int CompanyId FK
-    nvarchar Name
-    nvarchar Specialization
-    nvarchar HospitalName
-  }
-  Tasks {
-    int Id PK
-    int DoctorId FK
-    int AssignedTo FK
-    nvarchar Status
-  }
-  TaskFeedback {
-    int Id PK
-    int TaskId FK
-    bit DoctorMet
-    nvarchar FeedbackText
+  submissions {
+    integer id PK
+    integer company_id FK
+    integer activity_id FK
+    integer submitted_by FK
+    timestamptz check_in_at
+    numeric check_in_latitude
+    timestamptz customer_otp_verified_at
+    jsonb answers "company's own questions"
+    varchar review_status "Pending, Approved, Rejected"
+    timestamptz valid_from
   }
 ```
 
 ## Rules the design enforces
 
-- **Company isolation in the database itself.** Activities point at Accounts and ActivityTypes
-  through `(CompanyId, Id)`, and Submissions point at Activities the same way. A row can never
-  reference another company's data, even if the API has a bug.
-- **Change history.** Accounts, Activities and Submissions are SQL Server temporal tables.
-  Every update and delete is kept automatically in `AccountsHistory`, `ActivitiesHistory` and
-  `SubmissionsHistory`.
-- **Who covers which account.** AccountAssignments links reps to accounts (several reps per
+- **Company isolation in the database itself.** `users` is unique on `(company_id, id)`.
+  activities point at accounts, activity_types and the assigned user through
+  `(company_id, ...)` foreign keys; submissions point at activities and the submitting user,
+  and account_assignments at accounts and the rep, in the same way. A row can never reference
+  another company's data, even if the API has a bug. `assigned_by` and `reviewed_by` may be
+  any user (for example a super admin).
+- **Change history.** accounts, account_assignments, activities and submissions have a
+  `valid_from` column. On every UPDATE or DELETE the trigger function `record_history()` copies
+  the old row, with `valid_to = now()`, into `<table>_history` (no keys, no foreign keys).
+- **Audit log is append-only.** Triggers on `audit_logs` reject UPDATE, DELETE and TRUNCATE;
+  the migration also documents the REVOKE for the app role.
+- **Who covers which account.** account_assignments links reps to accounts (several reps per
   account are allowed) with a planned visit frequency, so missed visits can be detected.
-- **Soft delete.** Every new table has `IsDeleted`; rows are never physically deleted by the app.
-- **Company-specific data is JSON with a definition.** `Accounts.ExtraFields` and
-  `Submissions.Answers` must be valid JSON (CHECK constraint), and each key is described in
-  `CustomFieldDefinitions`.
-- **Old tables stay untouched.** The copy keeps `Legacy*Id` links so every new row can be
-  traced back to the Doctors / Tasks / TaskFeedback row it came from.
+- **Soft delete.** Rows are never physically deleted by the app. Unique keys such as user email
+  and username or custom field keys are partial unique indexes `WHERE NOT is_deleted`.
+- **Company-specific data is JSON with a definition.** `accounts.extra_fields` (a JSON object)
+  and `submissions.answers` are `jsonb`, and each key is described in
+  `custom_field_definitions`.
+- **Old pharma tables are not moved.** Doctors, Tasks, TaskFeedback and the `Legacy*Id`
+  columns stay in SQL Server; `backend/scripts/copy-sqlserver-to-postgres.js` copies
+  everything else once.

@@ -1,34 +1,38 @@
-const mockConnectDb = jest.fn();
-
-jest.mock("../config/db", () => ({ sql: jest.requireActual("mssql"), connectDb: mockConnectDb }));
+jest.mock("../config/db", () => jest.requireActual("../../test/helpers/mockDb").mockDb());
 
 const request = require("supertest");
+const db = require("../config/db");
 const app = require("../app");
 const {
-  XHR, USERS, authCookie, mockPool, rows, affected,
+  XHR, USERS, authCookie, rows, affected,
 } = require("../../test/helpers/apiHarness");
 
 function call(method, url, user = USERS.superAdmin) {
   return request(app)[method](`/api/v1${url}`).set(XHR).set("Cookie", authCookie(user));
 }
 
+function uniqueViolation() {
+  return Object.assign(new Error("duplicate key"), { code: "23505" });
+}
+
 beforeEach(() => {
-  mockConnectDb.mockReset();
+  db.reset();
 });
 
-describe("company.controller", () => {
-  it("counts employees and managers by role code, not hard-coded RoleIds", async () => {
+describe("company.controller reads", () => {
+  it("counts employees and managers by role code, not hard-coded role ids", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows({ Id: 2 })]);
+    db.reset([rows({ Id: 2, TotalUsers: 3 })]);
 
     // Act
     const res = await call("get", "/companies");
 
     // Assert
-    expect(res.body.data).toEqual([{ Id: 2 }]);
-    expect(db.queries[0].text).toContain("Code = 'EMPLOYEE'");
-    expect(db.queries[0].text).toContain("Code = 'MANAGER'");
-    expect(db.queries[0].text).not.toMatch(/RoleId = \d/);
+    expect(res.body).toEqual({ success: true, data: [{ Id: 2, TotalUsers: 3 }] });
+    expect(db.calls[0].text).toContain("code = @employeeCode");
+    expect(db.calls[0].text).toContain("code = @managerCode");
+    expect(db.calls[0].text).toContain("c.updated_at AS \"UpdatedAtUtc\"");
+    expect(db.calls[0].params).toEqual({ employeeCode: "EMPLOYEE", managerCode: "MANAGER" });
   });
 
   it.each([
@@ -36,33 +40,40 @@ describe("company.controller", () => {
     [[rows({ Id: 2 })], 200],
   ])("reads one company", async (responses, status) => {
     // Arrange
-    mockPool(mockConnectDb, responses);
+    db.reset(responses);
 
     // Act
     const res = await call("get", "/companies/2");
 
     // Assert
     expect(res.status).toBe(status);
+    expect(db.calls[0].params).toMatchObject({ id: "2" });
   });
+});
 
+describe("company.controller create", () => {
   it("derives a URL-safe key and creates the company", async () => {
     // Arrange
-    const db = mockPool(mockConnectDb, [rows(), rows({ Id: 5 })]);
+    db.reset([rows(), rows({ id: 5 })]);
 
     // Act
     const res = await call("post", "/companies").send({ name: "Acme Health, Inc." });
 
     // Assert
     expect(res.status).toBe(201);
-    expect(db.queries[1].inputs).toMatchObject({ key: "acme-health-inc", plan: "STARTUP" });
+    expect(res.body).toEqual({ success: true, message: "Company created.", id: 5 });
+    expect(db.calls[1].params).toMatchObject({
+      name: "Acme Health, Inc.", key: "acme-health-inc", plan: "STARTUP", city: null, actorId: 1,
+    });
   });
 
   it.each([
     [{}, [], 400],
-    [{ name: "Acme" }, [rows({ Id: 1 })], 409],
+    [{ name: "Acme" }, [rows({ id: 1 })], 409],
+    [{ name: "Acme" }, [rows(), uniqueViolation()], 409],
   ])("rejects a company create %p", async (body, responses, status) => {
     // Arrange
-    mockPool(mockConnectDb, responses);
+    db.reset(responses);
 
     // Act
     const res = await call("post", "/companies").send(body);
@@ -71,12 +82,26 @@ describe("company.controller", () => {
     expect(res.status).toBe(status);
   });
 
+  it("answers 409 with the duplicate-key message", async () => {
+    // Arrange
+    db.reset([rows({ id: 1 })]);
+
+    // Act
+    const res = await call("post", "/companies").send({ name: "Acme", key: "acme" });
+
+    // Assert
+    expect(res.body)
+      .toEqual({ success: false, message: "A company with this key already exists." });
+  });
+});
+
+describe("company.controller update, status and delete", () => {
   it.each([
     [[rows()], 404],
-    [[rows({ Id: 2 }), affected(1)], 200],
+    [[rows({ id: 2 }), affected(1)], 200],
   ])("updates a company", async (responses, status) => {
     // Arrange
-    mockPool(mockConnectDb, responses);
+    db.reset(responses);
 
     // Act
     const res = await call("put", "/companies/2").send({ name: "New" });
@@ -85,13 +110,27 @@ describe("company.controller", () => {
     expect(res.status).toBe(status);
   });
 
+  it("writes every column, defaulting missing ones to NULL and isActive to true", async () => {
+    // Arrange
+    db.reset([rows({ id: 2 }), affected(1)]);
+
+    // Act
+    const res = await call("put", "/companies/2").send({ name: "New", key: "new" });
+
+    // Assert
+    expect(res.body).toEqual({ success: true, message: "Company updated." });
+    expect(db.calls[1].params).toMatchObject({
+      id: "2", name: "New", key: "new", plan: null, isActive: true, actorId: 1,
+    });
+  });
+
   it.each([
     [{ isActive: true }, 200, "Company activated."],
     [{ isActive: false }, 200, "Company deactivated."],
     [{}, 400, "isActive is required."],
   ])("toggles company status %p", async (body, status, message) => {
     // Arrange
-    mockPool(mockConnectDb, [affected(1)]);
+    db.reset([affected(1)]);
 
     // Act
     const res = await call("patch", "/companies/2/status").send(body);
@@ -103,13 +142,14 @@ describe("company.controller", () => {
 
   it("soft-deletes a company", async () => {
     // Arrange
-    mockPool(mockConnectDb, [affected(1)]);
+    db.reset([affected(1)]);
 
     // Act
     const res = await call("delete", "/companies/2");
 
     // Assert
     expect(res.body.message).toBe("Company deleted.");
+    expect(db.calls[0].text).toContain("is_deleted = true, is_active = false");
   });
 
   it.each([
@@ -121,12 +161,13 @@ describe("company.controller", () => {
     ["delete", "/companies/2"],
   ])("returns 500 for %s %s", async (method, url) => {
     // Arrange
-    mockPool(mockConnectDb, [new Error("db down")]);
+    db.reset([new Error("db down")]);
 
     // Act
     const res = await call(method, url).send({ name: "Acme", isActive: true });
 
     // Assert
     expect(res.status).toBe(500);
+    expect(res.body).toEqual({ success: false, message: "Database error." });
   });
 });

@@ -1,74 +1,57 @@
-const { connectDb, sql } = require("../config/db");
+const db = require("../config/db");
 
 async function insert(token) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("userId", sql.Int, token.userId)
-    .input("companyId", sql.Int, token.companyId)
-    .input("tokenHash", sql.Char(64), token.tokenHash)
-    .input("familyId", sql.UniqueIdentifier, token.familyId)
-    .input("isPersistent", sql.Bit, token.isPersistent)
-    .input("expiresAtUtc", sql.DateTime2(3), token.expiresAtUtc)
-    .input("createdByIp", sql.NVarChar(45), token.createdByIp)
-    .input("userAgent", sql.NVarChar(500), token.userAgent)
-    .query(`
-      INSERT INTO RefreshTokens
-        (UserId, CompanyId, TokenHash, FamilyId, IsPersistent, ExpiresAtUtc,
-         CreatedByIp, UserAgent, CreatedBy, UpdatedBy)
-      OUTPUT inserted.Id
-      VALUES
-        (@userId, @companyId, @tokenHash, @familyId, @isPersistent, @expiresAtUtc,
-         @createdByIp, @userAgent, @userId, @userId)
-    `);
-  return result.recordset[0].Id;
+  const { rows } = await db.query(`
+    INSERT INTO refresh_tokens
+      (user_id, company_id, token_hash, family_id, is_persistent, expires_at,
+       created_by_ip, user_agent, created_by, updated_by)
+    VALUES
+      (@userId, @companyId, @tokenHash, @familyId, @isPersistent, @expiresAt,
+       @createdByIp, @userAgent, @userId, @userId)
+    RETURNING id
+  `, {
+    userId: token.userId,
+    companyId: token.companyId ?? null,
+    tokenHash: token.tokenHash,
+    familyId: token.familyId,
+    isPersistent: Boolean(token.isPersistent),
+    expiresAt: token.expiresAtUtc,
+    createdByIp: token.createdByIp ?? null,
+    userAgent: token.userAgent ?? null,
+  });
+  return rows[0].id;
 }
 
 async function findByHash(tokenHash) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("tokenHash", sql.Char(64), tokenHash)
-    .query(`
-      SELECT Id, UserId, CompanyId, TokenHash, FamilyId, IsPersistent, ExpiresAtUtc,
-        RevokedAtUtc, RevokedReason, ReplacedByTokenHash
-      FROM RefreshTokens
-      WHERE TokenHash = @tokenHash AND IsDeleted = 0
-    `);
-  return result.recordset[0] || null;
+  const { rows } = await db.query(`
+    SELECT id, user_id, company_id, token_hash, family_id, is_persistent, expires_at,
+      revoked_at, revoked_reason, replaced_by_token_hash
+    FROM refresh_tokens
+    WHERE token_hash = @tokenHash AND NOT is_deleted
+  `, { tokenHash });
+  return rows[0] || null;
 }
 
 async function revoke(id, reason, replacedByHash) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("id", sql.BigInt, id)
-    .input("reason", sql.NVarChar(50), reason)
-    .input("replacedByHash", sql.Char(64), replacedByHash || null)
-    .query(`
-      UPDATE RefreshTokens
-      SET RevokedAtUtc = GETUTCDATE(),
-          RevokedReason = @reason,
-          ReplacedByTokenHash = @replacedByHash,
-          UpdatedAtUtc = GETUTCDATE()
-      WHERE Id = @id AND RevokedAtUtc IS NULL
-    `);
-  return result.rowsAffected[0] > 0;
+  const { rowCount } = await db.query(`
+    UPDATE refresh_tokens
+    SET revoked_at = now(),
+        revoked_reason = @reason,
+        replaced_by_token_hash = @replacedByHash,
+        updated_at = now()
+    WHERE id = @id AND revoked_at IS NULL
+  `, { id, reason, replacedByHash: replacedByHash || null });
+  return rowCount > 0;
 }
 
 async function revokeFamily(familyId, reason) {
-  const pool = await connectDb();
-  await pool
-    .request()
-    .input("familyId", sql.UniqueIdentifier, familyId)
-    .input("reason", sql.NVarChar(50), reason)
-    .query(`
-      UPDATE RefreshTokens
-      SET RevokedAtUtc = GETUTCDATE(),
-          RevokedReason = @reason,
-          UpdatedAtUtc = GETUTCDATE()
-      WHERE FamilyId = @familyId AND RevokedAtUtc IS NULL
-    `);
+  await db.query(`
+    UPDATE refresh_tokens
+    SET revoked_at = now(),
+        revoked_reason = @reason,
+        updated_at = now()
+    WHERE family_id = @familyId AND revoked_at IS NULL
+  `, { familyId, reason });
 }
 
 module.exports = {

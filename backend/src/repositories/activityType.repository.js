@@ -1,117 +1,95 @@
-const { connectDb, sql } = require("../config/db");
+const db = require("../config/db");
 
-const COLUMNS = `Id, CompanyId, Code, Name, RequiresCheckIn, GeofenceMeters, MinPhotos,
-  RequiresSignature, RequiresCustomerOtp, IsActive`;
+const COLUMNS = `id, company_id, code, name, requires_check_in, geofence_meters, min_photos,
+  requires_signature, requires_customer_otp, is_active`;
 
-const OUTPUT_COLUMNS = COLUMNS.split(",").map((column) => `INSERTED.${column.trim()}`).join(", ");
+const OPEN_ACTIVITY_STATUSES = "'Pending', 'InProgress'";
 
-const OPEN_ACTIVITY_STATUSES = "N'Pending', N'InProgress'";
-
-function bindType(request, type) {
-  return request
-    .input("code", sql.NVarChar(50), type.code)
-    .input("name", sql.NVarChar(100), type.name)
-    .input("requiresCheckIn", sql.Bit, type.requiresCheckIn ? 1 : 0)
-    .input("geofenceMeters", sql.Int, type.geofenceMeters ?? null)
-    .input("minPhotos", sql.TinyInt, type.minPhotos)
-    .input("requiresSignature", sql.Bit, type.requiresSignature ? 1 : 0)
-    .input("requiresCustomerOtp", sql.Bit, type.requiresCustomerOtp ? 1 : 0)
-    .input("isActive", sql.Bit, type.isActive ? 1 : 0);
+// Values of the columns shared by insert and update.
+function typeParams(type) {
+  return {
+    code: type.code,
+    name: type.name,
+    requiresCheckIn: Boolean(type.requiresCheckIn),
+    geofenceMeters: type.geofenceMeters ?? null,
+    minPhotos: type.minPhotos,
+    requiresSignature: Boolean(type.requiresSignature),
+    requiresCustomerOtp: Boolean(type.requiresCustomerOtp),
+    isActive: Boolean(type.isActive),
+  };
 }
 
 async function list(companyId, { includeInactive = false } = {}) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("includeInactive", sql.Bit, includeInactive ? 1 : 0)
-    .query(`
-      SELECT ${COLUMNS}
-      FROM ActivityTypes
-      WHERE CompanyId = @companyId AND IsDeleted = 0
-        AND (@includeInactive = 1 OR IsActive = 1)
-      ORDER BY Name
-    `);
-  return result.recordset;
+  const activeOnly = includeInactive ? "" : " AND is_active";
+  const { rows } = await db.query(
+    `SELECT ${COLUMNS}
+     FROM activity_types
+     WHERE company_id = @companyId AND NOT is_deleted${activeOnly}
+     ORDER BY name, id`,
+    { companyId },
+  );
+  return rows;
 }
 
 async function findById(companyId, id) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("id", sql.Int, id)
-    .query(`
-      SELECT ${COLUMNS}
-      FROM ActivityTypes
-      WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0
-    `);
-  return result.recordset[0] || null;
+  const { rows } = await db.query(
+    `SELECT ${COLUMNS}
+     FROM activity_types
+     WHERE id = @id AND company_id = @companyId AND NOT is_deleted`,
+    { companyId, id },
+  );
+  return rows[0] || null;
 }
 
 async function insert(companyId, type, userId) {
-  const pool = await connectDb();
-  const request = pool.request()
-    .input("companyId", sql.Int, companyId)
-    .input("userId", sql.Int, userId);
-  const result = await bindType(request, type).query(`
-    INSERT INTO ActivityTypes
-      (CompanyId, Code, Name, RequiresCheckIn, GeofenceMeters, MinPhotos, RequiresSignature,
-       RequiresCustomerOtp, IsActive, CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, IsDeleted)
-    OUTPUT ${OUTPUT_COLUMNS}
-    VALUES
-      (@companyId, @code, @name, @requiresCheckIn, @geofenceMeters, @minPhotos, @requiresSignature,
-       @requiresCustomerOtp, @isActive, GETUTCDATE(), @userId, GETUTCDATE(), @userId, 0)
-  `);
-  return result.recordset[0];
+  const { rows } = await db.query(
+    `INSERT INTO activity_types
+       (company_id, code, name, requires_check_in, geofence_meters, min_photos,
+        requires_signature, requires_customer_otp, is_active, created_by, updated_by)
+     VALUES
+       (@companyId, @code, @name, @requiresCheckIn, @geofenceMeters, @minPhotos,
+        @requiresSignature, @requiresCustomerOtp, @isActive, @userId, @userId)
+     RETURNING ${COLUMNS}`,
+    { ...typeParams(type), companyId, userId },
+  );
+  return rows[0];
 }
 
 async function update(companyId, id, type, userId) {
-  const pool = await connectDb();
-  const request = pool.request()
-    .input("companyId", sql.Int, companyId)
-    .input("id", sql.Int, id)
-    .input("userId", sql.Int, userId);
-  const result = await bindType(request, type).query(`
-    UPDATE ActivityTypes SET
-      Code = @code, Name = @name, RequiresCheckIn = @requiresCheckIn,
-      GeofenceMeters = @geofenceMeters, MinPhotos = @minPhotos,
-      RequiresSignature = @requiresSignature, RequiresCustomerOtp = @requiresCustomerOtp,
-      IsActive = @isActive, UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId
-    OUTPUT ${OUTPUT_COLUMNS}
-    WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0
-  `);
-  return result.recordset[0] || null;
+  const { rows } = await db.query(
+    `UPDATE activity_types SET
+       code = @code, name = @name, requires_check_in = @requiresCheckIn,
+       geofence_meters = @geofenceMeters, min_photos = @minPhotos,
+       requires_signature = @requiresSignature, requires_customer_otp = @requiresCustomerOtp,
+       is_active = @isActive, updated_at = now(), updated_by = @userId
+     WHERE id = @id AND company_id = @companyId AND NOT is_deleted
+     RETURNING ${COLUMNS}`,
+    {
+      ...typeParams(type), companyId, id, userId,
+    },
+  );
+  return rows[0] || null;
 }
 
 async function countOpenActivities(companyId, id) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("id", sql.Int, id)
-    .query(`
-      SELECT COUNT(*) AS Total
-      FROM Activities
-      WHERE CompanyId = @companyId AND ActivityTypeId = @id AND IsDeleted = 0
-        AND Status IN (${OPEN_ACTIVITY_STATUSES})
-    `);
-  return result.recordset[0] ? result.recordset[0].Total : 0;
+  const { rows } = await db.query(
+    `SELECT COUNT(*) AS total
+     FROM activities
+     WHERE company_id = @companyId AND activity_type_id = @id AND NOT is_deleted
+       AND status IN (${OPEN_ACTIVITY_STATUSES})`,
+    { companyId, id },
+  );
+  return rows[0] ? rows[0].total : 0;
 }
 
 async function softDelete(companyId, id, userId) {
-  const pool = await connectDb();
-  const result = await pool
-    .request()
-    .input("companyId", sql.Int, companyId)
-    .input("id", sql.Int, id)
-    .input("userId", sql.Int, userId)
-    .query(`
-      UPDATE ActivityTypes SET
-        IsDeleted = 1, IsActive = 0, UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId
-      WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0
-    `);
-  return result.rowsAffected[0] > 0;
+  const { rowCount } = await db.query(
+    `UPDATE activity_types SET
+       is_deleted = true, is_active = false, updated_at = now(), updated_by = @userId
+     WHERE id = @id AND company_id = @companyId AND NOT is_deleted`,
+    { companyId, id, userId },
+  );
+  return rowCount > 0;
 }
 
 module.exports = {

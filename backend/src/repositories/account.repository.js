@@ -1,185 +1,162 @@
-const { connectDb, sql } = require("../config/db");
+const db = require("../config/db");
 const { companyFilter } = require("../services/tenantScope");
-const logger = require("../utils/logger");
 
 const ACCOUNT_COLUMNS = `
-  a.Id, a.CompanyId, a.Name, a.PhoneNumber, a.Email, a.Address,
-  a.City, a.State, a.Country, a.Latitude, a.Longitude, a.PhotoUrl, a.Notes,
-  a.ExtraFields, a.IsActive, a.CreatedAtUtc, a.UpdatedAtUtc`;
+  a.id, a.company_id, a.name, a.phone_number, a.email, a.address,
+  a.city, a.state, a.country, a.latitude, a.longitude, a.photo_url, a.notes,
+  a.extra_fields, a.is_active, a.created_at, a.updated_at`;
 
 // A rep sees an account only while they hold an active assignment to it.
 const ASSIGNED_TO_ME = `EXISTS (
-  SELECT 1 FROM AccountAssignments aa
-  WHERE aa.AccountId = a.Id AND aa.IsDeleted = 0 AND aa.UserId = @me)`;
+  SELECT 1 FROM account_assignments aa
+  WHERE aa.account_id = a.id AND NOT aa.is_deleted AND aa.user_id = @me)`;
 
-const SEARCH_CLAUSE = "(a.Name LIKE @search OR a.City LIKE @search"
-  + " OR a.PhoneNumber LIKE @search OR a.Email LIKE @search)";
+// Case-insensitive, like the SQL Server collation the API was built on.
+const SEARCH_CLAUSE = "(a.name ILIKE @search OR a.city ILIKE @search"
+  + " OR a.phone_number ILIKE @search OR a.email ILIKE @search)";
 
-// Pool for a plain call, or the caller's transaction.
-async function executor(db) {
-  return db || connectDb();
-}
+const TARGET = "WHERE id = @id AND company_id = @companyId AND NOT is_deleted";
 
+// Escapes LIKE wildcards; backslash is PostgreSQL's default LIKE escape character.
 function escapeLike(value) {
-  return value.replace(/[[%_]/g, "[$&]");
+  return value.replace(/[\\%_]/g, "\\$&");
 }
 
-// WHERE predicate for the rows a scope may see. scope = { user, companyId?, assignedUserId? }.
-function scopeClause(request, scope) {
-  const clauses = ["a.IsDeleted = 0", companyFilter(request, scope.user, "a.CompanyId")];
+// WHERE predicate for the rows a scope may see; adds its values to params.
+// scope = { user, companyId?, assignedUserId? }.
+function scopeClause(params, scope) {
+  const clauses = ["NOT a.is_deleted", companyFilter(scope.user, "a.company_id", params)];
   if (scope.companyId) {
-    request.input("filterCompanyId", sql.Int, scope.companyId);
-    clauses.push("a.CompanyId = @filterCompanyId");
+    Object.assign(params, { filterCompanyId: scope.companyId });
+    clauses.push("a.company_id = @filterCompanyId");
   }
   if (scope.assignedUserId) {
-    request.input("me", sql.Int, scope.assignedUserId);
+    Object.assign(params, { me: scope.assignedUserId });
     clauses.push(ASSIGNED_TO_ME);
   }
   return clauses.join(" AND ");
 }
 
-function listClause(request, scope, filters) {
-  const clauses = [scopeClause(request, scope)];
+function listClause(params, scope, filters) {
+  const clauses = [scopeClause(params, scope)];
   if (filters.search) {
-    request.input("search", sql.NVarChar(300), `%${escapeLike(filters.search)}%`);
+    Object.assign(params, { search: `%${escapeLike(filters.search)}%` });
     clauses.push(SEARCH_CLAUSE);
   }
   if (typeof filters.isActive === "boolean") {
-    request.input("isActive", sql.Bit, filters.isActive);
-    clauses.push("a.IsActive = @isActive");
+    Object.assign(params, { isActive: filters.isActive });
+    clauses.push("a.is_active = @isActive");
   }
   return clauses.join(" AND ");
 }
 
 async function list(scope, filters) {
-  const pool = await connectDb();
-  const request = pool.request()
-    .input("offset", sql.Int, (filters.page - 1) * filters.pageSize)
-    .input("pageSize", sql.Int, filters.pageSize);
-  const where = listClause(request, scope, filters);
-  const result = await request.query(`
-    SELECT COUNT(*) AS Total FROM Accounts a WHERE ${where};
-    SELECT ${ACCOUNT_COLUMNS}
-    FROM Accounts a
-    WHERE ${where}
-    ORDER BY a.Name, a.Id
-    OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;
-  `);
-  return { total: result.recordsets[0][0].Total, rows: result.recordsets[1] };
+  const params = {
+    offset: (filters.page - 1) * filters.pageSize,
+    pageSize: filters.pageSize,
+  };
+  const where = listClause(params, scope, filters);
+  const [count, page] = await Promise.all([
+    db.query(`SELECT COUNT(*) AS total FROM accounts a WHERE ${where}`, params),
+    db.query(
+      `SELECT ${ACCOUNT_COLUMNS}
+       FROM accounts a
+       WHERE ${where}
+       ORDER BY a.name, a.id
+       LIMIT @pageSize OFFSET @offset`,
+      params,
+    ),
+  ]);
+  return { total: count.rows[0].total, rows: page.rows };
 }
 
-async function findById(id, scope, db) {
-  const request = (await executor(db)).request().input("id", sql.Int, id);
-  const where = scopeClause(request, scope);
-  const result = await request.query(`
-    SELECT ${ACCOUNT_COLUMNS}
-    FROM Accounts a
-    WHERE a.Id = @id AND ${where}
-  `);
-  return result.recordset[0] || null;
+// tx: the caller's transaction (withTransaction), or the pool when omitted.
+async function findById(id, scope, tx = db) {
+  const params = { id };
+  const where = scopeClause(params, scope);
+  const { rows } = await tx.query(
+    `SELECT ${ACCOUNT_COLUMNS}
+     FROM accounts a
+     WHERE a.id = @id AND ${where}`,
+    params,
+  );
+  return rows[0] || null;
 }
 
-function serializeExtraFields(values) {
-  return values && Object.keys(values).length > 0 ? JSON.stringify(values) : null;
-}
-
-// Binds the profile columns shared by insert and update.
-function bindFields(request, fields) {
-  return request
-    .input("name", sql.NVarChar(200), fields.name)
-    .input("phoneNumber", sql.NVarChar(30), fields.phoneNumber)
-    .input("email", sql.NVarChar(255), fields.email)
-    .input("address", sql.NVarChar(500), fields.address)
-    .input("city", sql.NVarChar(100), fields.city)
-    .input("state", sql.NVarChar(100), fields.state)
-    .input("country", sql.NVarChar(100), fields.country)
-    .input("latitude", sql.Decimal(10, 7), fields.latitude)
-    .input("longitude", sql.Decimal(10, 7), fields.longitude)
-    .input("photoUrl", sql.NVarChar(500), fields.photoUrl)
-    .input("notes", sql.NVarChar(1000), fields.notes)
-    .input("extraFields", sql.NVarChar(sql.MAX), serializeExtraFields(fields.extraFields));
+// Values of the profile columns shared by insert and update. extra_fields is jsonb: the
+// object is sent as JSON, and an empty set of values is stored as NULL.
+function fieldParams(fields) {
+  const extra = fields.extraFields;
+  return {
+    name: fields.name,
+    phoneNumber: fields.phoneNumber,
+    email: fields.email,
+    address: fields.address,
+    city: fields.city,
+    state: fields.state,
+    country: fields.country,
+    latitude: fields.latitude,
+    longitude: fields.longitude,
+    photoUrl: fields.photoUrl,
+    notes: fields.notes,
+    extraFields: extra && Object.keys(extra).length > 0 ? extra : null,
+  };
 }
 
 async function insert(companyId, fields, userId) {
-  const pool = await connectDb();
-  const request = pool.request()
-    .input("companyId", sql.Int, companyId)
-    .input("userId", sql.Int, userId);
-  const result = await bindFields(request, fields).query(`
-    INSERT INTO Accounts
-      (CompanyId, Name, PhoneNumber, Email, Address, City, State, Country,
-       Latitude, Longitude, PhotoUrl, Notes, ExtraFields,
-       IsActive, IsDeleted, CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy)
-    OUTPUT INSERTED.Id
-    VALUES
-      (@companyId, @name, @phoneNumber, @email, @address, @city, @state, @country,
-       @latitude, @longitude, @photoUrl, @notes, @extraFields,
-       1, 0, GETUTCDATE(), @userId, GETUTCDATE(), @userId)
-  `);
-  return result.recordset[0].Id;
+  const { rows } = await db.query(
+    `INSERT INTO accounts
+       (company_id, name, phone_number, email, address, city, state, country,
+        latitude, longitude, photo_url, notes, extra_fields, created_by, updated_by)
+     VALUES
+       (@companyId, @name, @phoneNumber, @email, @address, @city, @state, @country,
+        @latitude, @longitude, @photoUrl, @notes, @extraFields, @userId, @userId)
+     RETURNING id`,
+    { ...fieldParams(fields), companyId, userId },
+  );
+  return rows[0].id;
 }
-
-function targetRequest(pool, id, companyId, userId) {
-  return pool.request()
-    .input("id", sql.Int, id)
-    .input("companyId", sql.Int, companyId)
-    .input("userId", sql.Int, userId);
-}
-
-const TARGET = "WHERE Id = @id AND CompanyId = @companyId AND IsDeleted = 0";
 
 async function update(id, companyId, fields, userId) {
-  const pool = await connectDb();
-  const request = bindFields(targetRequest(pool, id, companyId, userId), fields);
-  const result = await request.query(`
-    UPDATE Accounts SET
-      Name = @name, PhoneNumber = @phoneNumber, Email = @email, Address = @address,
-      City = @city, State = @state, Country = @country,
-      Latitude = @latitude, Longitude = @longitude, PhotoUrl = @photoUrl,
-      Notes = @notes, ExtraFields = @extraFields,
-      UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId
-    ${TARGET}
-  `);
-  return result.rowsAffected[0];
+  const { rowCount } = await db.query(
+    `UPDATE accounts SET
+       name = @name, phone_number = @phoneNumber, email = @email, address = @address,
+       city = @city, state = @state, country = @country,
+       latitude = @latitude, longitude = @longitude, photo_url = @photoUrl,
+       notes = @notes, extra_fields = @extraFields,
+       updated_at = now(), updated_by = @userId
+     ${TARGET}`,
+    {
+      ...fieldParams(fields), id, companyId, userId,
+    },
+  );
+  return rowCount;
 }
 
 async function setStatus(id, companyId, isActive, userId) {
-  const pool = await connectDb();
-  const result = await targetRequest(pool, id, companyId, userId)
-    .input("isActive", sql.Bit, isActive)
-    .query(`
-      UPDATE Accounts SET IsActive = @isActive, UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId
-      ${TARGET}
-    `);
-  return result.rowsAffected[0];
+  const { rowCount } = await db.query(
+    `UPDATE accounts SET is_active = @isActive, updated_at = now(), updated_by = @userId
+     ${TARGET}`,
+    {
+      id, companyId, isActive, userId,
+    },
+  );
+  return rowCount;
 }
 
-async function softDelete(id, companyId, userId, db) {
-  const result = await targetRequest(await executor(db), id, companyId, userId).query(`
-    UPDATE Accounts SET
-      IsDeleted = 1, IsActive = 0, UpdatedAtUtc = GETUTCDATE(), UpdatedBy = @userId
-    ${TARGET}
-  `);
-  return result.rowsAffected[0];
+async function softDelete(id, companyId, userId, tx = db) {
+  const { rowCount } = await tx.query(
+    `UPDATE accounts SET
+       is_deleted = true, is_active = false, updated_at = now(), updated_by = @userId
+     ${TARGET}`,
+    { id, companyId, userId },
+  );
+  return rowCount;
 }
 
-// Runs work(transaction) in one mssql transaction: commit on success, roll back on error.
-async function withTransaction(work) {
-  const pool = await connectDb();
-  const transaction = pool.transaction();
-  await transaction.begin();
-  try {
-    const result = await work(transaction);
-    await transaction.commit();
-    return result;
-  } catch (err) {
-    try {
-      await transaction.rollback();
-    } catch (rollbackErr) {
-      logger.warn({ err: rollbackErr }, "Transaction rollback failed");
-    }
-    throw err;
-  }
+// Runs work(tx) in one transaction: commit on success, roll back on error (config/db).
+function withTransaction(work) {
+  return db.withTransaction(work);
 }
 
 module.exports = {

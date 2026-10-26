@@ -1,7 +1,6 @@
-const { sql } = require("../config/db");
 const { ROLES } = require("../constants/roles");
 
-const MATCH_ALL = "1 = 1";
+const MATCH_ALL = "TRUE";
 
 function toId(value) {
   return value === undefined || value === null || value === "" ? null : Number(value);
@@ -25,30 +24,35 @@ function resolveCompanyId(user, requestedCompanyId) {
   return { allowed: true, companyId: own };
 }
 
-// SQL predicate limiting rows to the caller's company. A caller without a company matches nothing.
-function companyFilter(request, user, column) {
+// The helpers below return a SQL predicate built only from code-defined text and add the
+// values it references to `params` (named "@" parameters for config/db.query).
+
+// Limits rows to the caller's company. A caller without a company binds NULL: matches nothing.
+function companyFilter(user, column, params) {
   if (isSuperAdmin(user)) {
     return MATCH_ALL;
   }
-  request.input("scopeCompanyId", sql.Int, toId(user.companyId));
+  Object.assign(params, { scopeCompanyId: toId(user.companyId) });
   return `${column} = @scopeCompanyId`;
 }
 
-// dbo.Users rows the caller may read or change: their own company, and never a SUPER_ADMIN.
-function manageableUserFilter(request, user, prefix = "") {
+// users rows the caller may read or change: their own company, and never a SUPER_ADMIN.
+function manageableUserFilter(user, params, prefix = "") {
   if (isSuperAdmin(user)) {
     return MATCH_ALL;
   }
-  request.input("scopeCompanyId", sql.Int, toId(user.companyId));
-  request.input("superAdminCode", sql.NVarChar(50), ROLES.SUPER_ADMIN);
-  return `${prefix}CompanyId = @scopeCompanyId`
-    + ` AND ${prefix}RoleId NOT IN (SELECT Id FROM Roles WHERE Code = @superAdminCode)`;
+  Object.assign(params, {
+    scopeCompanyId: toId(user.companyId),
+    superAdminCode: ROLES.SUPER_ADMIN,
+  });
+  return `${prefix}company_id = @scopeCompanyId`
+    + ` AND ${prefix}role_id NOT IN (SELECT id FROM roles WHERE code = @superAdminCode)`;
 }
 
-// dbo.Users rows holding one role, looked up by Roles.Code rather than a hard-coded Id.
-function roleFilter(request, roleCode, prefix = "") {
-  request.input("roleCode", sql.NVarChar(50), roleCode);
-  return `${prefix}RoleId IN (SELECT Id FROM Roles WHERE Code = @roleCode)`;
+// users rows holding one role, looked up by roles.code rather than a hard-coded id.
+function roleFilter(roleCode, params, prefix = "") {
+  Object.assign(params, { roleCode });
+  return `${prefix}role_id IN (SELECT id FROM roles WHERE code = @roleCode)`;
 }
 
 module.exports = {

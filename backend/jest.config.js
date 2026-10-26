@@ -4,7 +4,7 @@ const STRICT = {
 
 module.exports = {
   testEnvironment: "node",
-  roots: ["<rootDir>/src", "<rootDir>/scripts"],
+  roots: ["<rootDir>/src", "<rootDir>/scripts", "<rootDir>/test/helpers"],
   setupFiles: ["<rootDir>/test/setupEnv.js"],
   clearMocks: true,
   collectCoverageFrom: [

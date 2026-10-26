@@ -18,16 +18,16 @@ const CTX = {
 
 function typeRow(overrides = {}) {
   return {
-    Id: 4,
-    CompanyId: 2,
-    Code: "VISIT",
-    Name: "Visit",
-    RequiresCheckIn: true,
-    GeofenceMeters: null,
-    MinPhotos: 1,
-    RequiresSignature: false,
-    RequiresCustomerOtp: false,
-    IsActive: true,
+    id: 4,
+    company_id: 2,
+    code: "VISIT",
+    name: "Visit",
+    requires_check_in: true,
+    geofence_meters: null,
+    min_photos: 1,
+    requires_signature: false,
+    requires_customer_otp: false,
+    is_active: true,
     ...overrides,
   };
 }
@@ -37,7 +37,7 @@ const TYPE = { code: "VISIT", name: "Visit" };
 describe("activityTypeSettings.service", () => {
   it("lists activity types as DTOs", async () => {
     // Arrange
-    activityTypeRepository.list.mockResolvedValue([typeRow({ GeofenceMeters: 200 })]);
+    activityTypeRepository.list.mockResolvedValue([typeRow({ geofence_meters: 200 })]);
 
     // Act
     const types = await service.listActivityTypes(2, { includeInactive: false });
@@ -74,7 +74,7 @@ describe("activityTypeSettings.service", () => {
 
   it("turns a duplicate code into 409 CONFLICT", async () => {
     // Arrange
-    const duplicate = Object.assign(new Error("dup"), { number: 2627 });
+    const duplicate = Object.assign(new Error("dup"), { code: "23505" });
     activityTypeRepository.insert.mockRejectedValue(duplicate);
 
     // Act
@@ -98,7 +98,7 @@ describe("activityTypeSettings.service", () => {
   it("updates a type and audits before/after", async () => {
     // Arrange
     activityTypeRepository.findById.mockResolvedValue(typeRow());
-    activityTypeRepository.update.mockResolvedValue(typeRow({ Name: "Field visit" }));
+    activityTypeRepository.update.mockResolvedValue(typeRow({ name: "Field visit" }));
 
     // Act
     const dto = await service.updateActivityType(CTX, 4, { ...TYPE, name: "Field visit" });

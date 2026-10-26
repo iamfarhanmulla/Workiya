@@ -1,8 +1,7 @@
-// SQL Server error numbers for a duplicate key in a unique index (2601) or constraint (2627).
-const UNIQUE_VIOLATION_NUMBERS = new Set([2601, 2627]);
+// PostgreSQL error checks (SQLSTATE 23505 / 23503 / 23514); kept so services can keep
+// importing them from the repository layer.
+const {
+  isUniqueViolation, isForeignKeyViolation, isCheckViolation,
+} = require("../config/dbErrors");
 
-function isUniqueViolation(err) {
-  return Boolean(err) && UNIQUE_VIOLATION_NUMBERS.has(err.number);
-}
-
-module.exports = { isUniqueViolation };
+module.exports = { isUniqueViolation, isForeignKeyViolation, isCheckViolation };

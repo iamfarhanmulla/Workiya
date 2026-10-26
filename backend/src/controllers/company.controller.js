@@ -1,166 +1,102 @@
-const { connectDb, sql } = require("../config/db");
+const companies = require("../repositories/company.repository");
+const { isUniqueViolation } = require("../config/dbErrors");
 const logger = require("../utils/logger");
+
+const NOT_FOUND = { success: false, message: "Company not found." };
+const DB_ERROR = { success: false, message: "Database error." };
+const DUPLICATE_KEY = { success: false, message: "A company with this key already exists." };
+
+function deriveKey(key, name) {
+  return (key || name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 // GET /api/v1/companies
 async function getAll(req, res) {
   try {
-    const pool = await connectDb();
-    const result = await pool.request().query(`
-      SELECT
-        c.Id, c.Name, c.[Key], c.LogoUrl,
-        c.ContactEmail, c.ContactPhone,
-        c.Address, c.City, c.Country, c.[Plan],
-        c.Status, c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc,
-        (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0) AS TotalUsers,
-        (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0
-          AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'EMPLOYEE')) AS EmployeeCount,
-        (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0
-          AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'MANAGER')) AS ManagerCount
-      FROM Companies c
-      WHERE c.IsDeleted = 0
-      ORDER BY c.CreatedAtUtc DESC
-    `);
-    return res.json({ success: true, data: result.recordset });
+    return res.json({ success: true, data: await companies.list() });
   } catch (err) {
     logger.error({ err }, "companies getAll error");
-    return res.status(500).json({ success: false, message: "Database error." });
+    return res.status(500).json(DB_ERROR);
   }
 }
 
 // GET /api/v1/companies/:id
 async function getById(req, res) {
   try {
-    const pool = await connectDb();
-    const result = await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query(`
-        SELECT
-          c.Id, c.Name, c.[Key], c.LogoUrl,
-          c.ContactEmail, c.ContactPhone,
-          c.Address, c.City, c.Country, c.[Plan],
-          c.Status, c.IsActive, c.CreatedAtUtc,
-          (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0) AS TotalUsers,
-          (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0
-            AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'EMPLOYEE')) AS EmployeeCount,
-          (SELECT COUNT(*) FROM Users u WHERE u.CompanyId = c.Id AND u.IsDeleted = 0
-            AND u.RoleId IN (SELECT Id FROM Roles WHERE Code = 'MANAGER')) AS ManagerCount
-        FROM Companies c
-        WHERE c.Id = @id AND c.IsDeleted = 0
-      `);
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ success: false, message: "Company not found." });
-    }
-    return res.json({ success: true, data: result.recordset[0] });
+    const row = await companies.findById(req.params.id);
+    if (!row) return res.status(404).json(NOT_FOUND);
+    return res.json({ success: true, data: row });
   } catch (err) {
     logger.error({ err }, "companies getById error");
-    return res.status(500).json({ success: false, message: "Database error." });
+    return res.status(500).json(DB_ERROR);
   }
+}
+
+function insertFields(body, key, actor) {
+  return {
+    name: body.name,
+    key,
+    logoUrl: body.logoUrl || null,
+    contactEmail: body.contactEmail || null,
+    contactPhone: body.contactPhone || null,
+    address: body.address || null,
+    city: body.city || null,
+    country: body.country || null,
+    plan: body.plan || "STARTUP",
+    actorId: actor.id,
+  };
 }
 
 // POST /api/v1/companies
 async function create(req, res) {
-  const {
-    name, key, contactEmail, contactPhone, address, city, country, plan, logoUrl,
-  } = req.body;
-
+  const { name, key } = req.body;
   if (!name) return res.status(400).json({ success: false, message: "Company name is required." });
-
-  const derivedKey = (key || name)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const derivedKey = deriveKey(key, name);
 
   try {
-    const pool = await connectDb();
-
-    const dup = await pool.request()
-      .input("key", sql.NVarChar, derivedKey)
-      .query("SELECT Id FROM Companies WHERE [Key] = @key AND IsDeleted = 0");
-    if (dup.recordset.length > 0) {
-      return res.status(409).json({
-        success: false, message: "A company with this key already exists.",
-      });
+    if (await companies.keyInUse(derivedKey)) {
+      return res.status(409).json(DUPLICATE_KEY);
     }
-
-    const result = await pool.request()
-      .input("name", sql.NVarChar, name)
-      .input("key", sql.NVarChar, derivedKey)
-      .input("logoUrl", sql.NVarChar, logoUrl || null)
-      .input("contactEmail", sql.NVarChar, contactEmail || null)
-      .input("contactPhone", sql.NVarChar, contactPhone || null)
-      .input("address", sql.NVarChar, address || null)
-      .input("city", sql.NVarChar, city || null)
-      .input("country", sql.NVarChar, country || null)
-      .input("plan", sql.NVarChar, plan || "STARTUP")
-      .query(`
-        INSERT INTO Companies
-          (Name, [Key], LogoUrl, ContactEmail, ContactPhone,
-           Address, City, Country, [Plan],
-           Status, IsActive, IsDeleted, CreatedAtUtc)
-        OUTPUT INSERTED.Id
-        VALUES
-          (@name, @key, @logoUrl, @contactEmail, @contactPhone,
-           @address, @city, @country, @plan,
-           1, 1, 0, SYSDATETIMEOFFSET())
-      `);
-
-    return res.status(201).json({
-      success: true, message: "Company created.", id: result.recordset[0].Id,
-    });
+    const id = await companies.insert(insertFields(req.body, derivedKey, req.user));
+    return res.status(201).json({ success: true, message: "Company created.", id });
   } catch (err) {
+    // The key is unique across all rows, deleted ones included, and across concurrent creates.
+    if (isUniqueViolation(err)) return res.status(409).json(DUPLICATE_KEY);
     logger.error({ err }, "companies create error");
-    return res.status(500).json({ success: false, message: "Database error." });
+    return res.status(500).json(DB_ERROR);
   }
+}
+
+function updateFields(body, actor) {
+  return {
+    name: body.name ?? null,
+    key: body.key ?? null,
+    logoUrl: body.logoUrl ?? null,
+    contactEmail: body.contactEmail ?? null,
+    contactPhone: body.contactPhone ?? null,
+    address: body.address ?? null,
+    city: body.city ?? null,
+    country: body.country ?? null,
+    plan: body.plan ?? null,
+    isActive: body.isActive,
+    actorId: actor.id,
+  };
 }
 
 // PUT /api/v1/companies/:id
 async function update(req, res) {
-  const {
-    name, key, contactEmail, contactPhone, address, city, country, plan, logoUrl, isActive,
-  } = req.body;
-
   try {
-    const pool = await connectDb();
-
-    const exists = await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query("SELECT Id FROM Companies WHERE Id = @id AND IsDeleted = 0");
-    if (exists.recordset.length === 0) {
-      return res.status(404).json({ success: false, message: "Company not found." });
+    if (!(await companies.exists(req.params.id))) {
+      return res.status(404).json(NOT_FOUND);
     }
-
-    await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .input("name", sql.NVarChar, name ?? null)
-      .input("key", sql.NVarChar, key ?? null)
-      .input("logoUrl", sql.NVarChar, logoUrl ?? null)
-      .input("contactEmail", sql.NVarChar, contactEmail ?? null)
-      .input("contactPhone", sql.NVarChar, contactPhone ?? null)
-      .input("address", sql.NVarChar, address ?? null)
-      .input("city", sql.NVarChar, city ?? null)
-      .input("country", sql.NVarChar, country ?? null)
-      .input("plan", sql.NVarChar, plan ?? null)
-      .input("isActive", sql.Bit, isActive ?? 1)
-      .query(`
-        UPDATE Companies SET
-          Name         = @name,
-          [Key]        = @key,
-          LogoUrl      = @logoUrl,
-          ContactEmail = @contactEmail,
-          ContactPhone = @contactPhone,
-          Address      = @address,
-          City         = @city,
-          Country      = @country,
-          [Plan]       = @plan,
-          IsActive     = @isActive,
-          UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id
-      `);
-
+    await companies.update(req.params.id, updateFields(req.body, req.user));
     return res.json({ success: true, message: "Company updated." });
   } catch (err) {
     logger.error({ err }, "companies update error");
-    return res.status(500).json({ success: false, message: "Database error." });
+    return res.status(500).json(DB_ERROR);
   }
 }
 
@@ -171,40 +107,25 @@ async function toggleStatus(req, res) {
     return res.status(400).json({ success: false, message: "isActive is required." });
   }
   try {
-    const pool = await connectDb();
-    await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .input("isActive", sql.Bit, isActive ? 1 : 0)
-      .query(`
-        UPDATE Companies SET
-          IsActive     = @isActive,
-          UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id AND IsDeleted = 0
-      `);
+    await companies.setActive(req.params.id, Boolean(isActive), req.user.id);
     return res.json({
       success: true,
       message: isActive ? "Company activated." : "Company deactivated.",
     });
   } catch (err) {
     logger.error({ err }, "companies toggleStatus error");
-    return res.status(500).json({ success: false, message: "Database error." });
+    return res.status(500).json(DB_ERROR);
   }
 }
 
 // DELETE /api/v1/companies/:id  (soft delete)
 async function remove(req, res) {
   try {
-    const pool = await connectDb();
-    await pool.request()
-      .input("id", sql.Int, req.params.id)
-      .query(`
-        UPDATE Companies SET IsDeleted = 1, IsActive = 0, UpdatedAtUtc = SYSDATETIMEOFFSET()
-        WHERE Id = @id
-      `);
+    await companies.softDelete(req.params.id, req.user.id);
     return res.json({ success: true, message: "Company deleted." });
   } catch (err) {
     logger.error({ err }, "companies remove error");
-    return res.status(500).json({ success: false, message: "Database error." });
+    return res.status(500).json(DB_ERROR);
   }
 }
 

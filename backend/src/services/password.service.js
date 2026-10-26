@@ -24,12 +24,12 @@ function isArgon2Hash(passwordHash) {
 }
 
 async function verifyPbkdf2(userRow, plain) {
-  const expected = Buffer.from(userRow.PasswordHash || "", "base64");
-  if (expected.length === 0 || !userRow.PasswordSalt) {
+  const expected = Buffer.from(userRow.password_hash || "", "base64");
+  if (expected.length === 0 || !userRow.password_salt) {
     return false;
   }
-  const salt = Buffer.from(userRow.PasswordSalt, "base64");
-  const actual = await pbkdf2(plain, salt, userRow.PasswordIterations, expected.length, "sha256");
+  const salt = Buffer.from(userRow.password_salt, "base64");
+  const actual = await pbkdf2(plain, salt, userRow.password_iterations, expected.length, "sha256");
   return crypto.timingSafeEqual(actual, expected);
 }
 
@@ -37,35 +37,24 @@ async function verifyPassword(userRow, plain) {
   if (!userRow || typeof plain !== "string") {
     return false;
   }
-  if (isArgon2Hash(userRow.PasswordHash)) {
+  if (isArgon2Hash(userRow.password_hash)) {
     try {
-      return await argon2.verify(userRow.PasswordHash, plain);
+      return await argon2.verify(userRow.password_hash, plain);
     } catch {
       return false;
     }
   }
-  if (userRow.PasswordIterations > 0) {
+  if (userRow.password_iterations > 0) {
     return verifyPbkdf2(userRow, plain);
   }
   return false;
 }
 
+// Every new or reset password is stored as Argon2id. Legacy PBKDF2 rows (copied from SQL
+// Server) are still verified and are upgraded on the next successful login.
 async function hashPassword(plain) {
   const passwordHash = await argon2.hash(plain, ARGON2_OPTIONS);
   return { passwordHash, passwordSalt: "", passwordIterations: 0 };
-}
-
-// Hash for accounts created through the admin screens. It stays PBKDF2 while the other
-// system that shares dbo.Users can only verify PBKDF2; switch to hashPassword once it can.
-function hashForSharedUsersTable(plain) {
-  const salt = crypto.randomBytes(16);
-  // eslint-disable-next-line n/no-sync -- sync callers; async would change the API
-  const hash = crypto.pbkdf2Sync(plain, salt, LEGACY_PBKDF2_ITERATIONS, 32, "sha256");
-  return {
-    passwordSalt: salt.toString("base64"),
-    passwordHash: hash.toString("base64"),
-    passwordIterations: LEGACY_PBKDF2_ITERATIONS,
-  };
 }
 
 function isAcceptablePassword(plain) {
@@ -75,7 +64,7 @@ function isAcceptablePassword(plain) {
 }
 
 function needsRehash(userRow) {
-  return !isArgon2Hash(userRow.PasswordHash) && userRow.PasswordIterations > 0;
+  return !isArgon2Hash(userRow.password_hash) && userRow.password_iterations > 0;
 }
 
 async function dummyArgon2Verify() {
@@ -106,7 +95,6 @@ async function dummyVerify(scheme = PASSWORD_SCHEMES.ARGON2ID) {
 module.exports = {
   verifyPassword,
   hashPassword,
-  hashForSharedUsersTable,
   isAcceptablePassword,
   needsRehash,
   dummyVerify,

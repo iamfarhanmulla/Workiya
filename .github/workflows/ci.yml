@@ -46,7 +46,25 @@ jobs:
   test-backend:
     name: Backend tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    # Throwaway PostgreSQL + PostGIS for the integration tests, reachable only from this job
+    # and discarded with it (trust auth: no password to manage or leak).
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_USER: workiya
+          POSTGRES_DB: workiya_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U workiya -d workiya_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL_TEST: postgresql://workiya@localhost:5432/workiya_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,10 +72,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      # No backend/.env in CI: test/setupEnv.js generates throwaway JWT keys and
-      # all DB access is mocked. Coverage thresholds live in backend/jest.config.js.
+      # No backend/.env in CI: test/setupEnv.js generates throwaway JWT keys. Unit tests mock
+      # the database; coverage thresholds live in backend/jest.config.js.
       - name: Test with coverage
         run: npm run test:coverage --workspace backend
+      # Applies every migration into a fresh schema of the service database, runs
+      # backend/test/integration/** against it and drops the schema afterwards.
+      - name: Integration tests (PostgreSQL)
+        run: npm run test:integration --workspace backend
       - name: Upload coverage
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

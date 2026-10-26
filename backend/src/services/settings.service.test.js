@@ -22,32 +22,32 @@ const CTX = {
 
 function fieldRow(overrides = {}) {
   return {
-    Id: 5,
-    CompanyId: 2,
-    EntityType: "ACCOUNT",
-    FieldKey: "speciality",
-    Label: "Speciality",
-    DataType: "SELECT",
-    IsRequired: true,
-    OptionsJson: JSON.stringify(["Cardio", "Neuro"]),
-    SortOrder: 1,
-    IsActive: true,
+    id: 5,
+    company_id: 2,
+    entity_type: "ACCOUNT",
+    field_key: "speciality",
+    label: "Speciality",
+    data_type: "SELECT",
+    is_required: true,
+    options_json: ["Cardio", "Neuro"],
+    sort_order: 1,
+    is_active: true,
     ...overrides,
   };
 }
 
-const TEXT_ROW = { DataType: "TEXT", OptionsJson: null };
+const TEXT_ROW = { data_type: "TEXT", options_json: null };
 
 function uniqueViolation() {
-  return Object.assign(new Error("duplicate"), { number: 2601 });
+  return Object.assign(new Error("duplicate"), { code: "23505" });
 }
 
 describe("settings.service terminology", () => {
   it("fills missing labels with the generic defaults", async () => {
     // Arrange
     terminologyRepository.listByCompany.mockResolvedValue([
-      { TermKey: "account.singular", Label: "Doctor" },
-      { TermKey: "legacy.key", Label: "Ignored" },
+      { term_key: "account.singular", label: "Doctor" },
+      { term_key: "legacy.key", label: "Ignored" },
     ]);
 
     // Act
@@ -92,7 +92,7 @@ describe("settings.service terminology", () => {
 describe("settings.service custom fields", () => {
   it("lists fields as DTOs", async () => {
     // Arrange
-    customFieldRepository.list.mockResolvedValue([fieldRow(), fieldRow({ Id: 6, ...TEXT_ROW })]);
+    customFieldRepository.list.mockResolvedValue([fieldRow(), fieldRow({ id: 6, ...TEXT_ROW })]);
     const filters = { entityType: "ACCOUNT", includeInactive: true };
 
     // Act
@@ -158,7 +158,7 @@ describe("settings.service custom fields", () => {
   it("merges a partial update onto the stored field", async () => {
     // Arrange
     customFieldRepository.findById.mockResolvedValue(fieldRow());
-    customFieldRepository.update.mockResolvedValue(fieldRow({ Label: "Specialty" }));
+    customFieldRepository.update.mockResolvedValue(fieldRow({ label: "Specialty" }));
     const changes = { label: "Specialty", fieldKey: "speciality" };
 
     // Act
