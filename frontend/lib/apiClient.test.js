@@ -43,6 +43,22 @@ describe("apiClient", () => {
     expect(csrfHeader).toBe("XMLHttpRequest");
   });
 
+  it("uses a same-site /api/v1 base URL when NEXT_PUBLIC_API_URL is empty (Vercel)", () => {
+    // Arrange
+    const original = process.env.NEXT_PUBLIC_API_URL;
+    delete process.env.NEXT_PUBLIC_API_URL;
+    let baseURL;
+
+    // Act
+    jest.isolateModules(() => {
+      baseURL = require("./apiClient").api.defaults.baseURL;
+    });
+    process.env.NEXT_PUBLIC_API_URL = original;
+
+    // Assert
+    expect(baseURL).toBe("/api/v1");
+  });
+
   it("refreshes the session and retries the request after AUTH_TOKEN_EXPIRED", async () => {
     // Arrange
     let companyCalls = 0;
