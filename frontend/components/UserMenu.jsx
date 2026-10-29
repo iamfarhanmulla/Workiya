@@ -40,7 +40,7 @@ export default function UserMenu() {
   const role = user?.roleName ? `, ${user.roleName}` : "";
 
   // If the API never revoked the session, the cookies are still set and the proxy would
-  // bounce "/" back to the dashboard, so stay here and say so instead.
+  // bounce /login back to the dashboard, so stay here and say so instead.
   const handleLogout = useCallback(async () => {
     setLogoutError("");
     const result = await dispatch(logoutUser());
@@ -48,7 +48,7 @@ export default function UserMenu() {
       setLogoutError("Could not sign out. Check your connection and try again.");
       return;
     }
-    router.push("/");
+    router.push("/login");
   }, [dispatch, router]);
 
   return (

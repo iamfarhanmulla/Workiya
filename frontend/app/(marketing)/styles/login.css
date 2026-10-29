@@ -1,0 +1,147 @@
+/* Login page (/login). Scoped under .wkm-login. */
+
+.wkm.wkm-login { background: var(--paper); }
+.wkm-login .page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
+
+/* ---------- Left: the form on paper, with the same dot grid as the landing hero ---------- */
+.wkm-login .main { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; padding: 22px 40px 26px; }
+.wkm-login .main::before { content: ""; position: absolute; left: 50%; top: 50%; width: 640px; height: 560px; transform: translate(-50%, -50%); z-index: -2;
+                           background: radial-gradient(closest-side, var(--glow), transparent); pointer-events: none; }
+.wkm-login .main .dotgrid, .wkm-login .main .gridbg { mask-image: radial-gradient(ellipse at 50% 50%, #000 25%, transparent 75%); }
+
+.wkm-login .top { display: flex; align-items: center; gap: 10px; }
+.wkm-login .top .home { margin-right: auto; border-radius: 8px; }
+.wkm-login .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--muted);
+                   transition: background .2s, color .2s; }
+.wkm-login .back:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.wkm-login .back svg { width: 16px; height: 16px; transition: transform .2s; }
+.wkm-login .back:hover svg { transform: translateX(-3px); }
+
+.wkm-login .center { flex: 1; display: grid; place-items: center; padding: 36px 0; }
+.wkm-login .panel { width: 100%; max-width: 440px; padding: 36px; border-radius: 20px; background: var(--bg); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.wkm-login .badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--line);
+                    font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.wkm-login .badge i { width: 7px; height: 7px; border-radius: 50%; background: #2FB560; }
+.wkm-login h1 { font-size: 34px; line-height: 1.1; letter-spacing: -0.03em; font-weight: 700; margin: 18px 0 8px; }
+.wkm-login .hl { isolation: isolate; }
+.wkm-login h1 .hl::after { height: .16em; animation-delay: .9s; }
+.wkm-login .sub { margin: 0 0 26px; color: var(--muted); font-size: 15.5px; line-height: 1.55; }
+
+.wkm-login .field { margin-bottom: 18px; }
+.wkm-login .label-row { display: flex; justify-content: space-between; align-items: baseline; }
+.wkm-login label.lbl { display: block; font-size: 14px; font-weight: 600; margin-bottom: 7px; }
+.wkm-login .link { color: var(--blue); font-size: 14px; font-weight: 600; position: relative; }
+.wkm-login .link::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1.5px; background: currentColor;
+                          transform: scaleX(0); transform-origin: right; transition: transform .25s ease; }
+.wkm-login .link:hover::after { transform: scaleX(1); transform-origin: left; }
+
+.wkm-login .input { position: relative; display: flex; align-items: center; height: 50px; border: 1.5px solid var(--line); border-radius: 10px;
+                    background: var(--card-2); transition: border-color .2s, box-shadow .2s, background .2s; }
+.wkm-login .input:hover { border-color: color-mix(in srgb, var(--ink) 25%, var(--line)); }
+.wkm-login .input:focus-within { border-color: var(--blue); background: var(--bg); box-shadow: 0 0 0 4px var(--ring); }
+.wkm-login .input svg.ic { width: 20px; height: 20px; margin: 0 4px 0 14px; color: var(--muted); flex: none; transition: color .2s; }
+.wkm-login .input:focus-within svg.ic { color: var(--blue); }
+.wkm-login .input input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 12px 0 8px; font-size: 15px; }
+.wkm-login .input input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
+.wkm-login .eye { width: 40px; height: 40px; margin-right: 5px; border: 0; background: transparent; border-radius: 8px; display: grid; place-items: center; cursor: pointer; color: var(--muted); }
+.wkm-login .eye:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+.wkm-login .eye svg { width: 20px; height: 20px; }
+.wkm-login .field.bad .input { border-color: var(--danger); animation: wkm-shake .4s; }
+.wkm-login .field.bad .input:focus-within { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 22%, transparent); }
+
+.wkm-login .remember { margin: 2px 0 22px; }
+.wkm-login .check { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14.5px; font-weight: 500; user-select: none; }
+.wkm-login .check input { position: absolute; opacity: 0; }
+.wkm-login .box { width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--line); display: grid; place-items: center; transition: .2s; background: var(--bg); color: var(--btn-ink); }
+.wkm-login .box svg { width: 13px; height: 13px; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset .25s .05s; }
+.wkm-login .check input:checked + .box { background: var(--btn); border-color: var(--btn); }
+.wkm-login .check input:checked + .box svg { stroke-dashoffset: 0; }
+.wkm-login .check input:focus-visible + .box { box-shadow: 0 0 0 4px var(--ring); }
+
+/* Same dark button as the landing page */
+.wkm-login .btn { position: relative; width: 100%; height: 50px; border: 0; border-radius: 10px; cursor: pointer; overflow: hidden;
+                  font-weight: 600; font-size: 15.5px; display: flex; align-items: center; justify-content: center; gap: 8px;
+                  background: var(--btn); color: var(--btn-ink); box-shadow: 0 10px 22px -12px rgba(16, 23, 46, .8); transition: transform .2s, box-shadow .2s, background .3s; }
+.wkm-login .btn::before { content: ""; position: absolute; top: 0; bottom: 0; width: 60%; left: -80%;
+                          background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--btn-ink) 22%, transparent), transparent); transform: skewX(-20deg); }
+.wkm-login .btn:hover { transform: translateY(-2px); }
+.wkm-login .btn:hover::before { animation: wkm-sheen .8s ease; }
+.wkm-login .btn:active { transform: translateY(0); }
+.wkm-login .btn .arrow { width: 17px; height: 17px; transition: transform .2s; }
+.wkm-login .btn:hover .arrow { transform: translateX(3px); }
+.wkm-login .btn .spin { display: none; width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--btn-ink) 35%, transparent);
+                        border-top-color: var(--btn-ink); animation: wkm-spin .7s linear infinite; }
+.wkm-login .btn.loading { pointer-events: none; }
+.wkm-login .btn.loading .spin { display: block; }
+.wkm-login .btn.loading .txt, .wkm-login .btn.loading .arrow { display: none; }
+.wkm-login .btn.done { background: #1E9E55; color: #fff; pointer-events: none; }
+.wkm-login .btn .ok { display: none; width: 22px; height: 22px; stroke-dasharray: 30; stroke-dashoffset: 30; }
+.wkm-login .btn.done .ok { display: block; animation: wkm-draw .4s .05s forwards; }
+.wkm-login .btn.done .arrow { display: none; }
+
+.wkm-login .alert { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; margin-bottom: 18px;
+                    background: var(--danger-soft); color: var(--danger); font-size: 14px; font-weight: 600; animation: wkm-fadeUp .3s ease both; }
+.wkm-login .alert svg { width: 20px; height: 20px; flex: none; }
+
+.wkm-login .help { margin: 22px 0 0; text-align: center; color: var(--muted); font-size: 14px; }
+.wkm-login .help a { color: var(--ink); font-weight: 600; }
+.wkm-login .foot { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; color: var(--muted); font-size: 13px; }
+.wkm-login .foot span { display: inline-flex; align-items: center; gap: 6px; }
+.wkm-login .foot svg { width: 15px; height: 15px; }
+.wkm-login .rise { opacity: 0; animation: wkm-fadeUp .7s cubic-bezier(.2, .8, .2, 1) forwards; animation-delay: calc(var(--i) * 80ms + 150ms); }
+
+/* ---------- Right: the same night panel as the landing page's GPS card ---------- */
+.wkm-login .aside { position: relative; isolation: isolate; overflow: hidden; margin: 14px; border-radius: 22px; color: #fff; background: var(--night);
+                    display: flex; flex-direction: column; justify-content: space-between; padding: 48px; }
+.wkm-login .aside::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: radial-gradient(rgba(255, 255, 255, .09) 1px, transparent 1.2px);
+                            background-size: 22px 22px; mask-image: radial-gradient(ellipse at 50% 55%, #000 30%, transparent 85%); }
+.wkm-login .aside::after { content: ""; position: absolute; right: -160px; top: -160px; width: 520px; height: 520px; z-index: -1; border-radius: 50%;
+                           background: radial-gradient(closest-side, rgba(39, 86, 224, .35), transparent); }
+.wkm-login .badge.dark { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .14); color: #fff; }
+.wkm-login .pitch { max-width: 480px; }
+.wkm-login .pitch h2 { font-size: 44px; line-height: 1.08; letter-spacing: -0.035em; font-weight: 700; margin: 18px 0 14px; }
+.wkm-login .pitch h2 .hl::after { background: #2FB560; opacity: .55; }
+.wkm-login .pitch p { margin: 0; color: #B7C0D6; font-size: 16.5px; line-height: 1.6; }
+.wkm-login .scene { margin: 30px auto 6px; max-width: 520px; }
+.wkm-login .vcard { right: -14px; bottom: -32px; padding: 14px 16px; }
+.wkm-login .vcard-sub { white-space: nowrap; }
+.wkm-login .c1 { top: -24px; right: 26px; }
+.wkm-login .c2 { left: -20px; }
+.wkm-login .trust { display: flex; gap: 22px; flex-wrap: wrap; color: #9AA6C2; font-size: 13.5px; font-weight: 500; margin-top: 56px; }
+.wkm-login .trust span { display: inline-flex; align-items: center; gap: 7px; }
+.wkm-login .trust svg { width: 16px; height: 16px; color: #8DE5AC; }
+
+/* Shorter laptop screens: keep the whole panel inside one screen */
+@media (max-height: 820px) and (min-width: 981px) {
+  .wkm-login .aside { padding: 36px 40px; }
+  .wkm-login .pitch h2 { font-size: 38px; }
+  .wkm-login .scene { max-width: 440px; margin-top: 24px; }
+  .wkm-login .trust { margin-top: 44px; }
+}
+@media (max-height: 740px) and (min-width: 981px) {
+  .wkm-login .main { padding: 18px 40px; }
+  .wkm-login .center { padding: 14px 0; }
+  .wkm-login .panel { padding: 26px 32px; }
+  .wkm-login h1 { font-size: 30px; margin-top: 14px; }
+  .wkm-login .sub { margin-bottom: 18px; }
+  .wkm-login .field { margin-bottom: 14px; }
+  .wkm-login .remember { margin-bottom: 16px; }
+  .wkm-login .help { margin-top: 16px; }
+  .wkm-login .aside { padding: 30px 36px; }
+  .wkm-login .pitch h2 { font-size: 34px; margin: 14px 0 10px; }
+  .wkm-login .pitch p { font-size: 15px; }
+  .wkm-login .scene { max-width: 360px; margin-top: 18px; }
+  .wkm-login .trust { margin-top: 36px; }
+}
+
+/* ---------- Small screens: the form only ---------- */
+@media (max-width: 980px) {
+  .wkm-login .page { grid-template-columns: 1fr; }
+  .wkm-login .aside { display: none; }
+  .wkm-login .main { padding: 16px 16px 20px; }
+}
+@media (max-width: 520px) {
+  .wkm-login .panel { padding: 26px 20px; border-radius: 16px; }
+  .wkm-login h1 { font-size: 29px; }
+  .wkm-login .back span { display: none; }
+}

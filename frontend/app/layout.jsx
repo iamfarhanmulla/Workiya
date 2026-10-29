@@ -1,5 +1,6 @@
 // eslint-disable-next-line camelcase -- next/font/google names each export after the font family
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import Script from "next/script";
 import "./styles/tokens.css";
 import "./globals.css";
 import "./styles/workiya-ui.css";
@@ -23,10 +24,22 @@ export const metadata = {
   description: "Workiya workforce platform",
 };
 
+// Runs before the page paints: applies the saved light / dark choice (same "wk-theme" key as
+// ThemeProvider) so there is no flash, and marks that JavaScript is on for scroll reveals.
+const EARLY_SCRIPT = "try{var t=localStorage.getItem('wk-theme');"
+  + "if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}"
+  + "document.documentElement.classList.add('js')";
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
+    // The early script changes <html> before React hydrates, so its attributes may differ.
+    <html
+      lang="en"
+      className={`${plexSans.variable} ${plexMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        <Script id="wk-early" strategy="beforeInteractive">{EARLY_SCRIPT}</Script>
         <link
           rel="stylesheet"
           // eslint-disable-next-line @stylistic/max-len -- one Google Fonts URL, kept unsplit

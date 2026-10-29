@@ -1,10 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { api } from "@/lib/apiClient";
 import authReducer, { selectUser } from "@/store/authSlice";
-import LoginForm from "./LoginForm";
+import LoginForm, { MISSING_MESSAGE } from "./LoginForm";
 
 const mockPush = jest.fn();
 
@@ -100,6 +100,57 @@ describe("LoginForm", () => {
     // Assert
     expect(password).toHaveAttribute("type", "text");
     expect(screen.getByRole("button", { name: "Hide password" })).toBeInTheDocument();
+  });
+
+  it("blocks an empty form, flags both fields and does not call the API", async () => {
+    // Arrange
+    renderForm();
+    const user = userEvent.setup();
+
+    // Act
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    // Assert
+    expect(screen.getByRole("alert")).toHaveTextContent(MISSING_MESSAGE);
+    expect(api.post).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByLabelText("Work email")).toHaveAttribute("aria-invalid", "true");
+    });
+    expect(screen.getByLabelText("Password")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("flags an email that is not an email address", async () => {
+    // Arrange
+    renderForm();
+    const user = userEvent.setup();
+
+    // Act
+    await user.type(screen.getByLabelText("Work email"), "not-an-email");
+    await user.type(screen.getByLabelText("Password"), "Secret#123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    // Assert
+    expect(api.post).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByLabelText("Work email")).toHaveAttribute("aria-invalid", "true");
+    });
+    expect(screen.getByLabelText("Password")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("trims the email and shows the signed-in state on success", async () => {
+    // Arrange
+    api.post.mockResolvedValue({ data: { success: true, data: { user: USER } } });
+    renderForm();
+    const user = userEvent.setup();
+
+    // Act
+    await user.type(screen.getByLabelText("Work email"), "  user@example.com ");
+    await user.type(screen.getByLabelText("Password"), "Secret#123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    // Assert
+    expect(api.post.mock.calls[0][1].email).toBe("user@example.com");
+    expect(await screen.findByRole("button", { name: /signed in/i })).toBeDisabled();
   });
 
   it("shows a connection message when the server is unreachable", async () => {
