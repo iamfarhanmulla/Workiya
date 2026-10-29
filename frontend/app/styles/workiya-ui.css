@@ -548,3 +548,12 @@
 .wk-coming-list li { display: flex; gap: 10px; align-items: flex-start; color: var(--color-text-secondary); }
 .wk-coming-list .material-symbols-outlined { font-size: 18px; color: var(--color-primary); margin-top: 1px; }
 .wk-coming-link { display: flex; justify-content: center; padding-top: 20px; }
+
+/* Reports: weekly trend bars (completed on top of missed, scaled to the busiest week). */
+.wk-trend { display: flex; align-items: flex-end; gap: var(--space-2); height: 180px; padding: 16px 20px 12px; }
+.wk-trend-col { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; min-width: 0; }
+.wk-trend-stack { flex: 1 1 auto; width: 100%; max-width: 36px; display: flex; flex-direction: column-reverse; justify-content: flex-start; border-bottom: 1px solid var(--color-border); }
+.wk-trend-bar { display: block; width: 100%; }
+.wk-trend-bar--done { background: var(--color-success); border-radius: var(--radius-xs) var(--radius-xs) 0 0; }
+.wk-trend-bar--missed { background: var(--color-danger); }
+.wk-trend-label { font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; }

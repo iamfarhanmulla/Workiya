@@ -19,6 +19,7 @@ function useLabels() {
     activity: t("activity.singular"),
     activities: t("activity.plural"),
     account: t("account.singular"),
+    accounts: t("account.plural"),
     submission: t("submission.singular"),
     submissions: t("submission.plural"),
   };
@@ -51,6 +52,7 @@ export default function ActivitiesPage() {
           total={data.total}
           isStaff={isStaff}
           onAdd={actions.openAdd}
+          plan={{ user, notify: showToast, reload: data.reload }}
         />
         <ActivityToolbar
           filters={filters}
