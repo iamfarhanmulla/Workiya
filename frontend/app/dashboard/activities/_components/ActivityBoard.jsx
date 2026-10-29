@@ -13,18 +13,24 @@ function BoardColumn({ status, activities, board }) {
         <span className={meta.pill}>{meta.label}</span>
         <span className="wk-count">{cards.length}</span>
       </div>
-      {cards.map((activity) => (
-        <ActivityCard
-          key={activity.id}
-          activity={activity}
-          isStaff={board.isStaff}
-          moves={board.movesFor(activity)}
-          onView={board.onView}
-          onEdit={board.onEdit}
-          onDelete={board.onDelete}
-          onMove={board.onMove}
-        />
-      ))}
+      {cards.length > 0 && (
+        // Cards scroll inside the column; the header and Add stay in view.
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard scrolling
+        <div className="wk-board-cards" tabIndex={0} aria-label={`${meta.label} cards`}>
+          {cards.map((activity) => (
+            <ActivityCard
+              key={activity.id}
+              activity={activity}
+              isStaff={board.isStaff}
+              moves={board.movesFor(activity)}
+              onView={board.onView}
+              onEdit={board.onEdit}
+              onDelete={board.onDelete}
+              onMove={board.onMove}
+            />
+          ))}
+        </div>
+      )}
       {cards.length === 0 && <p className="wk-board-empty">{board.emptyLabel}</p>}
       {board.isStaff && (
         <button

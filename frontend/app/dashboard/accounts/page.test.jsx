@@ -16,7 +16,9 @@ jest.mock("@/lib/apiClient", () => ({
 jest.mock("@/hooks/useCurrentUser", () => ({ useCurrentUser: jest.fn() }));
 
 jest.mock("@/hooks/useTerminology", () => {
-  const labels = { "account.singular": "Doctor", "account.plural": "Doctors" };
+  const labels = {
+    "account.singular": "Doctor", "account.plural": "Doctors", "rep.plural": "Reps",
+  };
   return { useTerminology: () => ({ t: (key) => labels[key] || key, loading: false }) };
 });
 
@@ -63,7 +65,7 @@ function pageOf(items, total = items.length) {
     data: {
       success: true,
       data: {
-        items, total, page: 1, pageSize: 50,
+        items, total, page: 1, pageSize: 15,
       },
     },
   };
@@ -97,7 +99,7 @@ describe("AccountsPage", () => {
     expect(await screen.findByText("Dr Meera Shah")).toBeInTheDocument();
     expect(screen.getByText("Ravi Kumar")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add Doctor/ })).toBeInTheDocument();
-    expect(api.get).toHaveBeenCalledWith("/accounts", { params: { page: 1, pageSize: 50 } });
+    expect(api.get).toHaveBeenCalledWith("/accounts", { params: { page: 1, pageSize: 15 } });
   });
 
   it("submits the extra fields in the POST body", async () => {
@@ -228,11 +230,11 @@ describe("AccountsPage", () => {
 
     // Assert
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/accounts", {
-      params: { page: 2, pageSize: 50 },
+      params: { page: 2, pageSize: 15 },
     }));
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/accounts", {
       params: {
-        page: 1, pageSize: 50, search: "mum", isActive: "false",
+        page: 1, pageSize: 15, search: "mum", isActive: "false",
       },
     }));
     expect(await screen.findByRole("table")).toBeInTheDocument();
@@ -265,8 +267,8 @@ describe("AccountsPage", () => {
     await screen.findByText("Dr Meera Shah");
 
     // Act
-    await user.click(screen.getByRole("button", { name: "Assign reps" }));
-    const assignTitle = await screen.findByRole("dialog", { name: "Assign reps" });
+    await user.click(screen.getByRole("button", { name: "Assign Reps" }));
+    const assignTitle = await screen.findByRole("dialog", { name: "Assign Reps" });
     await user.click(screen.getByRole("button", { name: "Close" }));
     await user.click(screen.getByRole("button", { name: /Transfer Doctors/ }));
 

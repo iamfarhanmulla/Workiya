@@ -6,6 +6,7 @@ import { ListBody } from "@/components/DataStates";
 import ListToolbar from "@/components/ListToolbar";
 import PageHeader from "@/components/PageHeader";
 import StatTile from "@/components/StatTile";
+import Paged from "@/components/Paged";
 import CompaniesTable from "./_components/CompaniesTable";
 import CompanyFormModal from "./_components/CompanyFormModal";
 import CompanyViewModal from "./_components/CompanyViewModal";
@@ -133,7 +134,9 @@ export default function CompaniesPage() {
             emptyTitle="No companies match your search"
             emptyText="Try another name, plan or status."
           >
-            <CompaniesTable companies={page.shown} actions={actions} />
+            <Paged items={page.shown}>
+              {(rows) => <CompaniesTable companies={rows} actions={actions} />}
+            </Paged>
           </ListBody>
         </section>
         <CompanyDialogs page={page} />

@@ -2,7 +2,7 @@
 
 export const STAFF_ROLES = ["SUPER_ADMIN", "ADMIN", "MANAGER"];
 
-export const PAGE_SIZE = 50;
+export const PAGE_SIZE = 15;
 
 export const BLANK_FORM = {
   name: "",

@@ -41,6 +41,8 @@ function toActivityDto(row) {
     priority: row.priority,
     dueAtUtc: toIso(row.due_at),
     completedAtUtc: toIso(row.completed_at),
+    source: row.source || "MANUAL",
+    planMonth: row.plan_month || null,
     createdAtUtc: toIso(row.created_at),
     latestSubmission: toLatestSubmission(row),
   };

@@ -77,6 +77,7 @@ const ACTIVITY_COLUMNS = `
   a.assigned_by, ${userNameSql("ub")} AS assigned_by_name,
   a.title, a.description, a.status, a.priority,
   a.due_at, a.completed_at, a.created_at,
+  a.source, to_char(a.plan_month, 'YYYY-MM') AS plan_month,
   ls.id AS latest_submission_id, ls.review_status AS latest_submission_review_status,
   ls.submitted_at AS latest_submission_submitted_at`;
 

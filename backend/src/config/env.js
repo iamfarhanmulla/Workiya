@@ -62,6 +62,8 @@ const config = Object.freeze({
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
   port: Number(process.env.PORT || 5000),
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+  // Bearer token Vercel Cron sends to /api/v1/jobs/*; unset = the job endpoints do not exist.
+  cronSecret: process.env.CRON_SECRET || "",
   jwt: Object.freeze({
     get privateKey() {
       return privateKey();

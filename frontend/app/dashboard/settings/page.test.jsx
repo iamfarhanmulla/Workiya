@@ -28,6 +28,8 @@ const LABELS = {
   "activity.plural": "Visits",
   "submission.singular": "Report",
   "submission.plural": "Reports",
+  "rep.singular": "MR",
+  "rep.plural": "MRs",
 };
 
 jest.mock("@/hooks/useTerminology", () => ({
@@ -120,7 +122,7 @@ describe("SettingsPage — Fields & Labels", () => {
     expect(api.get).not.toHaveBeenCalled();
   });
 
-  it("saves all six labels with PUT and reloads the terminology", async () => {
+  it("saves all eight labels with PUT and reloads the terminology", async () => {
     // Arrange
     const user = userEvent.setup();
     renderAs("ADMIN");

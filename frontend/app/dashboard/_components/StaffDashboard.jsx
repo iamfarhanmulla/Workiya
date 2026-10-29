@@ -57,12 +57,14 @@ function RepRow({ rep }) {
   );
 }
 
-function RepTable({ reps, plural }) {
+function RepTable({ reps, plural, repLabel }) {
   if (!reps.length) {
     return (
       <div className="wk-empty">
         <div className="wk-empty-title">{`No ${plural} due today`}</div>
-        <div className="wk-empty-text">Planned work for today will show here, rep by rep.</div>
+        <div className="wk-empty-text">
+          Planned work for today will show here, person by person.
+        </div>
       </div>
     );
   }
@@ -71,7 +73,7 @@ function RepTable({ reps, plural }) {
       <table className="wk-table">
         <thead>
           <tr>
-            <th>Rep</th>
+            <th>{repLabel}</th>
             <th className="num">Planned</th>
             <th className="num">Done</th>
             <th style={{ width: "36%" }}>Completion</th>
@@ -154,10 +156,14 @@ export default function StaffDashboard({ t }) {
       )}
       <div className="wk-dash-grid">
         <section className="wk-card" aria-labelledby="dash-reps">
-          <CardHeader id="dash-reps" title="Reps today" sub="Best completion first" />
+          <CardHeader
+            id="dash-reps"
+            title={`${t("rep.plural")} today`}
+            sub="Best completion first"
+          />
           {today.loading
             ? <SkeletonRows rows={4} />
-            : <RepTable reps={byRep(today.items)} plural={plural} />}
+            : <RepTable reps={byRep(today.items)} plural={plural} repLabel={t("rep.singular")} />}
         </section>
         <section className="wk-card" aria-labelledby="dash-reviews">
           <CardHeader id="dash-reviews" title="Waiting for review" sub={`Newest first${more}`}>

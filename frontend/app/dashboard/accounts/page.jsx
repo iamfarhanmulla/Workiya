@@ -7,13 +7,13 @@ import { SkeletonRows } from "@/components/DataStates";
 import { api } from "@/lib/apiClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useTerminology } from "@/hooks/useTerminology";
+import Pagination from "@/components/Pagination";
 import AccountGrid from "./_components/AccountGrid";
 import AccountModals from "./_components/AccountModals";
 import AccountStats from "./_components/AccountStats";
 import AccountTable from "./_components/AccountTable";
 import AccountsHeader from "./_components/AccountsHeader";
 import AccountsToolbar from "./_components/AccountsToolbar";
-import Pagination from "./_components/Pagination";
 import { isStaff } from "./_components/accountForm";
 import useAccountMutations from "./_components/useAccountMutations";
 import useAccounts from "./_components/useAccounts";
@@ -95,7 +95,7 @@ function useCompletions(terms, finish) {
     onFormSaved: (edited) => finish(
       `${terms.singular} ${edited ? "updated" : "created"} successfully.`,
     ),
-    onAssigned: () => finish("Reps assigned."),
+    onAssigned: () => finish(`${terms.reps} assigned.`),
     onTransferred: (moved) => finish(
       `${moved} ${moved === 1 ? terms.singular : terms.plural} transferred.`,
     ),
@@ -106,7 +106,9 @@ function useAccountsPage() {
   const { toasts, showToast } = useToast();
   const { t } = useTerminology();
   const user = useCurrentUser();
-  const terms = { singular: t("account.singular"), plural: t("account.plural") };
+  const terms = {
+    singular: t("account.singular"), plural: t("account.plural"), reps: t("rep.plural"),
+  };
   const list = useAccounts(() => showToast("Failed to load data.", "error"));
   const { reload } = list;
   const mutations = useAccountMutations({ singular: terms.singular, showToast, reload });

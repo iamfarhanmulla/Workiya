@@ -7,6 +7,9 @@ jest.mock("@/lib/apiClient", () => ({
   api: { get: jest.fn(), put: jest.fn() },
   getErrorMessage: (err, fallback) => err?.response?.data?.message || fallback,
 }));
+jest.mock("@/hooks/useTerminology", () => ({
+  useTerminology: () => ({ t: (key) => ({ "rep.plural": "Reps" }[key] || key) }),
+}));
 
 const ACCOUNT = {
   id: 1, companyId: 5, name: "Dr Meera Shah", assignedUsers: [],

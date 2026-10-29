@@ -1,5 +1,6 @@
 "use client";
 
+import { useTerminology } from "@/hooks/useTerminology";
 import AccountActions from "./AccountActions";
 import { AccountState, RepChips } from "./AccountBits";
 import { formatLocation } from "./accountForm";
@@ -18,6 +19,7 @@ function InfoRow({ icon, label, children }) {
 }
 
 export default function AccountCard({ account, canManage, handlers }) {
+  const { t } = useTerminology();
   const location = formatLocation(account);
   return (
     <article className="wk-card wk-account-card">
@@ -34,7 +36,9 @@ export default function AccountCard({ account, canManage, handlers }) {
       <dl className="wk-account-card-info">
         {location && <InfoRow icon="location_on" label="Location">{location}</InfoRow>}
         {account.phoneNumber && <InfoRow icon="call" label="Phone">{account.phoneNumber}</InfoRow>}
-        <InfoRow icon="group" label="Assigned reps"><RepChips account={account} /></InfoRow>
+        <InfoRow icon="group" label={`Assigned ${t("rep.plural")}`}>
+          <RepChips account={account} />
+        </InfoRow>
       </dl>
       <div className="wk-account-card-ft">
         {canManage ? (

@@ -6,6 +6,7 @@ import { ListBody } from "@/components/DataStates";
 import ListToolbar from "@/components/ListToolbar";
 import PageHeader from "@/components/PageHeader";
 import StatTile from "@/components/StatTile";
+import Paged from "@/components/Paged";
 import UserFormModal from "./_components/UserFormModal";
 import UsersTable from "./_components/UsersTable";
 import useUsersPage from "./_components/useUsersPage";
@@ -69,6 +70,25 @@ function UserFilters({ page }) {
   );
 }
 
+function UserResults({ page }) {
+  return (
+    <section className="wk-card wk-results" aria-label="Users">
+      <UserFilters page={page} />
+      <ListBody
+        list={page.users}
+        plural="users"
+        shown={page.shown.length}
+        emptyTitle="No users match your search"
+        emptyText="Try another name, role, company or manager."
+      >
+        <Paged items={page.shown}>
+          {(rows) => <UsersTable users={rows} onEdit={page.openEdit} onDelete={page.askDelete} />}
+        </Paged>
+      </ListBody>
+    </section>
+  );
+}
+
 export default function UsersPage() {
   const page = useUsersPage();
   return (
@@ -86,18 +106,7 @@ export default function UsersPage() {
           </button>
         </PageHeader>
         <UserStats users={page.users.items} />
-        <section className="wk-card wk-results" aria-label="Users">
-          <UserFilters page={page} />
-          <ListBody
-            list={page.users}
-            plural="users"
-            shown={page.shown.length}
-            emptyTitle="No users match your search"
-            emptyText="Try another name, role, company or manager."
-          >
-            <UsersTable users={page.shown} onEdit={page.openEdit} onDelete={page.askDelete} />
-          </ListBody>
-        </section>
+        <UserResults page={page} />
         {page.dialog && (
           <UserFormModal
             user={page.dialog.user}
