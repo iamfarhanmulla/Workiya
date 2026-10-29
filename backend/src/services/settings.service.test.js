@@ -61,6 +61,8 @@ describe("settings.service terminology", () => {
       "activity.plural": "Activities",
       "submission.singular": "Submission",
       "submission.plural": "Submissions",
+      "rep.singular": "Rep",
+      "rep.plural": "Reps",
     });
   });
 

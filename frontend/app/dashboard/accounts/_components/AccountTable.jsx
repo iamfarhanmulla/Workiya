@@ -1,5 +1,6 @@
 "use client";
 
+import { useTerminology } from "@/hooks/useTerminology";
 import AccountActions from "./AccountActions";
 import { AccountState, NameCell, RepChips } from "./AccountBits";
 import { formatLocation } from "./accountForm";
@@ -7,6 +8,7 @@ import { formatLocation } from "./accountForm";
 export default function AccountTable({
   items, singular, canManage, handlers,
 }) {
+  const { t } = useTerminology();
   return (
     <div className="wk-table-wrap">
       <table className="wk-table">
@@ -15,7 +17,7 @@ export default function AccountTable({
             <th scope="col">{singular}</th>
             <th scope="col">Location</th>
             <th scope="col">Phone</th>
-            <th scope="col">Assigned reps</th>
+            <th scope="col">{`Assigned ${t("rep.plural")}`}</th>
             <th scope="col">Status</th>
             <th scope="col" className="col-actions"><span className="wk-sr">Actions</span></th>
           </tr>

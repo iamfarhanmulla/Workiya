@@ -3,10 +3,11 @@
 import CustomFieldValues from "@/components/CustomFieldValues";
 import Modal from "@/components/Modal";
 import { useCustomFields } from "@/hooks/useCustomFields";
+import { useTerminology } from "@/hooks/useTerminology";
 import { repNames } from "./AccountBits";
 import { formatLocation } from "./accountForm";
 
-function detailRows(account) {
+function detailRows(account, repsLabel) {
   const hasCoords = account.latitude !== null && account.latitude !== undefined;
   const coords = hasCoords ? `${account.latitude}, ${account.longitude}` : null;
   return [
@@ -17,7 +18,7 @@ function detailRows(account) {
     {
       icon: "my_location", label: "Coordinates", val: coords, mono: true,
     },
-    { icon: "group", label: "Assigned Reps", val: repNames(account) || "None" },
+    { icon: "group", label: `Assigned ${repsLabel}`, val: repNames(account) || "None" },
     { icon: "notes", label: "Notes", val: account.notes },
   ].filter((row) => row.val);
 }
@@ -26,6 +27,7 @@ export default function AccountViewPanel({
   account, singular, canManage, onClose, onEdit,
 }) {
   const { fields } = useCustomFields("ACCOUNT", account.companyId);
+  const { t } = useTerminology();
   const footer = (
     <>
       <button type="button" className="wk-btn wk-btn--secondary" onClick={onClose}>Close</button>
@@ -47,7 +49,7 @@ export default function AccountViewPanel({
       footer={footer}
     >
       <dl className="wk-dl wk-dl--2col">
-        {detailRows(account).map((row) => (
+        {detailRows(account, t("rep.plural")).map((row) => (
           <div key={row.label}>
             <dt>
               <span className="material-symbols-outlined wk-icon--sm" aria-hidden="true">

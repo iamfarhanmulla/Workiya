@@ -43,17 +43,15 @@ export function CoverageKpis({ totals }) {
   );
 }
 
-const REP_COLUMNS = [
-  "Rep", "Accounts", "Target", "Completed", "Missed", "Open", "Coverage", "Approved",
-];
+const REP_COLUMNS = ["Target", "Completed", "Missed", "Open", "Coverage", "Approved"];
 
-export function RepCoverageTable({ reps }) {
+export function RepCoverageTable({ reps, labels }) {
   if (reps.length === 0) {
     return (
       <EmptyState
         icon="groups"
         title="No visits yet"
-        text="Assign reps to accounts and generate a plan."
+        text={`Assign ${labels.reps} to ${labels.accounts.toLowerCase()} and generate a plan.`}
       />
     );
   }
@@ -61,7 +59,11 @@ export function RepCoverageTable({ reps }) {
     <div className="wk-table-wrap">
       <table className="wk-table">
         <thead>
-          <tr>{REP_COLUMNS.map((c) => <th key={c} scope="col">{c}</th>)}</tr>
+          <tr>
+            <th scope="col">{labels.rep}</th>
+            <th scope="col">{labels.accounts}</th>
+            {REP_COLUMNS.map((c) => <th key={c} scope="col">{c}</th>)}
+          </tr>
         </thead>
         <tbody>
           {reps.map((rep) => (
@@ -82,13 +84,13 @@ export function RepCoverageTable({ reps }) {
   );
 }
 
-export function NotVisitedTable({ rows, accountLabel }) {
+export function NotVisitedTable({ rows, labels }) {
   if (rows.length === 0) {
     return (
       <EmptyState
         icon="verified"
         title="Everyone was visited"
-        text="Every assigned account has at least one completed visit this month."
+        text={`Every assigned ${labels.account.toLowerCase()} has a completed visit this month.`}
       />
     );
   }
@@ -97,8 +99,8 @@ export function NotVisitedTable({ rows, accountLabel }) {
       <table className="wk-table">
         <thead>
           <tr>
-            <th scope="col">{accountLabel}</th>
-            <th scope="col">Rep</th>
+            <th scope="col">{labels.account}</th>
+            <th scope="col">{labels.rep}</th>
             <th scope="col">Per month</th>
             <th scope="col">Last visit</th>
           </tr>

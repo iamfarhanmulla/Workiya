@@ -11,17 +11,21 @@ import { useCompanyChoice } from "@/hooks/useCompanyChoice";
 
 const MONTHS = monthOptions([0, 1, 2]);
 
-function PlanTable({ items }) {
+function PlanTable({ items, labels }) {
   if (items.length === 0) {
-    return <p className="wk-muted">No reps have assigned accounts with a monthly visit target.</p>;
+    return (
+      <p className="wk-muted">
+        {`No ${labels.reps} have assigned ${labels.accounts.toLowerCase()} with a monthly target.`}
+      </p>
+    );
   }
   return (
     <div className="wk-table-wrap">
       <table className="wk-table">
         <thead>
           <tr>
-            <th scope="col">Rep</th>
-            <th scope="col">Account</th>
+            <th scope="col">{labels.rep}</th>
+            <th scope="col">{labels.account}</th>
             <th scope="col">Per month</th>
             <th scope="col">Already</th>
             <th scope="col">New visits</th>
@@ -43,13 +47,14 @@ function PlanTable({ items }) {
   );
 }
 
-function PlanSummary({ plan }) {
+function PlanSummary({ plan, labels }) {
   const { totals } = plan;
+  const people = totals.reps === 1 ? labels.rep : labels.reps;
   return (
     <div className="wk-banner" role="status">
       <span className="material-symbols-outlined" aria-hidden="true">event_upcoming</span>
       <div>
-        <strong>{`${totals.toCreate} new visit(s) for ${totals.reps} rep(s)`}</strong>
+        <strong>{`${totals.toCreate} new visit(s) for ${totals.reps} ${people}`}</strong>
         {` · ${totals.alreadyPlanned} already planned · ${plan.workingDays} working days (Mon–Sat)`}
       </div>
     </div>
@@ -162,16 +167,16 @@ export default function GeneratePlanModal({
     <Modal
       icon="event_upcoming"
       title="Generate visit plan"
-      sub={`Creates the missing visits from each rep's assigned ${labels.accounts.toLowerCase()}`
-        + " and visits per month. Nothing is created twice."}
+      sub={`Creates the missing visits from each ${labels.rep}'s assigned `
+        + `${labels.accounts.toLowerCase()} and visits per month. Nothing is created twice.`}
       onClose={onClose}
       footer={footer}
       size="lg"
     >
       <PlanFields company={company} types={types} state={state} />
       <FormError message={state.error} />
-      {state.plan && <PlanSummary plan={state.plan} />}
-      {state.plan && <PlanTable items={state.plan.items} />}
+      {state.plan && <PlanSummary plan={state.plan} labels={labels} />}
+      {state.plan && <PlanTable items={state.plan.items} labels={labels} />}
     </Modal>
   );
 }

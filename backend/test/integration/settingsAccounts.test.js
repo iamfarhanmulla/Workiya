@@ -75,6 +75,18 @@ describe("settings repositories on PostgreSQL", () => {
     expect(await settingsService.getTerminology(1)).toMatchObject({ "account.plural": "Accounts" });
   });
 
+  it("stores a company's own word for the field person", async () => {
+    // Arrange
+    const labels = { "rep.singular": "MR", "rep.plural": "MRs" };
+
+    // Act
+    await terminologyRepository.upsertLabels(2, labels, 10);
+
+    // Assert
+    expect(await settingsService.getTerminology(2)).toMatchObject(labels);
+    expect(await settingsService.getTerminology(1)).toMatchObject({ "rep.plural": "Reps" });
+  });
+
   it("stores options as jsonb and maps a duplicate field key to 409 CONFLICT", async () => {
     // Arrange
     const field = {

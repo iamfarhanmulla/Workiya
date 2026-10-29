@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, getErrorMessage } from "@/lib/apiClient";
 import Modal, { ModalFooter } from "@/components/Modal";
 import ErrorText from "@/components/FormError";
+import { useTerminology } from "@/hooks/useTerminology";
 import useAssignableUsers from "./useAssignableUsers";
 
 const ROLE_LABEL = { EMPLOYEE: "Employee", MANAGER: "Manager" };
@@ -69,10 +70,10 @@ function useCurrentAssignments(account) {
 }
 
 function RepList({
-  users, loading, selection, setSelection,
+  users, loading, selection, setSelection, reps,
 }) {
-  if (loading) return <p className="wk-muted">Loading reps…</p>;
-  if (users.length === 0) return <p className="wk-muted">No active reps in this company.</p>;
+  if (loading) return <p className="wk-muted">{`Loading ${reps}…`}</p>;
+  if (users.length === 0) return <p className="wk-muted">{`No active ${reps} in this company.`}</p>;
   const toggle = (userId) => setSelection((prev) => {
     const next = { ...prev };
     if (userId in next) delete next[userId];
@@ -127,6 +128,7 @@ export default function AssignRepsModal({
   account, callerRole, onClose, onSaved,
 }) {
   const reps = useAssignReps(account, callerRole, onSaved);
+  const { t } = useTerminology();
   const footer = (
     <ModalFooter
       onCancel={onClose}
@@ -139,7 +141,7 @@ export default function AssignRepsModal({
     <Modal
       icon="group_add"
       labelId="assign-reps-title"
-      title="Assign reps"
+      title={`Assign ${t("rep.plural")}`}
       sub={account.name}
       onClose={onClose}
       footer={footer}
@@ -149,6 +151,7 @@ export default function AssignRepsModal({
         loading={reps.loading}
         selection={reps.selection}
         setSelection={reps.setSelection}
+        reps={t("rep.plural")}
       />
       <ErrorText message={reps.error} />
     </Modal>

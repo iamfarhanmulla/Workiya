@@ -13,6 +13,8 @@ const KEY_LABELS = {
   "activity.plural": "Activities (many)",
   "submission.singular": "Submission (one)",
   "submission.plural": "Submissions (many)",
+  "rep.singular": "Field person (one), e.g. Rep, MR, Agent",
+  "rep.plural": "Field people (many)",
 };
 
 function pickLabels(source) {

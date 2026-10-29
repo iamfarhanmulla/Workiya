@@ -9,6 +9,8 @@ export const DEFAULT_TERMINOLOGY = Object.freeze({
   "activity.plural": "Activities",
   "submission.singular": "Submission",
   "submission.plural": "Submissions",
+  "rep.singular": "Rep",
+  "rep.plural": "Reps",
 });
 
 const EMPTY_LIST = Object.freeze([]);

@@ -12,7 +12,9 @@ jest.mock("@/hooks/useActivityTypes", () => ({
   useActivityTypes: () => ({ types: [{ id: 5, name: "Doctor Visit" }], loading: false }),
 }));
 
-const LABELS = { activities: "Visits", accounts: "Doctors" };
+const LABELS = {
+  activities: "Visits", account: "Doctor", accounts: "Doctors", rep: "MR", reps: "MRs",
+};
 const ADMIN = { id: 10, companyId: 2, roleCode: "ADMIN" };
 const PLAN = {
   month: "2026-11",

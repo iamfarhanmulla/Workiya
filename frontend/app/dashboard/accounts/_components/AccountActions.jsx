@@ -1,5 +1,7 @@
 "use client";
 
+import { useTerminology } from "@/hooks/useTerminology";
+
 function IconButton({
   icon, label, onClick, danger,
 }) {
@@ -20,6 +22,7 @@ function IconButton({
 // View is always available; edit, assign, toggle and delete only for staff.
 // handlers: { onView, onEdit, onAssign, onToggle, onDelete }; onToggle is optional.
 export default function AccountActions({ account, canManage, handlers }) {
+  const { t } = useTerminology();
   const {
     onView, onEdit, onAssign, onToggle, onDelete,
   } = handlers;
@@ -29,7 +32,11 @@ export default function AccountActions({ account, canManage, handlers }) {
       {canManage && (
         <>
           <IconButton icon="edit" label="Edit" onClick={() => onEdit(account)} />
-          <IconButton icon="group_add" label="Assign reps" onClick={() => onAssign(account)} />
+          <IconButton
+            icon="group_add"
+            label={`Assign ${t("rep.plural")}`}
+            onClick={() => onAssign(account)}
+          />
           {onToggle && (
             <IconButton
               icon={account.isActive ? "toggle_on" : "toggle_off"}

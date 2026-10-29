@@ -16,7 +16,9 @@ jest.mock("@/lib/apiClient", () => ({
 jest.mock("@/hooks/useCurrentUser", () => ({ useCurrentUser: jest.fn() }));
 
 jest.mock("@/hooks/useTerminology", () => {
-  const labels = { "account.singular": "Doctor", "account.plural": "Doctors" };
+  const labels = {
+    "account.singular": "Doctor", "account.plural": "Doctors", "rep.plural": "Reps",
+  };
   return { useTerminology: () => ({ t: (key) => labels[key] || key, loading: false }) };
 });
 
@@ -265,8 +267,8 @@ describe("AccountsPage", () => {
     await screen.findByText("Dr Meera Shah");
 
     // Act
-    await user.click(screen.getByRole("button", { name: "Assign reps" }));
-    const assignTitle = await screen.findByRole("dialog", { name: "Assign reps" });
+    await user.click(screen.getByRole("button", { name: "Assign Reps" }));
+    const assignTitle = await screen.findByRole("dialog", { name: "Assign Reps" });
     await user.click(screen.getByRole("button", { name: "Close" }));
     await user.click(screen.getByRole("button", { name: /Transfer Doctors/ }));
 

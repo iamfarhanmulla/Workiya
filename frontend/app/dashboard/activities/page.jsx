@@ -20,6 +20,8 @@ function useLabels() {
     activities: t("activity.plural"),
     account: t("account.singular"),
     accounts: t("account.plural"),
+    rep: t("rep.singular"),
+    reps: t("rep.plural"),
     submission: t("submission.singular"),
     submissions: t("submission.plural"),
   };

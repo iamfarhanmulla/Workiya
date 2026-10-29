@@ -74,14 +74,17 @@ function ReportBody({ report, labels }) {
   return (
     <>
       <CoverageKpis totals={coverage.totals} />
-      <Card title="Coverage by rep" sub="Completed visits against each rep's monthly target">
-        <RepCoverageTable reps={coverage.byRep} />
+      <Card
+        title={`Coverage by ${labels.rep}`}
+        sub={`Completed visits against each ${labels.rep}'s monthly target`}
+      >
+        <RepCoverageTable reps={coverage.byRep} labels={labels} />
       </Card>
       <Card
         title={`${labels.accounts} not visited`}
         sub="Assigned, but no completed visit this month"
       >
-        <NotVisitedTable rows={coverage.notVisited} accountLabel={labels.account} />
+        <NotVisitedTable rows={coverage.notVisited} labels={labels} />
       </Card>
       <Card title="Last 8 weeks" sub="Completed (green) and missed (red) visits per week">
         <TrendBars weeks={trend} />
@@ -115,7 +118,12 @@ export default function ReportsView() {
   const [month, setMonth] = useState(currentMonth());
   const report = useReports({ month, params: company.params, ready: company.ready });
   const missed = useMissedCheck(company, report, showToast);
-  const labels = { account: t("account.singular"), accounts: t("account.plural") };
+  const labels = {
+    account: t("account.singular"),
+    accounts: t("account.plural"),
+    rep: t("rep.singular"),
+    reps: t("rep.plural"),
+  };
   const canRunJob = ["SUPER_ADMIN", "ADMIN"].includes(user?.roleCode);
   const showBody = company.ready && !report.loading && !report.error && report.coverage;
   return (

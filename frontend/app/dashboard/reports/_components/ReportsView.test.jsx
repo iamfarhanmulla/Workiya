@@ -11,7 +11,11 @@ jest.mock("@/lib/apiClient", () => ({
 const mockUser = jest.fn();
 jest.mock("@/hooks/useCurrentUser", () => ({ useCurrentUser: () => mockUser() }));
 jest.mock("@/hooks/useTerminology", () => ({
-  useTerminology: () => ({ t: (key) => ({ "account.singular": "Doctor", "account.plural": "Doctors" }[key]) }),
+  useTerminology: () => ({
+    t: (key) => ({
+      "account.singular": "Doctor", "account.plural": "Doctors", "rep.singular": "MR", "rep.plural": "MRs",
+    }[key]),
+  }),
 }));
 
 const COVERAGE = {
@@ -48,7 +52,8 @@ describe("ReportsView", () => {
     render(<ReportsView />);
 
     // Assert
-    expect(await screen.findByText("Coverage by rep")).toBeInTheDocument();
+    expect(await screen.findByText("Coverage by MR")).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader", { name: "MR" })).toHaveLength(2);
     expect(screen.getAllByText("75%").length).toBeGreaterThan(0);
     expect(screen.getByText("Doctors not visited")).toBeInTheDocument();
     expect(screen.getByText("Dr. Beta")).toBeInTheDocument();
@@ -62,7 +67,7 @@ describe("ReportsView", () => {
     mockUser.mockReturnValue({ id: 10, companyId: 2, roleCode: "ADMIN" });
     api.post.mockResolvedValue({ data: { message: "2 visit(s) marked as missed." } });
     render(<ReportsView />);
-    await screen.findByText("Coverage by rep");
+    await screen.findByText("Coverage by MR");
 
     // Act
     await userEvent.click(screen.getByRole("button", { name: /run missed check now/i }));

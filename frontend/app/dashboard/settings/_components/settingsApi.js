@@ -7,6 +7,8 @@ export const TERM_KEYS = [
   "activity.plural",
   "submission.singular",
   "submission.plural",
+  "rep.singular",
+  "rep.plural",
 ];
 
 export const DATA_TYPES = [

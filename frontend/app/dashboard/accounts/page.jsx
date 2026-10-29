@@ -95,7 +95,7 @@ function useCompletions(terms, finish) {
     onFormSaved: (edited) => finish(
       `${terms.singular} ${edited ? "updated" : "created"} successfully.`,
     ),
-    onAssigned: () => finish("Reps assigned."),
+    onAssigned: () => finish(`${terms.reps} assigned.`),
     onTransferred: (moved) => finish(
       `${moved} ${moved === 1 ? terms.singular : terms.plural} transferred.`,
     ),
@@ -106,7 +106,9 @@ function useAccountsPage() {
   const { toasts, showToast } = useToast();
   const { t } = useTerminology();
   const user = useCurrentUser();
-  const terms = { singular: t("account.singular"), plural: t("account.plural") };
+  const terms = {
+    singular: t("account.singular"), plural: t("account.plural"), reps: t("rep.plural"),
+  };
   const list = useAccounts(() => showToast("Failed to load data.", "error"));
   const { reload } = list;
   const mutations = useAccountMutations({ singular: terms.singular, showToast, reload });
