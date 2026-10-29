@@ -8,6 +8,12 @@ import { setSessionExpiredHandler } from "@/lib/apiClient";
 
 const LEGACY_USER_KEY = "wk_user";
 
+// Only these pages need a signed-in user. The landing and login pages are public, so they
+// skip the /auth/me check and are never sent to /login when a session ends.
+export function isAppPage(pathname) {
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+}
+
 function removeLegacyUserCache() {
   try {
     localStorage.removeItem(LEGACY_USER_KEY);
@@ -25,9 +31,9 @@ function SessionBootstrap({ children }) {
       dispatch(clearUser());
       // Logout clears the wk_session cookie so the proxy stops sending us back to /dashboard.
       await dispatch(logoutUser());
-      if (window.location.pathname !== "/") window.location.assign("/");
+      if (isAppPage(window.location.pathname)) window.location.assign("/login");
     });
-    dispatch(fetchCurrentUser());
+    if (isAppPage(window.location.pathname)) dispatch(fetchCurrentUser());
     return () => setSessionExpiredHandler(null);
   }, [dispatch]);
 

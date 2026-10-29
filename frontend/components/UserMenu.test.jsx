@@ -64,7 +64,7 @@ describe("UserMenu", () => {
     // Assert
     expect(api.post).toHaveBeenCalledWith("/auth/logout");
     expect(selectUser(store.getState())).toBeNull();
-    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(mockPush).toHaveBeenCalledWith("/login");
   });
 
   it("stays on the page with the user and shows an error when sign-out fails", async () => {

@@ -19,12 +19,12 @@ describe("proxy", () => {
 
     // Assert
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("http://localhost:3000/");
+    expect(res.headers.get("location")).toBe("http://localhost:3000/login");
   });
 
-  it("redirects the login page to the dashboard when a session exists", () => {
+  it.each(["/", "/login"])("redirects %s to the dashboard when a session exists", (path) => {
     // Arrange
-    const request = requestFor("/", true);
+    const request = requestFor(path, true);
 
     // Act
     const res = proxy(request);
@@ -45,9 +45,9 @@ describe("proxy", () => {
     expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("lets the login page through without a session", () => {
+  it.each(["/", "/login"])("lets %s through without a session", (path) => {
     // Arrange
-    const request = requestFor("/", false);
+    const request = requestFor(path, false);
 
     // Act
     const res = proxy(request);
@@ -56,9 +56,9 @@ describe("proxy", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
-  it("only matches the login page and dashboard routes", () => {
+  it("only matches the landing, login and dashboard routes", () => {
     // Arrange
-    const expected = ["/", "/dashboard/:path*"];
+    const expected = ["/", "/login", "/dashboard/:path*"];
 
     // Act
     const { matcher } = config;
