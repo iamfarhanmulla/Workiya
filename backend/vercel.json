@@ -4,5 +4,6 @@
   "functions": {
     "api/index.js": { "maxDuration": 10 }
   },
+  "crons": [{ "path": "/api/v1/jobs/missed-visits", "schedule": "30 18 * * *" }],
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }
