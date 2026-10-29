@@ -506,6 +506,9 @@
 .wk-board-col { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: var(--radius-lg); background: var(--color-surface-sunken); min-height: 240px; }
 .wk-board-col-hd { display: flex; align-items: center; gap: 8px; padding: 4px 4px 2px; }
 .wk-board-col-hd .wk-count { background: var(--color-surface); }
+/* Each column scrolls on its own, so a long column does not stretch the page. */
+.wk-board-cards { display: flex; flex-direction: column; gap: 8px; max-height: max(360px, calc(100vh - 260px)); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; scrollbar-width: thin; }
+.wk-board-cards:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .wk-board-empty { margin: 0; padding: 16px 8px; text-align: center; font-size: var(--text-sm); color: var(--color-text-muted); }
 .wk-board-add { align-self: flex-start; }
 
