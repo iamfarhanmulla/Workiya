@@ -1,6 +1,7 @@
 "use client";
 
 import { SkeletonRows } from "@/components/DataStates";
+import Paged from "@/components/Paged";
 import ActivityBoard from "./ActivityBoard";
 import ActivityTable from "./ActivityTable";
 import PendingReviews from "./PendingReviews";
@@ -13,15 +14,19 @@ function ActivityList({
   if (view === "list") {
     return (
       <section className="wk-card wk-results" aria-label={labels.activities}>
-        <ActivityTable
-          activities={activities}
-          accountLabel={labels.account}
-          emptyLabel={emptyLabel}
-          isStaff={isStaff}
-          onView={actions.openView}
-          onEdit={actions.openEdit}
-          onDelete={actions.askDelete}
-        />
+        <Paged items={activities}>
+          {(rows) => (
+            <ActivityTable
+              activities={rows}
+              accountLabel={labels.account}
+              emptyLabel={emptyLabel}
+              isStaff={isStaff}
+              onView={actions.openView}
+              onEdit={actions.openEdit}
+              onDelete={actions.askDelete}
+            />
+          )}
+        </Paged>
       </section>
     );
   }

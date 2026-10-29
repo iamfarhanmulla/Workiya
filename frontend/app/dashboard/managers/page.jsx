@@ -6,6 +6,7 @@ import { ListBody } from "@/components/DataStates";
 import ListToolbar from "@/components/ListToolbar";
 import PageHeader from "@/components/PageHeader";
 import StatTile from "@/components/StatTile";
+import Paged from "@/components/Paged";
 import ManagerFormModal from "./_components/ManagerFormModal";
 import ManagerViewModal from "./_components/ManagerViewModal";
 import ManagersTable from "./_components/ManagersTable";
@@ -102,7 +103,9 @@ export default function ManagersPage() {
             emptyTitle="No managers found"
             emptyText="Try another name, company or status."
           >
-            <ManagersTable managers={page.shown} handlers={page.handlers} />
+            <Paged items={page.shown}>
+              {(rows) => <ManagersTable managers={rows} handlers={page.handlers} />}
+            </Paged>
           </ListBody>
         </section>
         <ManagerDialogs page={page} />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { SkeletonRows } from "@/components/DataStates";
+import Paged from "@/components/Paged";
 import SubmissionDetails from "./SubmissionDetails";
 import { usePendingReviews } from "./useActivitiesData";
 import { fmtDateTime } from "./activityConfig";
@@ -72,7 +73,11 @@ export default function PendingReviews({ labels, onReviewed, showToast }) {
     <section className="wk-card wk-results" aria-label="Pending review">
       {loading
         ? <SkeletonRows rows={4} />
-        : <ReviewTable items={items} labels={labels} onOpen={setOpen} />}
+        : (
+          <Paged items={items}>
+            {(rows) => <ReviewTable items={rows} labels={labels} onOpen={setOpen} />}
+          </Paged>
+        )}
       {open && (
         <Modal
           icon="rate_review"

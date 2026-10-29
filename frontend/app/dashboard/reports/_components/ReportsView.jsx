@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import PageHeader from "@/components/PageHeader";
+import Paged from "@/components/Paged";
 import { SkeletonRows, LoadError } from "@/components/DataStates";
 import { useToast, ToastContainer } from "@/components/Toast";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -78,13 +79,17 @@ function ReportBody({ report, labels }) {
         title={`Coverage by ${labels.rep}`}
         sub={`Completed visits against each ${labels.rep}'s monthly target`}
       >
-        <RepCoverageTable reps={coverage.byRep} labels={labels} />
+        <Paged items={coverage.byRep}>
+          {(rows) => <RepCoverageTable reps={rows} labels={labels} />}
+        </Paged>
       </Card>
       <Card
         title={`${labels.accounts} not visited`}
         sub="Assigned, but no completed visit this month"
       >
-        <NotVisitedTable rows={coverage.notVisited} labels={labels} />
+        <Paged items={coverage.notVisited}>
+          {(rows) => <NotVisitedTable rows={rows} labels={labels} />}
+        </Paged>
       </Card>
       <Card title="Last 8 weeks" sub="Completed (green) and missed (red) visits per week">
         <TrendBars weeks={trend} />

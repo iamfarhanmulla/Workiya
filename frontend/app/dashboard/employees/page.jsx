@@ -6,6 +6,7 @@ import { ListBody } from "@/components/DataStates";
 import ListToolbar from "@/components/ListToolbar";
 import PageHeader from "@/components/PageHeader";
 import StatTile from "@/components/StatTile";
+import Paged from "@/components/Paged";
 import EmployeeFormModal from "./_components/EmployeeFormModal";
 import EmployeeViewModal from "./_components/EmployeeViewModal";
 import EmployeesTable from "./_components/EmployeesTable";
@@ -133,7 +134,9 @@ export default function EmployeesPage() {
             emptyTitle="No employees match your search"
             emptyText="Try another name, email, company or status."
           >
-            <EmployeesTable employees={page.shown} actions={actions} />
+            <Paged items={page.shown}>
+              {(rows) => <EmployeesTable employees={rows} actions={actions} />}
+            </Paged>
           </ListBody>
         </section>
         <EmployeeDialogs page={page} />
