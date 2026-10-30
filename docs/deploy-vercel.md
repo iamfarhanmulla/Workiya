@@ -31,10 +31,18 @@ to a paid plan before real customers use Workiya.
    | `TRUST_PROXY_HOPS` | `1` |
    | `PASSWORD_REHASH_ON_LOGIN` | `true` |
    | `FRONTEND_URL` | the frontend address from step 3 (set it after step 3, then redeploy) |
+   | `CRON_SECRET` | any long random value (type **Secret**); turns on the nightly missed-visits job |
 
 4. **Deploy**. Check `https://<api-address>/api/v1/health` returns `{"success":true,...}`.
 
 Never add `DATABASE_URL_DIRECT`, `DATABASE_URL_TEST` or any `MSSQL_*` value to Vercel.
+
+### Rate limits (Upstash Redis)
+Login and session-refresh limits must be shared by every Vercel instance, or each instance
+counts on its own. In the `workiya-api` project: **Storage → Create Database → Upstash for
+Redis** (free plan, region close to `sin1`, e.g. Singapore) → **Connect** it to `workiya-api`
+for Production and Preview. Vercel adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which the
+API reads. Redeploy. Without them the limits still work, but per instance only.
 
 ## 3. Frontend project (`workiya`)
 1. **Add New → Project** → import `Workiya` again.
