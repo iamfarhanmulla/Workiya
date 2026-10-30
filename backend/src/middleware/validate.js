@@ -10,8 +10,9 @@ function formatIssues(issues) {
     .join("; ");
 }
 
+// The returned middleware carries { schema, source } so the API docs can describe the input.
 function validate(schema, source = "body") {
-  return function validateRequest(req, res, next) {
+  function validateRequest(req, res, next) {
     const result = schema.safeParse(req[source] === undefined ? {} : req[source]);
     if (!result.success) {
       return fail(res, 400, ERROR_CODES.VALIDATION_FAILED, formatIssues(result.error.issues));
@@ -22,7 +23,9 @@ function validate(schema, source = "body") {
       req.validated = { ...(req.validated || {}), [source]: result.data };
     }
     return next();
-  };
+  }
+  validateRequest.openapi = { schema, source };
+  return validateRequest;
 }
 
 module.exports = { validate };
