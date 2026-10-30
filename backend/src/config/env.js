@@ -64,6 +64,12 @@ const config = Object.freeze({
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
   // Bearer token Vercel Cron sends to /api/v1/jobs/*; unset = the job endpoints do not exist.
   cronSecret: process.env.CRON_SECRET || "",
+  // Shared rate-limit counters in Upstash Redis (REST). The KV_* names are what the Vercel
+  // Upstash integration sets. Unset = counters live in each instance's memory (local, tests).
+  rateLimit: Object.freeze({
+    redisUrl: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "",
+    redisToken: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "",
+  }),
   jwt: Object.freeze({
     get privateKey() {
       return privateKey();

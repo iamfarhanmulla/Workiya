@@ -3,6 +3,8 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const { ERROR_CODES } = require("../constants/errorCodes");
 const { COOKIE_NAMES } = require("../utils/authCookies");
 const { fail } = require("../utils/apiResponse");
+const logger = require("../utils/logger");
+const { storeFor } = require("./redisRateLimitStore");
 
 const WINDOW_MS = 15 * 60 * 1000;
 
@@ -35,33 +37,39 @@ function hasNoRefreshCookie(req) {
   return !readRefreshCookie(req);
 }
 
-function limiter(limit, extra) {
+// With Upstash configured the counters are shared by every instance; if Redis is down the
+// request is let through (and logged) rather than locking everyone out. Account lockout in
+// the database still applies to logins either way.
+function limiter(name, limit, extra) {
   return rateLimit({
     windowMs: WINDOW_MS,
     limit,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: rateLimitedHandler,
+    store: storeFor(name),
+    passOnStoreError: true,
+    logger,
     ...extra,
   });
 }
 
 // Ceiling per IP across all emails, against password spraying.
 function createLoginIpLimiter() {
-  return limiter(100, { keyGenerator: ipKey });
+  return limiter("login-ip", 100, { keyGenerator: ipKey });
 }
 
 // Tighter ceiling per IP and email, against targeted guessing.
 function createLoginLimiter() {
-  return limiter(10, { keyGenerator: loginKey });
+  return limiter("login", 10, { keyGenerator: loginKey });
 }
 
 function createRefreshLimiter() {
-  return limiter(30, { keyGenerator: refreshKey, skip: hasNoRefreshCookie });
+  return limiter("refresh", 30, { keyGenerator: refreshKey, skip: hasNoRefreshCookie });
 }
 
 function createRefreshIpLimiter() {
-  return limiter(600, { keyGenerator: ipKey, skip: hasNoRefreshCookie });
+  return limiter("refresh-ip", 600, { keyGenerator: ipKey, skip: hasNoRefreshCookie });
 }
 
 module.exports = {
