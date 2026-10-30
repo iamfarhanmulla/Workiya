@@ -1,9 +1,10 @@
 const { ERROR_CODES } = require("../constants/errorCodes");
 const { fail } = require("../utils/apiResponse");
 
+// The returned middleware carries the allowed roles so the API docs can list them.
 function authorize(...roleCodes) {
   const allowed = new Set(roleCodes);
-  return function authorizeRole(req, res, next) {
+  function authorizeRole(req, res, next) {
     if (!req.user || !allowed.has(req.user.roleCode)) {
       return fail(
         res,
@@ -13,7 +14,9 @@ function authorize(...roleCodes) {
       );
     }
     return next();
-  };
+  }
+  authorizeRole.roles = roleCodes;
+  return authorizeRole;
 }
 
 module.exports = { authorize };
